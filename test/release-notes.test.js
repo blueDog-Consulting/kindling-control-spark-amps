@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -68,4 +68,28 @@ test('an option followed by another option is an error, not its value', () => {
   const r = spawnSync(process.execPath, [cli, '0.3.0', '--out', '--markdown', 'notes.md'], { cwd, encoding: 'utf8' });
   assert.equal(r.status, 1);
   assert.match(r.stderr, /--out needs a value/);
+});
+
+test('--only limits the stores that are read', () => {
+  const root = repoWith('0.3.0', { 'android.txt': 'Android', 'macos.txt': 'Mac' });
+  assert.deepEqual(loadStoreNotes('0.3.0', { root, only: ['macos'] }).notes, { macos: 'Mac' });
+  // a broken file for a store that is left out is not looked at either
+  const broken = repoWith('0.3.0', { 'android.txt': 'x'.repeat(STORES.android.limit + 1), 'macos.txt': 'Mac' });
+  assert.deepEqual(loadStoreNotes('0.3.0', { root: broken, only: ['macos'] }).errors, []);
+});
+
+test('the CLI writes only the --only stores and rejects --require outside them', () => {
+  const cli = fileURLToPath(new URL('../tools/release-notes.js', import.meta.url));
+  const root = repoWith('0.3.0', { 'android.txt': 'Android', 'macos.txt': 'Mac' });
+  const out = join(root, 'out');
+  const run = (...args) => spawnSync(process.execPath, [cli, '0.3.0', '--root', root, ...args], { encoding: 'utf8' });
+
+  const ok = run('--only', 'macos', '--out', out);
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.deepEqual(readdirSync(out), ['kindling-control-0.3.0-macos-whatsnew.txt']);
+  assert.equal(readFileSync(join(out, 'kindling-control-0.3.0-macos-whatsnew.txt'), 'utf8'), 'Mac\n');
+
+  const bad = run('--only', 'macos', '--require', 'android');
+  assert.equal(bad.status, 1);
+  assert.match(bad.stderr, /--require android is not in --only macos/);
 });

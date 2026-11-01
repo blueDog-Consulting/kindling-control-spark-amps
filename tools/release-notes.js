@@ -3,11 +3,15 @@
 // Notes live in release-notes/<version>/<store>.txt and are tied to the release tag, so
 // v0.3.0 ships exactly the notes committed under release-notes/0.3.0/.
 //
-//   node tools/release-notes.js <tag|version> [--require android,macos] [--out <dir>] [--markdown <file>]
+//   node tools/release-notes.js <tag|version> [--only android,macos] [--require android,macos]
+//                                             [--out <dir>] [--markdown <file>] [--root <dir>]
 //
+//   --only      look only at these stores (default: all). The release job passes the apps it actually built,
+//               so a release that skipped Android doesn't carry Play notes.
 //   --require   stores whose notes must exist (the build fails if one is missing or invalid)
 //   --out       write each store's notes to <dir>/kindling-control-<version>-<store>-whatsnew.txt
 //   --markdown  append a "Store release notes" section to <file> (used for the GitHub Release body)
+//   --root      repository root that holds release-notes/ (default: this checkout; used by the tests)
 //
 // Used by .github/workflows/release.yml. See release-notes/README.md.
 
@@ -27,14 +31,16 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /**
  * Read and validate the notes for one version.
  * @param {string} version e.g. "0.3.0" or "0.3.0-beta.1" (a leading "v" is accepted)
- * @param {{ root?: string, require?: string[] }} opts `require`: stores whose notes must exist
+ * @param {{ root?: string, only?: string[], require?: string[] }} opts `only`: stores to look at (default all);
+ *   `require`: stores whose notes must exist
  * @returns {{ version: string, notes: Record<string, string>, errors: string[] }}
  */
-export function loadStoreNotes(version, { root = ROOT, require = [] } = {}) {
+export function loadStoreNotes(version, { root = ROOT, only = Object.keys(STORES), require = [] } = {}) {
   const { name } = versionFromTag(version);
   const notes = {};
   const errors = [];
   for (const [store, { label, limit }] of Object.entries(STORES)) {
+    if (!only.includes(store)) continue;
     const file = join(root, 'release-notes', name, `${store}.txt`);
     if (!existsSync(file)) {
       if (require.includes(store)) errors.push(`missing ${label} notes: release-notes/${name}/${store}.txt`);
@@ -67,14 +73,24 @@ function main(argv) {
     if (!value || value.startsWith('--')) throw new Error(`${flag} needs a value`);
     return value;
   };
-  const require = (opt('--require') ?? '').split(',').filter(Boolean);
+  const stores = (flag) => (opt(flag) ?? '').split(',').filter(Boolean);
+  const require = stores('--require');
+  const onlyArg = stores('--only');
+  const only = onlyArg.length ? onlyArg : Object.keys(STORES);
   const out = opt('--out');
   const markdown = opt('--markdown');
-  const unknown = require.filter((s) => !STORES[s]);
+  const root = opt('--root');
+  const unknown = [...require, ...only].filter((s) => !STORES[s]);
   if (unknown.length) throw new Error(`unknown store(s): ${unknown.join(', ')} (expected ${Object.keys(STORES).join(', ')})`);
-  if (!args[0]) throw new Error('usage: release-notes <tag|version> [--require android,macos] [--out dir] [--markdown file]');
+  const notLooked = require.filter((s) => !only.includes(s));
+  if (notLooked.length) throw new Error(`--require ${notLooked.join(',')} is not in --only ${only.join(',')}`);
+  if (!args[0]) {
+    throw new Error(
+      'usage: release-notes <tag|version> [--only stores] [--require stores] [--out dir] [--markdown file] [--root dir]',
+    );
+  }
 
-  const { version, notes, errors } = loadStoreNotes(args[0], { require });
+  const { version, notes, errors } = loadStoreNotes(args[0], { only, require, ...(root && { root: resolve(root) }) });
   if (errors.length) {
     for (const e of errors) console.error(`  ✗ ${e}`);
     throw new Error(`release notes for ${version} are not ready`);
