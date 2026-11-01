@@ -3,8 +3,8 @@ name: Release
 # Push a version tag to release:   git tag v0.2.0 && git push origin v0.2.0
 # Only apps whose code changed since the previous v* tag are rebuilt
 # (tools/release-plan.js). Pre-release tags (v0.2.0-beta.1) become GitHub
-# pre-releases. The website (kindlingspark.app) is not part of releases:
-# .github/workflows/site.yml deploys it on pushes to main.
+# pre-releases. The website (kindlingspark.app) lives in its own repo,
+# bluedog-consulting/kindling-control-website.
 # See docs/RELEASING.md for secrets and details.
 
 on:

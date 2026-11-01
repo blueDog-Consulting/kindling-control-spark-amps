@@ -41,14 +41,12 @@ Everything works without secrets: Android ships a debug-signed APK, and desktop 
 
 | Secret | Used for |
 |---|---|
-| `CLOUDFLARE_API_TOKEN` | Deploying the website (`site.yml`, not releases). Permissions are listed in [PRESETS.md](PRESETS.md). |
-| `CLOUDFLARE_ACCOUNT_ID` | The Cloudflare account to deploy to |
 | `ANDROID_KEYSTORE_BASE64` | Release keystore, base64-encoded (see below) |
 | `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
 | `ANDROID_KEY_ALIAS` | Key alias in the keystore |
 | `ANDROID_KEY_PASSWORD` | Key password |
 
-**Website:** kindlingspark.app isn't part of releases, and the web app isn't published at all. `.github/workflows/site.yml` deploys the landing page, guide and presets hub on pushes to `main` (see [PRESETS.md](PRESETS.md)). Wrangler is pinned there (`wrangler@4.151.3`).
+**Website:** kindlingspark.app isn't part of app releases; it lives and deploys from [kindling-control-website](https://github.com/bluedog-consulting/kindling-control-website). The web app isn't published anywhere.
 
 **Android keystore:** create it once and keep it safe. If you lose it, you can never ship an update to the same app on Google Play.
 

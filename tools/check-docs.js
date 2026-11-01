@@ -26,9 +26,6 @@ export const MATERIAL = [
   /^android\/(app\/)?build\.gradle$/, // versioning, signing
   /^ios\/App\/App\/Info\.plist$/,
   /^package\.json$/, // scripts, entry points, build config, dependencies
-  /^wrangler\.jsonc$/,
-  /^worker\//, // presets hub API (Cloudflare Worker)
-  /^migrations\//, // its D1 schema
   /^\.github\/workflows\//,
 ];
 

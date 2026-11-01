@@ -26,7 +26,7 @@ Works with Spark 40, Spark GO, Spark MINI, Spark 2 and Spark NEO. All of them us
 | Windows / macOS / Linux | the desktop app (`desktop/`, Electron) |
 | Chrome / Edge | for development only: `npm run serve` runs the same UI over Web Bluetooth. The web app isn't published. |
 
-Download the apps from [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases). The website, [kindlingspark.app](https://kindlingspark.app), has the landing page, the user guide and the **presets hub**, where players share presets.
+Download the apps from [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases). The website, [kindlingspark.app](https://kindlingspark.app), has the landing page, the user guide and the **presets hub**, where players share presets. It has [its own repository](https://github.com/bluedog-consulting/kindling-control-website).
 
 Build instructions for each are in [docs/APPS.md](docs/APPS.md).
 
@@ -60,17 +60,11 @@ npm run serve          # http://localhost:8787  (no dependencies)
 
 Close the official Spark app first; it may hold the BLE connection. Then tap **Connect** and pick your amp.
 
-### Website and presets hub
+### Website
 
-[kindlingspark.app](https://kindlingspark.app) runs on Cloudflare Workers: the landing page (`site/`), the user guide at `/guide/`, and the **presets hub** at `/presets/`. On the hub, anyone can browse and download presets; sharing needs an email sign-in link. The hub's API is a Worker (`worker/`) with a D1 database (`migrations/`). The web app itself is deliberately not published there.
+[kindlingspark.app](https://kindlingspark.app) (the landing page, this user guide, and the **presets hub** where players share presets) lives in its own repository, [bluedog-consulting/kindling-control-website](https://github.com/bluedog-consulting/kindling-control-website), so you can fork the app without it. The website copies a few files from here: the preset code, the user guide and an icon (listed in its `tools/app-source.js`). It picks up changes when someone runs its `npm run sync:app`.
 
-```sh
-npm run site:dev       # build site-dist/ and serve site + presets API on http://localhost:8788 (in-memory database)
-npm run deploy         # build, apply D1 migrations, wrangler deploy (needs Cloudflare setup)
-npm run screenshots    # re-capture site/screenshots/ from the app (needs Playwright)
-```
-
-CI deploys the website on pushes to `main` (`.github/workflows/site.yml`). Architecture, API, privacy and the one-time Cloudflare setup are in [docs/PRESETS.md](docs/PRESETS.md).
+`npm run screenshots` captures marketing screenshots from the app and the simulated Spark 2 (into `screenshots/`, or `--out <dir>`; needs Playwright). The website uses it for its images.
 
 ## Library
 
@@ -115,18 +109,16 @@ The protocol itself is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `src/` | everything that ships: `index.html`, the UI in `app/`, the protocol library in `spark/`. No build step. |
 | `desktop/` | Electron shell for Windows, macOS and Linux |
 | `android/`, `ios/` | Capacitor projects for Android and iPad/iPhone |
-| `tools/` | capture decoder CLI, dev servers, docs check, site build |
-| `worker/`, `migrations/` | the presets hub API (Cloudflare Worker) and its D1 schema |
+| `tools/` | capture decoder CLI, dev server, docs check, release plan, icons, screenshots |
 | `test/` | `node:test` suites and real-capture fixtures |
-| `src/guide/` | the user guide, shown in the app's Help panel and at `/guide/` on the website |
-| `site/` | the landing page (`index.html`, `site.css`, `screenshots/`) and the presets hub pages (`presets/`) |
-| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md), [PRESETS.md](docs/PRESETS.md) |
-| `.github/workflows/` | CI (tests + docs check), the tag-driven app releases, and the website deploy |
+| `src/guide/` | the user guide, shown in the app's Help panel (the website also serves a copy at `/guide/`) |
+| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md) |
+| `.github/workflows/` | CI (tests + docs check) and the tag-driven app releases |
 
 ## Development
 
 ```sh
-npm test                                        # node:test, no install needed (Node 22+)
+npm test                                        # node:test, no install needed
 node tools/btsnoop-decode.js btsnoop_hci.log    # decode a capture
 npm install && npm run desktop:mock             # desktop app against the simulated amp
 npm run check:docs                              # docs rule (also runs in CI)

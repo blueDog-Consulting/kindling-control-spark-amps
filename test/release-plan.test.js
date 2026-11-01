@@ -12,7 +12,6 @@ test('app-specific changes only rebuild that app', () => {
   assert.deepEqual(builds(planRelease(['desktop/main.js'])), ['desktop']);
   assert.deepEqual(builds(planRelease(['build/icon-mac.png'])), ['desktop']);
   assert.deepEqual(builds(planRelease(['android/app/build.gradle', 'capacitor.config.json'])), ['android']);
-  assert.deepEqual(builds(planRelease(['wrangler.jsonc', 'worker/api.js', 'site/index.html'])), [], 'the website deploys separately');
   assert.deepEqual(builds(planRelease(['package-lock.json'])), ['android', 'desktop']);
 });
 

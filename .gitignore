@@ -1,8 +1,6 @@
 node_modules/
-.wrangler/
-.dev.vars
 *.log
 !test/fixtures/*.log
 dist/
 out/
-site-dist/
+screenshots/

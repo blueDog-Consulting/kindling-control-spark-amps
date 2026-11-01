@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 // Zero-dependency static server for local development:
-//   node tools/serve.js [port] [dir]     dir defaults to src/ (the app); use site-dist for the full website
-// Web Bluetooth works on http://localhost (a secure context). For a phone, deploy
-// to Cloudflare (npm run deploy) or use `wrangler dev` with a tunnel, since
-// the browser requires HTTPS on anything but localhost.
+//   node tools/serve.js [port] [dir]     dir defaults to src/ (the app)
+// Web Bluetooth works on http://localhost (a secure context). On a phone the
+// browser requires HTTPS, so use a tunnel, or the Android app.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';

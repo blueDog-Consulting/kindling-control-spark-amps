@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>KindlingControl: Pick Flame</title>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="64%" r="70%">
+      <stop offset="0" stop-color="#40240c"/>
+      <stop offset="0.5" stop-color="#18191d"/>
+      <stop offset="1" stop-color="#0c0d0f"/>
+    </radialGradient>
+    <linearGradient id="flameOuter" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd166"/>
+      <stop offset="0.45" stop-color="#ff8a1f"/>
+      <stop offset="1" stop-color="#e0391c"/>
+    </linearGradient>
+    <linearGradient id="flameInner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff7da"/>
+      <stop offset="1" stop-color="#ffc23d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ff9a2e" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff9a2e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="pickFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2d33"/><stop offset="1" stop-color="#121417"/>
+    </linearGradient>
+    <linearGradient id="pickEdge" gradientUnits="userSpaceOnUse" x1="512" y1="180" x2="512" y2="860">
+      <stop offset="0" stop-color="#ffd166"/><stop offset="1" stop-color="#e0391c"/>
+    </linearGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b07a4c"/><stop offset="1" stop-color="#5a3820"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="225" fill="url(#bg)"/>
+    <ellipse cx="512" cy="540" rx="330" ry="330" fill="url(#glow)"/>
+    <g transform="translate(512 512) scale(0.88) translate(-512 -512)">
+      <path d="M512 178 C 712 178, 812 262, 794 384 C 768 560, 604 772, 512 858 C 420 772, 256 560, 230 384 C 212 262, 312 178, 512 178 Z" fill="url(#pickFill)" stroke="url(#pickEdge)" stroke-width="34" stroke-linejoin="round"/>
+      <g transform="translate(512 418) scale(0.62) translate(-512 -490)">
+      <path fill="url(#flameOuter)" d="M512 180 C 600 300, 720 380, 720 560 C 720 700, 625 800, 512 800 C 399 800, 304 700, 304 560 C 304 470, 350 410, 400 360 C 400 440, 430 480, 470 500 C 460 400, 480 290, 512 180 Z"/>
+      <path fill="url(#flameInner)" d="M512 430 C 560 500, 620 540, 620 630 C 620 700, 570 745, 512 745 C 454 745, 404 700, 404 635 C 404 580, 440 545, 470 520 C 475 570, 495 590, 512 600 C 505 540, 500 480, 512 430 Z"/>
+      </g>
+      <g transform="translate(512 646)">
+        <g transform="rotate(-17)"><rect x="-158" y="-27" width="316" height="54" rx="27" fill="url(#wood)"/><ellipse cx="-131" cy="0" rx="17" ry="22" fill="#e0b47f"/><ellipse cx="131" cy="0" rx="17" ry="22" fill="#e0b47f"/></g>
+        <g transform="rotate(17)"><rect x="-158" y="-27" width="316" height="54" rx="27" fill="url(#wood)"/><ellipse cx="-131" cy="0" rx="17" ry="22" fill="#e0b47f"/><ellipse cx="131" cy="0" rx="17" ry="22" fill="#e0b47f"/></g>
+      </g>
+    </g>
+</svg>

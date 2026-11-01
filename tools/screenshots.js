@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// Captures the landing-page screenshots (site/screenshots/*.jpg) from the real
-// app running against the simulated Spark 2, so they stay in sync with the UI.
+// Captures marketing screenshots (*.jpg) from the real app running against the
+// simulated Spark 2, so they stay in sync with the UI. The website repo
+// (kindling-control-website) runs this through `npm run sync:app -- <ref> --screenshots`.
 //
-//   npm run screenshots
+//   npm run screenshots                     # writes screenshots/ (git-ignored)
+//   node tools/screenshots.js --out <dir>   # writes somewhere else
 //
 // Needs Playwright with Chromium. It isn't a project dependency (it's large);
 // if it's missing: npm i --no-save playwright && npx playwright install chromium
@@ -23,7 +25,8 @@ try {
 }
 
 const root = fileURLToPath(new URL('../src/', import.meta.url));
-const outDir = fileURLToPath(new URL('../site/screenshots/', import.meta.url));
+const outArg = process.argv.indexOf('--out');
+const outDir = outArg > 0 ? `${process.argv[outArg + 1].replace(/\/?$/, '/')}` : fileURLToPath(new URL('../screenshots/', import.meta.url));
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 
 const server = createServer(async (req, res) => {
@@ -109,7 +112,7 @@ try {
   await phone.waitForTimeout(900);
   await shoot(phone, 'tuner-phone');
 
-  console.log(`screenshots: wrote ${shots.length} images to site/screenshots/: ${shots.join(', ')}`);
+  console.log(`screenshots: wrote ${shots.length} images to ${outDir}: ${shots.join(', ')}`);
 } finally {
   await browser.close();
   server.close();
