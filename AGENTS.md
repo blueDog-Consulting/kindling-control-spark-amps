@@ -160,7 +160,7 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 - If you add a file or folder that affects an app's build, add its path to `APP_PATHS`, and update `docs/RELEASING.md`.
 - Versions come from the tag; don't hand-edit versions in `package.json` or `android/app/build.gradle`. The Android `versionCode` scheme is `versionFromTag()`, and it must stay strictly increasing (tested).
 - Secrets are optional: without them, CI ships a debug APK and unsigned desktop builds. In workflows, never interpolate `${{ }}` values derived from repo content (e.g. file names) into `run:` scripts; pass them through `env:`.
-- iOS isn't built in CI yet (it needs macOS signing).
+- iOS and macOS aren't built in CI yet. macOS was removed from the desktop matrix because any failed build blocks the whole release; add it back to `release.yml` (and `docs/RELEASING.md`) once it builds.
 
 ## Verifying changes
 

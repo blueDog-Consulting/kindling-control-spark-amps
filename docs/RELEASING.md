@@ -27,11 +27,13 @@ Watch it under **Actions → Release**. To rebuild an existing tag, for example 
 | App | Rebuilt when these change | Output |
 |---|---|---|
 | Android | `src/`, `android/`, `capacitor.config.json`, `package.json`, `package-lock.json` | `…-android.apk` + `.aab` (signed), or `…-android-debug.apk` |
-| Desktop | `src/`, `desktop/`, `build/` (icons), `package.json`, `package-lock.json` | Windows `.exe` (NSIS), macOS `.dmg` (arm64 + x64), Linux `.AppImage` + `.deb` |
+| Desktop | `src/`, `desktop/`, `build/` (icons), `package.json`, `package-lock.json` | Windows `.exe` (NSIS), Linux `.AppImage` + `.deb` |
 
 - Changes that only touch docs, tests, tools or `ios/` build nothing.
 - An app that is skipped keeps its downloads on the earlier release, and the release notes say so.
 - The first tag (no earlier `v*` tag) builds everything.
+
+**macOS** isn't in the pipeline yet either: its build doesn't work in CI so far, so it was taken out of the desktop matrix in `release.yml` to keep it from blocking releases (any failed build skips publishing). Build the `.dmg` locally with `npm run desktop:dist` on a Mac (see [APPS.md](APPS.md)), and add the `macos-latest` row back once it builds.
 
 **iOS** isn't in the pipeline yet. It needs a macOS runner, an Apple Developer account and signing certificates. Build it locally for now (see [APPS.md](APPS.md)).
 
