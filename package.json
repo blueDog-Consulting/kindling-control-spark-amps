@@ -59,7 +59,7 @@
   "devDependencies": {
     "@capacitor-community/bluetooth-le": "8.3.0",
     "@capacitor/android": "8.5.3",
-    "@capacitor/cli": "8.5.3",
+    "@capacitor/cli": "8.6.0",
     "@capacitor/core": "8.5.3",
     "@capacitor/ios": "8.5.3",
     "electron": "44.9.3",
