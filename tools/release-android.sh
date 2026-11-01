@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Builds the Android release locally, the same way the `android` job in
-# .github/workflows/release.yml does.
+# Builds the Android release. The `android` job in .github/workflows/release.yml runs this same script,
+# so a local build and a CI build go through one path.
 #
-#   npm run release:android -- [vX.Y.Z] [--debug] [--skip-install] [--version-code N]
+#   npm run release:android -- [vX.Y.Z] [--debug] [--skip-install] [--no-notes] [--version-code N]
 #
 # Signed build (apk + aab for Google Play) needs your keystore:
 #   ANDROID_KEYSTORE_FILE=~/keys/release.jks ANDROID_KEY_ALIAS=kindling-control npm run release:android
@@ -12,6 +12,7 @@
 # --version-code N keeps the version name but uses N as the Android versionCode. Google Play refuses an upload
 #   whose versionCode it has already seen, so use it to rebuild a version you already uploaded. N must be higher
 #   than the tag's own code, and the output files get a -vcN suffix so they can't be mistaken for the CI build.
+# --no-notes skips writing the Play "What's new" file (CI's release job writes it instead).
 # Output goes to out/ (git-ignored). Builds the files in your working tree, not the tag.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -29,11 +30,13 @@ fi
 tag=''
 debug=false
 install=true
+notes=true
 override=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --debug) debug=true ;;
     --skip-install) install=false ;;
+    --no-notes) notes=false ;;
     --version-code) override="${2:-}"; [ $# -ge 2 ] || { echo "--version-code needs a number" >&2; exit 2; }; shift ;;
     --version-code=*) override="${1#*=}" ;;
     -*) echo "unknown option: $1" >&2; exit 2 ;;
@@ -110,8 +113,14 @@ if ! $debug; then
   # would quietly come out unsigned. Hand it an absolute path.
   ANDROID_KEYSTORE_FILE="$(cd "$(dirname "$ANDROID_KEYSTORE_FILE")" && pwd)/$(basename "$ANDROID_KEYSTORE_FILE")"
   : "${ANDROID_KEY_ALIAS:?set ANDROID_KEY_ALIAS (list aliases: keytool -list -keystore \"\$ANDROID_KEYSTORE_FILE\")}"
+  if [ -z "${ANDROID_KEYSTORE_PASSWORD:-}" ] && [ ! -t 0 ]; then
+    # No terminal to prompt on (e.g. CI): fail clearly instead of reading an empty password.
+    echo "error: set ANDROID_KEYSTORE_PASSWORD (there is no terminal to prompt for it)." >&2
+    exit 1
+  fi
   if [ -z "${ANDROID_KEYSTORE_PASSWORD:-}" ]; then read -r -s -p 'Keystore password: ' ANDROID_KEYSTORE_PASSWORD; echo; fi
-  if [ -z "${ANDROID_KEY_PASSWORD:-}" ]; then read -r -s -p 'Key password (Enter = same as keystore): ' ANDROID_KEY_PASSWORD; echo; fi
+  # Without a terminal, an unset key password means "same as the keystore", as it does when you press Enter.
+  if [ -z "${ANDROID_KEY_PASSWORD:-}" ] && [ -t 0 ]; then read -r -s -p 'Key password (Enter = same as keystore): ' ANDROID_KEY_PASSWORD; echo; fi
   export ANDROID_KEYSTORE_FILE ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS
   export ANDROID_KEY_PASSWORD="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
   signed=true
@@ -165,14 +174,16 @@ else
   cp android/app/build/outputs/apk/debug/app-debug.apk "out/kindling-control-$version-android-debug$suffix.apk"
   echo "Debug-signed APK only; Google Play will not accept it."
 fi
-# Play "What's new" text from release-notes/<version>/android.txt, as the publish job does in CI.
+# Play "What's new" text from release-notes/<version>/android.txt, as the release job does in CI.
 # CI refuses to release a final version without it; locally this only warns, so test builds still work.
-require=()
-case "$version" in *-*) ;; *) require=(--require android) ;; esac
-echo
-if ! node tools/release-notes.js "$tag" --out out ${require[@]+"${require[@]}"}; then
-  echo "warning: no valid Play release notes, so no whatsnew file was written (CI would stop here for a final tag)." >&2
-  echo "  Create release-notes/$version/android.txt (500 characters at most; see release-notes/README.md)." >&2
+if $notes; then
+  require=()
+  case "$version" in *-*) ;; *) require=(--require android) ;; esac
+  echo
+  if ! node tools/release-notes.js "$tag" --only android --out out ${require[@]+"${require[@]}"}; then
+    echo "warning: no valid Play release notes, so no whatsnew file was written (CI would stop here for a final tag)." >&2
+    echo "  Create release-notes/$version/android.txt (500 characters at most; see release-notes/README.md)." >&2
+  fi
 fi
 echo
 ls -l out/kindling-control-"$version"-android*

@@ -69,3 +69,22 @@ test('an option followed by another option is an error, not its value', () => {
   assert.equal(r.status, 1);
   assert.match(r.stderr, /--out needs a value/);
 });
+
+test('--only limits the stores that are read', () => {
+  const root = repoWith('0.3.0', { 'android.txt': 'Android', 'macos.txt': 'Mac' });
+  assert.deepEqual(loadStoreNotes('0.3.0', { root, only: ['macos'] }).notes, { macos: 'Mac' });
+  // a broken file for a store that is left out is not looked at either
+  const broken = repoWith('0.3.0', { 'android.txt': 'x'.repeat(STORES.android.limit + 1), 'macos.txt': 'Mac' });
+  assert.deepEqual(loadStoreNotes('0.3.0', { root: broken, only: ['macos'] }).errors, []);
+});
+
+test('the CLI writes only the --only stores and rejects --require outside them', () => {
+  const cli = fileURLToPath(new URL('../tools/release-notes.js', import.meta.url));
+  const cwd = mkdtempSync(join(tmpdir(), 'release-notes-cli-'));
+  const out = join(cwd, 'out');
+  const ok = spawnSync(process.execPath, [cli, '0.1.0', '--only', 'macos', '--out', out], { cwd, encoding: 'utf8' });
+  assert.equal(ok.status, 0, ok.stderr);
+  const bad = spawnSync(process.execPath, [cli, '0.1.0', '--only', 'macos', '--require', 'android'], { cwd, encoding: 'utf8' });
+  assert.equal(bad.status, 1);
+  assert.match(bad.stderr, /--require android is not in --only macos/);
+});

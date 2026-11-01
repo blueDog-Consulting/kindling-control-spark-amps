@@ -73,8 +73,6 @@ jobs:
     if: needs.plan.outputs.android == 'true'
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ needs.plan.outputs.version }}
-      VERSION_CODE: ${{ needs.plan.outputs.version_code }}
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -88,33 +86,31 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Copy web app into the Android project
-        run: npx cap sync android
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
           cache: gradle
       - uses: android-actions/setup-android@v4
+      - name: Install the Android SDK platform
+        # release-android.sh checks the platform is there before building, rather than letting Gradle fetch it
+        run: sdkmanager "platforms;android-$(sed -n 's/.*compileSdkVersion = \([0-9]*\).*/\1/p' android/variables.gradle)"
       - name: Decode signing keystore
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
           echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
       - name: Build
-        working-directory: android
+        # The same script maintainers run locally (npm run release:android): cap sync, Gradle, and for a
+        # signed build the checks that the .aab is signed by the keystore's key. The release job writes the
+        # Play notes, so --no-notes.
         run: |
-          mkdir -p ../out
-          props=(-PversionName="$VERSION" -PversionCode="$VERSION_CODE")
-          if [ -n "${ANDROID_KEYSTORE_FILE:-}" ]; then
-            ./gradlew --no-daemon assembleRelease bundleRelease "${props[@]}"
-            cp app/build/outputs/apk/release/app-release.apk "../out/kindling-control-${VERSION}-android.apk"
-            cp app/build/outputs/bundle/release/app-release.aab "../out/kindling-control-${VERSION}-android.aab"
-          else
+          flags=(--skip-install --no-notes)
+          if [ -z "${ANDROID_KEYSTORE_FILE:-}" ]; then
             echo "::warning::No Android signing secrets; publishing a debug-signed APK (installable by sideloading, not for Google Play)."
-            ./gradlew --no-daemon assembleDebug "${props[@]}"
-            cp app/build/outputs/apk/debug/app-debug.apk "../out/kindling-control-${VERSION}-android-debug.apk"
+            flags+=(--debug)
           fi
+          bash tools/release-android.sh "$TAG" "${flags[@]}"
       - uses: actions/upload-artifact@v7
         with:
           name: android
@@ -212,8 +208,12 @@ jobs:
             echo
           } > notes.md
           # Versioned store notes: shown in the release body and attached as <app>-whatsnew.txt files,
-          # ready to paste into Google Play Console / App Store Connect.
-          node tools/release-notes.js "$TAG" --out assets --markdown notes.md
+          # ready to paste into Google Play Console / App Store Connect. Only for apps this release built,
+          # so a release that skipped Android carries no Play notes. macOS isn't built in CI (it's built
+          # locally), so its notes are always included; gate them on DESKTOP_BUILT once macOS is in the matrix.
+          stores=macos
+          [ "$ANDROID_BUILT" = "true" ] && stores="android,$stores"
+          node tools/release-notes.js "$TAG" --only "$stores" --out assets --markdown notes.md
           args=(-f tag_name="$TAG")
           [ -n "$PREVIOUS" ] && args+=(-f previous_tag_name="$PREVIOUS")
           gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" "${args[@]}" --jq .body >> notes.md || true
