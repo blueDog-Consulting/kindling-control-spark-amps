@@ -1,6 +1,7 @@
 import {
   SparkClient,
   WebBluetoothTransport,
+  CapacitorBleTransport,
   MockSparkTransport,
   SLOTS,
   EFFECTS,
@@ -40,10 +41,12 @@ function makeTransport() {
     window.mockAmp = state.mock; // play with it from devtools: mockAmp.turnKnob(3, 0, 0.9)
     return state.mock;
   }
-  return new WebBluetoothTransport();
+  if (CapacitorBleTransport.isAvailable()) return new CapacitorBleTransport(); // Android / iOS app
+  return new WebBluetoothTransport(); // browsers and the Electron desktop app
 }
 
-if (!useMock && !WebBluetoothTransport.isSupported()) $('#unsupported').hidden = false;
+if (!useMock && !CapacitorBleTransport.isAvailable() && !WebBluetoothTransport.isSupported()) $('#unsupported').hidden = false;
+if (window.sparkDesktop) setupDesktopDevicePicker(window.sparkDesktop);
 
 $('#connect').addEventListener('click', async () => {
   if (state.connected) {
@@ -520,6 +523,43 @@ tabs.forEach((t, i) => {
     next.focus();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Electron: Chromium has no built-in Bluetooth chooser there, so the main
+// process forwards the scan results and we show our own picker.
+// ---------------------------------------------------------------------------
+
+function setupDesktopDevicePicker(desktop) {
+  const dialog = $('#bt-picker');
+  const list = $('#bt-list');
+  let open = false;
+  const choose = (id) => {
+    desktop.selectBluetoothDevice(id);
+    open = false;
+    dialog.close();
+  };
+  desktop.onBluetoothDevices((devices) => {
+    if (!open) {
+      open = true;
+      dialog.showModal();
+    }
+    list.replaceChildren(
+      ...devices.map((d) => {
+        const li = document.createElement('li');
+        const b = Object.assign(document.createElement('button'), { type: 'button', textContent: d.name || d.id });
+        b.addEventListener('click', () => choose(d.id));
+        li.append(b);
+        return li;
+      }),
+    );
+    $('#bt-scanning').hidden = devices.length > 0;
+  });
+  $('#bt-cancel').addEventListener('click', () => choose(''));
+  dialog.addEventListener('cancel', (e) => {
+    e.preventDefault();
+    choose('');
+  });
+}
 
 if (useMock) setStatus('idle', 'Simulated amp');
 // expose for poking around in devtools

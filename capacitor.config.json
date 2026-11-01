@@ -1,0 +1,22 @@
+{
+  "appId": "io.github.jerdog.sparkcontrol",
+  "appName": "Spark Control",
+  "webDir": "src",
+  "android": {
+    "backgroundColor": "#121417"
+  },
+  "ios": {
+    "backgroundColor": "#121417",
+    "contentInset": "never"
+  },
+  "plugins": {
+    "BluetoothLe": {
+      "displayStrings": {
+        "scanning": "Looking for your Spark amp…",
+        "cancel": "Cancel",
+        "availableDevices": "Amps nearby",
+        "noDeviceFound": "No Spark amp found"
+      }
+    }
+  }
+}

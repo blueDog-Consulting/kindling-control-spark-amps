@@ -304,3 +304,19 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
 .log .meta { color: var(--muted); }
 .log .hex { color: var(--muted); display: block; margin-top: 0.15rem; }
 .log details summary { cursor: pointer; }
+
+/* ---- desktop Bluetooth device picker ------------------------------------ */
+
+dialog#bt-picker {
+  border: 1px solid var(--border); border-radius: 0.9rem;
+  background: var(--surface); color: var(--text);
+  inline-size: min(26rem, calc(100vw - 2rem)); padding: 1.25rem;
+}
+dialog#bt-picker::backdrop { background: rgb(0 0 0 / 0.5); }
+dialog#bt-picker h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+.bt-list { list-style: none; margin: 0.75rem 0; padding: 0; display: grid; gap: 0.4rem; }
+.bt-list button { inline-size: 100%; justify-content: flex-start; }
+
+/* ---- native app shells: keep clear of notches / home indicator -------- */
+
+main { padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right)); }

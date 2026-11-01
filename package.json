@@ -7,12 +7,62 @@
   "license": "Apache-2.0",
   "scripts": {
     "test": "node --test test/*.test.js",
-    "decode": "node tools/btsnoop-decode.js",
     "serve": "node tools/serve.js",
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "decode": "node tools/btsnoop-decode.js",
+    "deploy": "wrangler deploy",
+    "desktop": "electron .",
+    "desktop:mock": "electron . --mock",
+    "desktop:dist": "electron-builder",
+    "mobile:sync": "cap sync",
+    "android": "cap sync android && cap open android",
+    "ios": "cap sync ios && cap open ios"
   },
   "engines": {
     "node": ">=20"
+  },
+  "main": "desktop/main.js",
+  "author": "Jeremy Meiss",
+  "homepage": "https://github.com/jerdog/positive-grid-spark",
+  "build": {
+    "appId": "io.github.jerdog.sparkcontrol",
+    "productName": "Spark Control",
+    "files": [
+      "desktop/**/*",
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.music",
+      "target": [
+        "dmg"
+      ],
+      "extendInfo": {
+        "NSBluetoothAlwaysUsageDescription": "Spark Control uses Bluetooth to talk to your Spark amp."
+      }
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Audio"
+    }
+  },
+  "devDependencies": {
+    "@capacitor-community/bluetooth-le": "8.3.0",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/cli": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3",
+    "electron": "44.9.0",
+    "electron-builder": "26.17.0"
   }
 }
