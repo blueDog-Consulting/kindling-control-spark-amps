@@ -1,4 +1,4 @@
-<p align="center"><img src="src/icons/icon-192.png" width="112" height="112" alt="KindlingControl logo: an amp knob with a flame"></p>
+<p align="center"><img src="src/icons/icon-192.png" width="112" height="112" alt="KindlingControl logo: a guitar pick holding a flame over kindling"></p>
 
 # KindlingControl
 

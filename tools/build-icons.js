@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { deflateSync, crc32 } from 'node:zlib';
 import { Resvg } from '@resvg/resvg-js';
 
-export const CONCEPT = 'knob';
+export const CONCEPT = 'pick';
 const BG = '#0d0e10'; // splash / adaptive background, matches the app's --bg
 const ADAPTIVE_BG = '#15161a';
 

@@ -79,7 +79,7 @@ Electron and the web version read `src/` directly; just reload.
 
 ## App icons and splash screens
 
-Every platform's icons are generated from the logo SVGs in `assets/logo/concepts/<concept>/`. Each concept has an `icon.svg` (full-bleed 1024 tile) and a `foreground.svg` (transparent, for Android adaptive icons). The current concept is `CONCEPT` in `tools/build-icons.js` ("knob", the flame knob).
+Every platform's icons are generated from the logo SVGs in `assets/logo/concepts/<concept>/`. Each concept has an `icon.svg` (full-bleed 1024 tile) and a `foreground.svg` (transparent, for Android adaptive icons). The current concept is `CONCEPT` in `tools/build-icons.js` ("pick", the Pick Flame: a guitar pick holding a flame over kindling).
 
 ```sh
 npm run icons              # regenerate everything from the current concept
