@@ -61,21 +61,23 @@ Requests are `POST text/plain` with `mode: 'no-cors'`, `credentials: 'omit'` and
 
 ## Setting up the Worker
 
+wrangler is a devDependency of this repo, kept at `"latest"` on purpose, so run `npm install` once and use `npx wrangler` from `telemetry/`. The lockfile holds the version actually installed; `npm install wrangler@latest` (and committing `package-lock.json`) moves it forward.
+
 ```sh
 cd telemetry
-npx wrangler@4.151.1 login                                   # once
-npx wrangler@4.151.1 d1 create kindling-errors               # once: paste the id into wrangler.jsonc
-npx wrangler@4.151.1 d1 execute kindling-errors --remote --file schema.sql
-npx wrangler@4.151.1 secret put GITHUB_TOKEN                 # optional: lets it open issues
-npx wrangler@4.151.1 deploy
+npx wrangler login                                   # once
+npx wrangler d1 create kindling-errors               # once: paste the id into wrangler.jsonc
+npx wrangler d1 execute kindling-errors --remote --file schema.sql
+npx wrangler secret put GITHUB_TOKEN                 # optional: lets it open issues
+npx wrangler deploy
 ```
 
-- It deploys as `kindling-errors` on the custom domain `errors.kindlingcontrol.app`. The route names its zone (`"zone_name": "kindlingcontrol.app"`), because wrangler can't always infer it and fails with *Can't infer zone from route* (code 10082). The zone must be in the same Cloudflare account you deploy to (`npx wrangler@4.151.1 whoami` shows which account that is). Remove any existing DNS record for `errors.kindlingcontrol.app` first: a custom domain creates its own. To use another host, change `routes` in `wrangler.jsonc` **and** `ENDPOINT` in `src/app/telemetry.js`.
+- It deploys as `kindling-errors` on the custom domain `errors.kindlingcontrol.app`. The route names its zone (`"zone_name": "kindlingcontrol.app"`), because wrangler can't always infer it and fails with *Can't infer zone from route* (code 10082). The zone must be in the same Cloudflare account you deploy to (`npx wrangler whoami` shows which account that is). Remove any existing DNS record for `errors.kindlingcontrol.app` first: a custom domain creates its own. To use another host, change `routes` in `wrangler.jsonc` **and** `ENDPOINT` in `src/app/telemetry.js`.
 - `GITHUB_TOKEN`: a fine-grained personal access token (or GitHub App token) for **this repository only**, with **Issues: read and write**. Issues opened with a personal token trigger the auto-fix workflow; ones opened with Actions' own token wouldn't.
 - Vars in `wrangler.jsonc`: `GITHUB_REPO`, `ISSUE_THRESHOLD` (installs before an issue opens, default 2), `MAX_ISSUES_PER_DAY` (default 5; the endpoint is public, so this stops a flood of forged reports from flooding the tracker).
 - Without the D1 binding the Worker only logs; without the token it counts but opens no issues.
 - Forks: set `ENDPOINT` to your own Worker, or to `''` to send nothing (the Settings switch and first-run question then disappear).
-- Check the bundle without deploying: `npx wrangler@4.151.1 deploy --dry-run --outdir /tmp/kindling-errors`.
+- Check the bundle without deploying: `npx wrangler deploy --dry-run --outdir /tmp/kindling-errors`.
 
 ## Issues
 
@@ -119,11 +121,11 @@ Cloudflare dashboard → **Workers & Pages → kindling-errors → Observability
 - installs affected: filter `first = true`, group by `fingerprint`
 - a new release: `version = 0.3.0`, group by `where`
 
-The Worker also logs `event = issue_created` and `event = track_failed`. For totals per error: `npx wrangler@4.151.1 d1 execute kindling-errors --remote --command "SELECT fingerprint, installs, reports, last_version, issue_number, message FROM errors ORDER BY installs DESC LIMIT 20"`.
+The Worker also logs `event = issue_created` and `event = track_failed`. For totals per error: `npx wrangler d1 execute kindling-errors --remote --command "SELECT fingerprint, installs, reports, last_version, issue_number, message FROM errors ORDER BY installs DESC LIMIT 20"`.
 
 ## Testing locally
 
-`npm run serve` and open `http://localhost:8787/?errors=on`: `?errors=on` lets a `dev` build ask and send, with `app: "web"` and `version: "dev"`, so you can see reports arrive (or point `ENDPOINT` at `npx wrangler@4.151.1 dev` while testing). Clear the site's localStorage to see the first-run question again. Tests: `test/telemetry.test.js` (scrubbing, allow-list, consent, the `first` flag, the Worker), `test/telemetry-issues.test.js` (D1 counting and issues, against `node:sqlite`; skipped on Node versions without it), `test/autofix.test.js` (the agent's parsing, file picking, edits and path checks).
+`npm run serve` and open `http://localhost:8787/?errors=on`: `?errors=on` lets a `dev` build ask and send, with `app: "web"` and `version: "dev"`, so you can see reports arrive (or point `ENDPOINT` at `npx wrangler dev` while testing). Clear the site's localStorage to see the first-run question again. Tests: `test/telemetry.test.js` (scrubbing, allow-list, consent, the `first` flag, the Worker), `test/telemetry-issues.test.js` (D1 counting and issues, against `node:sqlite`; skipped on Node versions without it), `test/autofix.test.js` (the agent's parsing, file picking, edits and path checks).
 
 ## App stores
 

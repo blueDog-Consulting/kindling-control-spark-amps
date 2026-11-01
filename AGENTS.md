@@ -202,7 +202,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 
 - **Dependencies:**
   - `src/` has zero runtime dependencies and no build step. Keep it that way: ES modules, plain DOM, no frameworks.
-  - All npm packages are devDependencies (Capacitor's CLI also scans devDependencies), pinned to **exact** versions that are at least two weeks old. The one exception is a security fix for something that ships, e.g. Electron.
+  - All npm packages are devDependencies (Capacitor's CLI also scans devDependencies), pinned to **exact** versions that are at least two weeks old. Exceptions: a security fix for something that ships, e.g. Electron; and `wrangler`, which the maintainer deliberately keeps at `"latest"` (it only deploys the error-report Worker and ships in no app). Don't pin it. `package-lock.json` still fixes the version `npm ci` installs, so moving to a newer wrangler takes `npm install wrangler@latest` and committing the lockfile.
   - `npm audit --omit=dev` must stay at 0. Moderate findings inside electron-builder or `@capacitor/cli` are build-only (see `docs/APPS.md`). Never run `npm audit fix --force`.
 - **Formatting:** 2-space indent, single quotes, semicolons, trailing commas, lines up to about 120 characters.
 - **Git:**

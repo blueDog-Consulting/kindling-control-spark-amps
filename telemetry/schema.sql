@@ -1,5 +1,5 @@
 -- D1 schema for the error-report Worker: one row per distinct error (fingerprint).
--- Apply with: npx wrangler@4.151.1 d1 execute kindling-errors --remote --file schema.sql
+-- Apply with: npx wrangler d1 execute kindling-errors --remote --file schema.sql
 -- No per-install data: "installs" only counts reports that arrived with first = true.
 CREATE TABLE IF NOT EXISTS errors (
   fingerprint   TEXT PRIMARY KEY,
