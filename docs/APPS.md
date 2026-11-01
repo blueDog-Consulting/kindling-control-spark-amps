@@ -82,3 +82,13 @@ The native projects still have Capacitor's default icons. To generate proper one
 ```sh
 npx @capacitor/assets generate --iconBackgroundColor '#14161a' --assetPath assets
 ```
+
+## Troubleshooting the connection
+
+Every Bluetooth step is logged in the **Console** tab (lines starting `bluetooth:`), and errors name the step that failed. That makes it easy to tell whether it was the GATT connect, finding the service, starting notifications, or a write.
+
+* **"GATT operation failed for unknown reason"** (`NotSupportedError`, common on macOS): the app now writes without response, like Ignitron does. It falls back to the other write mode by itself, and it retries starting notifications once. If it still fails, note which step the Console names.
+* **The amp only accepts one app at a time.** Close the official Spark app on your phone, or turn off Bluetooth on the phone, before connecting.
+* **"Paired" in the chooser** just means the OS already knows the amp, for example from Bluetooth audio. That's fine. If connecting keeps failing on a Mac, try disconnecting the Spark as an *audio* device in System Settings → Bluetooth (don't forget it) and connect again.
+* **macOS:** Chrome needs Bluetooth permission under System Settings → Privacy & Security → Bluetooth.
+* `chrome://bluetooth-internals` shows what Chrome sees: services, characteristics and their properties.

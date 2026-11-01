@@ -3,7 +3,7 @@
 // plugin as window.Capacitor.Plugins.BluetoothLe, so no bundler is needed;
 // the raw plugin API exchanges values as hex strings and wants 128-bit UUIDs.
 
-import { BLE_SERVICE, BLE_WRITE_CHAR, BLE_NOTIFY_CHAR, DEFAULT_MODEL } from './constants.js';
+import { BLE_SERVICE, BLE_WRITE_CHAR, BLE_NOTIFY_CHAR, UNKNOWN_MODEL } from './constants.js';
 import { toHex, fromHex } from './codec.js';
 
 const uuid128 = (n) => `0000${n.toString(16).padStart(4, '0')}-0000-1000-8000-00805f9b34fb`;
@@ -12,13 +12,15 @@ const WRITE = uuid128(BLE_WRITE_CHAR);
 const NOTIFY = uuid128(BLE_NOTIFY_CHAR);
 
 export class CapacitorBleTransport {
-  constructor({ withResponse = true } = {}) {
+  constructor({ withResponse = false } = {}) {
+    // Without response by default, like Ignitron; we fall back to with-response once if that fails.
     this.withResponse = withResponse;
-    this.maxWrite = DEFAULT_MODEL.maxBleWrite;
-    this.writeDelayMs = DEFAULT_MODEL.writeDelayMs;
-    this.mtuPayload = Infinity;
+    this.maxWrite = UNKNOWN_MODEL.maxBleWrite;
+    this.blockDelayMs = UNKNOWN_MODEL.blockDelayMs;
+    this.mtuPayload = 20; // until getMtu tells us more
     this.onData = () => {};
     this.onDisconnect = () => {};
+    this.onLog = () => {};
     this.deviceId = null;
     this.listeners = [];
   }
@@ -76,7 +78,7 @@ export class CapacitorBleTransport {
 
   configure(model) {
     this.maxWrite = model.maxBleWrite;
-    this.writeDelayMs = model.writeDelayMs;
+    this.blockDelayMs = model.blockDelayMs;
   }
 
   async write(block) {
@@ -85,11 +87,24 @@ export class CapacitorBleTransport {
     // without response they must fit in one packet.
     const size = this.withResponse ? this.maxWrite : Math.min(this.maxWrite, this.mtuPayload);
     for (let i = 0; i < block.length; i += size) {
-      const opts = { deviceId: this.deviceId, service: SERVICE, characteristic: WRITE, value: toHex(block.subarray(i, i + size), '') };
-      if (this.withResponse) await this.ble.write(opts);
-      else await this.ble.writeWithoutResponse(opts);
-      if (this.writeDelayMs) await new Promise((r) => setTimeout(r, this.writeDelayMs));
+      const value = toHex(block.subarray(i, i + size), '');
+      try {
+        await this._write(value);
+      } catch (err) {
+        if (this.switchedMode) throw new Error(`write to 0xFFC1 failed: ${err.message}`, { cause: err });
+        this.switchedMode = true;
+        this.withResponse = !this.withResponse;
+        this.onLog(`write failed (${err.message}); retrying ${this.withResponse ? 'with' : 'without'} response`);
+        // the other mode may allow a different size: restart this block from here
+        return this.write(block.subarray(i));
+      }
     }
+    if (this.blockDelayMs) await new Promise((r) => setTimeout(r, this.blockDelayMs));
+  }
+
+  _write(value) {
+    const opts = { deviceId: this.deviceId, service: SERVICE, characteristic: WRITE, value };
+    return this.withResponse ? this.ble.write(opts) : this.ble.writeWithoutResponse(opts);
   }
 
   async _listen(event, cb) {

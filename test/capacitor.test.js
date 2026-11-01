@@ -34,6 +34,7 @@ function fakeNativePlugin(amp, { mtu = 185 } = {}) {
       writes.push(o.value);
       await amp.write(fromHex(o.value));
     },
+    writeWithoutResponse: async (o) => plugin.write(o),
     disconnect: async () => listeners.get('disconnected|AA:BB')?.(),
     addListener: async (key, cb) => {
       listeners.set(key, cb);

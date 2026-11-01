@@ -16,7 +16,7 @@
 //   'connected', 'disconnected', 'error'
 
 import { encodeMessage, StreamDecoder } from './codec.js';
-import { CMD, SUB, AMP_MODELS, DEFAULT_MODEL, TEMP_SLOT } from './constants.js';
+import { CMD, SUB, TEMP_SLOT, modelSettings } from './constants.js';
 import * as M from './messages.js';
 
 export class SparkClient extends EventTarget {
@@ -36,6 +36,7 @@ export class SparkClient extends EventTarget {
       this._emit('rx', { bytes });
       this.decoder.push(bytes);
     };
+    transport.onLog = (text) => this._emit('log', { text });
     transport.onDisconnect = () => {
       this._failAll(new Error('disconnected'));
       this._emit('disconnected', {});
@@ -56,7 +57,7 @@ export class SparkClient extends EventTarget {
   /** Standard startup handshake, like the official app (minus the license key). */
   async handshake() {
     const name = await this.ampName();
-    const model = AMP_MODELS[name] || DEFAULT_MODEL;
+    const model = modelSettings(name);
     this.transport.configure?.(model);
     this.info = { name, model };
     this.info.serial = await this.serial().catch(() => null);

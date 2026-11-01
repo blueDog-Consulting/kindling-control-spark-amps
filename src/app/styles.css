@@ -300,6 +300,7 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
 .log li.tx { border-inline-start-color: var(--accent); }
 .log li.rx { border-inline-start-color: var(--ok); }
 .log li.err { border-inline-start-color: crimson; }
+.log li.info { color: var(--muted); }
 .log li.unknown { background: var(--surface-2); }
 .log .meta { color: var(--muted); }
 .log .hex { color: var(--muted); display: block; margin-top: 0.15rem; }

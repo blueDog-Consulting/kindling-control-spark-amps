@@ -62,14 +62,25 @@ export const SUB = {
 // presets that are not stored on the amp.
 export const TEMP_SLOT = 0x7f;
 
-// Per-model transport quirks (from Ignitron's field testing).
+// Per-model transport quirks (values from Ignitron's field testing):
+//   maxBleWrite   largest single BLE write; longer blocks are split
+//   blockDelayMs  pause after each block (MINI / 2 drop data without it)
 export const AMP_MODELS = {
-  'Spark 40': { maxBleWrite: 0xad, writeDelayMs: 0, presetSlots: 4 },
-  'Spark GO': { maxBleWrite: 0xad, writeDelayMs: 0, presetSlots: 4 },
-  'Spark NEO': { maxBleWrite: 0xad, writeDelayMs: 0, presetSlots: 4 },
-  'Spark MINI': { maxBleWrite: 0x64, writeDelayMs: 20, presetSlots: 4 },
-  'Spark 2': { maxBleWrite: 0x64, writeDelayMs: 20, presetSlots: 4 },
+  'Spark 40': { maxBleWrite: 0xad, blockDelayMs: 0, presetSlots: 4 },
+  'Spark GO': { maxBleWrite: 0xad, blockDelayMs: 0, presetSlots: 4 },
+  'Spark NEO': { maxBleWrite: 0xad, blockDelayMs: 0, presetSlots: 4 },
+  'Spark MINI': { maxBleWrite: 0x64, blockDelayMs: 80, presetSlots: 4 },
+  'Spark 2': { maxBleWrite: 0x64, blockDelayMs: 80, presetSlots: 4 },
 };
 export const DEFAULT_MODEL = AMP_MODELS['Spark 40'];
+// Used until the amp has told us its name, and for names we don't recognise:
+// the conservative settings work on every model.
+export const UNKNOWN_MODEL = { maxBleWrite: 0x64, blockDelayMs: 80, presetSlots: 4 };
+
+/** Look up per-model settings by the name the amp reports (case-insensitive). */
+export function modelSettings(name = '') {
+  const key = Object.keys(AMP_MODELS).find((k) => k.toLowerCase() === String(name).trim().toLowerCase());
+  return key ? AMP_MODELS[key] : UNKNOWN_MODEL;
+}
 
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
