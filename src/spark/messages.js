@@ -36,9 +36,13 @@ export function requestPreset(slot = 'current') {
 // Writes (01 xx). Most are acknowledged with 04 xx (01 04 is not).
 // ---------------------------------------------------------------------------
 
-/** Change a parameter of an effect in the live state. value: 0..1 */
-export function setParam(effectId, index, value) {
-  return write(SUB.PARAM, new MsgWriter().prefixedStr(effectId).byte(index).float(value));
+/**
+ * Change a parameter of an effect in the live state. value: 0..1
+ * The trailing input byte (0 = Input 1, 1 = Input 2) is in the spec (v3.4); the
+ * Spark 2 silently ignores 01 04 without it.
+ */
+export function setParam(effectId, index, value, input = 0) {
+  return write(SUB.PARAM, new MsgWriter().prefixedStr(effectId).byte(index).float(value).byte(input));
 }
 
 /** Swap the model in a slot: e.g. ('Twin', 'Plexi'). */
@@ -160,8 +164,11 @@ export function decode({ cmd, sub, data }) {
         case SUB.PRESET:
           return { ...base, type: 'preset', preset: parsePreset(data) };
         case SUB.PARAM:
-        case SUB.PARAM_CHANGED:
-          return { ...base, type: 'param', effect: r.str(), index: r.int(), value: r.float() };
+        case SUB.PARAM_CHANGED: {
+          const m = { ...base, type: 'param', effect: r.str(), index: r.int(), value: r.float() };
+          if (r.remaining > 0) m.input = r.int(); // trailing input byte (missing in older captures)
+          return m;
+        }
         case SUB.CHANGE_EFFECT:
           return { ...base, type: 'effectChanged', from: r.str(), to: r.str() };
         case SUB.EFFECT_ONOFF:

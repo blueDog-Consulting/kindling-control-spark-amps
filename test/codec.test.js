@@ -31,6 +31,18 @@ test('set-param encodes like the spec example (Twin gain)', () => {
   assert.ok(hex.endsWith('f7'));
 });
 
+test('set-param ends with the input byte (Spark 2 ignores 01 04 without it)', () => {
+  const { data } = M.setParam('Twin', 0, 0.6306);
+  // 04 a4 "Twin", fixint 00, float32 ca xx xx xx xx, input 00
+  assert.equal(toHex(data), toHex(new MsgWriter().prefixedStr('Twin').byte(0).float(0.6306).byte(0).toBytes()));
+  assert.equal(data.at(-1), 0x00);
+  assert.equal(data.at(-6), 0xca);
+  assert.equal(M.setParam('Twin', 0, 0.5, 1).data.at(-1), 0x01);
+  const msg = M.decode({ cmd: 0x01, sub: 0x04, data });
+  assert.equal(msg.effect, 'Twin');
+  assert.equal(msg.input, 0);
+});
+
 test('spec figure 9: LA2AComp param decodes', () => {
   // Data from "Figure 9" of Paul Hamshere's protocol description
   const chunk = fromHex('f0 01 32 40 01 04 02 08 28 4c 41 32 41 43 10 6f 6d 70 01 4a 3f 4d 02 42 44 f7');
@@ -43,6 +55,7 @@ test('spec figure 9: LA2AComp param decodes', () => {
   assert.equal(msg.effect, 'LA2AComp');
   assert.equal(msg.index, 1);
   assert.ok(Math.abs(msg.value - 0.8018) < 0.001, `value ${msg.value}`);
+  assert.equal(msg.input, undefined); // the spec figure predates the input byte
 });
 
 test('decoder copes with headers splitting chunks and random fragmenting', () => {

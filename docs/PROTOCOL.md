@@ -74,7 +74,7 @@ Parameter values are floats from 0.0 to 1.0. The app shows them as 0 to 10.
 | cmd sub | payload | reply | meaning |
 |---|---|---|---|
 | `01 01` | preset (see below), multi-chunk | `05 01` per chunk, `04 01` at the end | upload preset to slot 0–3 or `7F` (temporary) |
-| `01 04` | pstr effect, int param, float value | **none** | set a parameter |
+| `01 04` | pstr effect, int param, float value, input (`00` = Input 1, `01` = Input 2) | **none** | set a parameter. The **Spark 2** (firmware 2.7.2.200) silently ignores it without the trailing input byte. We always send `00`; that this is harmless on the Spark 40 / GO / MINI / NEO is **(unverified)** |
 | `01 06` | pstr old, pstr new | `04 06` | swap the model in a slot (e.g. `Twin` → `Plexi`) |
 | `01 15` | pstr effect, bool, `00` | `04 15` | effect on/off |
 | `01 28` | pstr effect, bool | `04 28` | ask the amp to report expression/wah volume (JH.Vox846) |
@@ -100,7 +100,7 @@ Parameter values are floats from 0.0 to 1.0. The app shows them as 0 to 10.
 | `03 15` | pstr effect, bool | effect toggled from the amp (mod / delay knobs) |
 | `03 27` | `00`, slot | user long-pressed a preset button to store |
 | `03 28` | float | expression/wah volume |
-| `03 37` | pstr effect, int param, float value | a knob was turned on the amp |
+| `03 37` | pstr effect, int param, float value, input | a knob was turned on the amp |
 | `03 38` | `00`, slot | preset button pressed on the amp (Spark 2 reports 4–7 for bank 2) |
 | `03 63` | float bpm | tap tempo |
 | `03 64` | int note (0 = C), float offset (0.5 = in tune) | tuner reading |

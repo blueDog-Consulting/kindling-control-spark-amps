@@ -96,6 +96,7 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 - Floats are float32 and must round-trip **bit-exactly**: presets are checksummed. Don't round values in the codec; format them for display in the UI only.
 - `seq` runs 1..0x7F. `01 04` (set parameter) gets **no ack**; other `01 xx` writes get `04 xx`, and `02 xx` requests get `03 xx`.
 - Effect names in `01 04`/`01 06`/`01 15` are "prefixed strings" (length byte + fixstr).
+- `01 04` ends with an input byte (`00` = Input 1). The Spark 2 silently ignores knob changes without it, the same way `01 15` needs its trailing `00`. Don't drop trailing bytes the official app sends.
 
 **Transports:**
 - Prefer **write-without-response**. Write-with-response fails on Spark 2 + macOS with "GATT operation failed for unknown reason". Both transports fall back to the other mode once and log it.

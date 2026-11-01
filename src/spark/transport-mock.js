@@ -97,7 +97,7 @@ export class MockSparkTransport {
   turnKnob(slotIndex, paramIndex, value) {
     const fx = this.current.pedals[slotIndex];
     fx.params[paramIndex] = value;
-    this._emitEvent(SUB.PARAM_CHANGED, new MsgWriter().prefixedStr(fx.name).byte(paramIndex).float(value));
+    this._emitEvent(SUB.PARAM_CHANGED, new MsgWriter().prefixedStr(fx.name).byte(paramIndex).float(value).byte(0));
   }
 
   /** Pretend someone pressed a preset button on the amp. */
