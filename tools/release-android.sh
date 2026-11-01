@@ -127,10 +127,27 @@ if $signed; then
   cp android/app/build/outputs/apk/release/app-release.apk "out/kindling-control-$version-android$suffix.apk"
   cp android/app/build/outputs/bundle/release/app-release.aab "out/kindling-control-$version-android$suffix.aab"
   echo
+  aab="out/kindling-control-$version-android$suffix.aab"
+  sha256() { sed -n 's/^[[:space:]]*SHA-\{0,1\}256:[[:space:]]*//p' | sed -n 1p; }
+  # -storepass:env reads the password from the environment, so it never shows up in the process list (ps).
+  cert=$(keytool -list -v -keystore "$ANDROID_KEYSTORE_FILE" -alias "$ANDROID_KEY_ALIAS" \
+    -storepass:env ANDROID_KEYSTORE_PASSWORD) || true
   echo "Signing certificate (compare with Play Console > App signing > Upload key):"
-  keytool -list -v -keystore "$ANDROID_KEYSTORE_FILE" -alias "$ANDROID_KEY_ALIAS" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
-    | grep -E 'SHA-?(1|256):' || true
-  jarsigner -verify "out/kindling-control-$version-android$suffix.aab" | head -1
+  grep -E 'SHA-?(1|256):' <<<"$cert" || true
+  # jarsigner -verify exits 0 even for an unsigned archive ("jar is unsigned."), so check what it says,
+  # then check the bundle was signed by this keystore's key and not some other one.
+  verify=$(jarsigner -verify "$aab" 2>&1) || true
+  case "$verify" in
+    *'jar verified.'*) ;;
+    *) echo "error: $aab is not properly signed:" >&2; echo "$verify" >&2; exit 1 ;;
+  esac
+  want=$(sha256 <<<"$cert")
+  got=$(keytool -printcert -jarfile "$aab" 2>/dev/null | sha256) || true
+  if [ -z "$want" ] || [ "$got" != "$want" ]; then
+    echo "error: $aab is signed with ${got:-an unknown certificate}, not the keystore's ${want:-(unreadable)} key." >&2
+    exit 1
+  fi
+  echo "Verified: $aab is signed with the upload key ($want)."
 else
   cp android/app/build/outputs/apk/debug/app-debug.apk "out/kindling-control-$version-android-debug$suffix.apk"
   echo "Debug-signed APK only; Google Play will not accept it."
