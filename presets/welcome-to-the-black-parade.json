@@ -1,0 +1,18 @@
+{
+  "PresetNumber": 127,
+  "UUID": "2CC8482F-97F2-4D62-9491-E001C6461C44",
+  "Name": "Welcome to the Black Parade",
+  "Version": "0.7",
+  "Description": "Rhythm tone in the style of My Chemical Romance, Welcome to the Black Parade: thick, saturated and anthemic, with sustain for held chords and a little delay and hall for size. Bridge humbucker.",
+  "Icon": "icon.png",
+  "BPM": 120,
+  "Pedals": [
+    { "Name": "bias.noisegate", "IsOn": true, "Parameters": [0.24, 0.4, 0] },
+    { "Name": "LA2AComp", "IsOn": false, "Parameters": [0, 0.5, 0.3] },
+    { "Name": "KlonCentaurSilver", "IsOn": true, "Parameters": [0.7, 0.5, 0.25] },
+    { "Name": "Bogner", "IsOn": true, "Parameters": [0.64, 0.56, 0.62, 0.55, 0.6] },
+    { "Name": "GuitarEQ6", "IsOn": true, "Parameters": [0.5, 0.45, 0.53, 0.5, 0.56, 0.55, 0.47] },
+    { "Name": "DelayMono", "IsOn": true, "Parameters": [0.14, 0.2, 0.35, 0.4, 0] },
+    { "Name": "bias.reverb", "IsOn": true, "Parameters": [0.2, 0.5, 0.5, 0.45, 0.35, 0.55, 0.4] }
+  ]
+}
