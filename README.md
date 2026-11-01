@@ -127,11 +127,13 @@ The tests include a real Spark 40 preset dump. The decoder has to reproduce its 
 
 ## Releases
 
-Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions then rebuilds whichever of the web app, the Android app and the desktop apps changed since the last release, and publishes them on the [Releases](https://github.com/bluedog-consulting/positive-grid-spark/releases) page. See [docs/RELEASING.md](docs/RELEASING.md) for details and the optional signing and deploy secrets.
+Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions then rebuilds whichever of the web app, the Android app and the desktop apps changed since the last release, and publishes them on the [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases) page. See [docs/RELEASING.md](docs/RELEASING.md) for details and the optional signing and deploy secrets.
 
 ## Contributing
 
 Read [AGENTS.md](AGENTS.md) first. It describes how the system fits together, and it applies to people as well as AI agents. One rule is enforced in CI: **any change to how the system works must update the docs and `AGENTS.md` in the same change.** CI also runs the tests on every pull request and on every push to `main`.
+
+Contributions are accepted under the project's licence, GPL-3.0-or-later.
 
 ## Credits
 
@@ -141,6 +143,6 @@ The protocol knowledge comes from Paul Hamshere's [Spark](https://github.com/pau
 
 ## License
 
-Copyright © 2026 blueDog Consulting. KindlingControl is designed, built and maintained by blueDog Consulting, and open source under the [Apache License 2.0](LICENSE). Third-party notices are in [NOTICE](NOTICE).
+Copyright © 2026 blueDog Consulting. KindlingControl is designed, built and maintained by blueDog Consulting, and free software under the [GNU General Public License v3.0 or later](LICENSE) (GPL-3.0-or-later). If you distribute a modified version, you must share its source under the same licence, so improvements come back to everyone. Third-party notices are in [NOTICE](NOTICE).
 
 This is an independent interoperability project. It is not affiliated with or endorsed by Positive Grid. "Spark" and "Positive Grid" are their trademarks.

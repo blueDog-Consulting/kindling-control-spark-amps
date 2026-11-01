@@ -4,7 +4,7 @@
   "private": true,
   "description": "KindlingControl: an open controller for Positive Grid Spark amps. Re-implements the Bluetooth protocol, with web, desktop and mobile apps.",
   "type": "module",
-  "license": "Apache-2.0",
+  "license": "GPL-3.0-or-later",
   "scripts": {
     "test": "node --test test/*.test.js",
     "serve": "node tools/serve.js",
@@ -27,7 +27,7 @@
   },
   "main": "desktop/main.js",
   "author": "blueDog Consulting",
-  "homepage": "https://github.com/bluedog-consulting/positive-grid-spark",
+  "homepage": "https://github.com/bluedog-consulting/kindling-control-spark-amps",
   "build": {
     "appId": "io.github.jerdog.kindlingcontrol",
     "productName": "KindlingControl",

@@ -1,19 +1,33 @@
 KindlingControl
 Copyright 2026 blueDog Consulting
 
-KindlingControl is designed, built and maintained by blueDog Consulting and
-licensed under the Apache License, Version 2.0 (see LICENSE).
+KindlingControl is designed, built and maintained by blueDog Consulting.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program (see LICENSE). If not, see <https://www.gnu.org/licenses/>.
 
 This project is an independent interoperability implementation and is not
 affiliated with or endorsed by Positive Grid. "Spark" and "Positive Grid" are
 trademarks of their owner and are used only to describe compatibility.
 The KindlingControl name and logo are original to this project.
 
-Third-party material:
+Third-party material (used under licences compatible with the GPL, and kept
+under their own terms where they apply):
 
 * Protocol knowledge and the test fixture test/fixtures/spark40-preset-rx.txt
   come from Paul Hamshere's projects https://github.com/paulhamsh/Spark and
-  https://github.com/paulhamsh/Spark-Parser, licensed under Apache-2.0.
+  https://github.com/paulhamsh/Spark-Parser, licensed under Apache-2.0
+  (https://www.apache.org/licenses/LICENSE-2.0). The fixture file keeps that
+  licence.
 
 * The effect / parameter catalog in src/spark/effects.js is derived from
   reference/EffectReference.csv in https://github.com/stangreg/Ignitron:

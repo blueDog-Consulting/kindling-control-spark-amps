@@ -23,7 +23,7 @@ Changes that aren't material and need no docs: pure styling, typo fixes, refacto
 
 ## What this is
 
-**KindlingControl** ("the kindling that controls your Spark"), © 2026 **blueDog Consulting**, which owns, builds and maintains it (Apache-2.0; the copyright line is at the top of `LICENSE` and in `NOTICE`). Repo: https://github.com/bluedog-consulting/positive-grid-spark. App ID: `io.github.jerdog.kindlingcontrol`; slug: `kindling-control`. Describe it as "an open controller for Positive Grid Spark amps"; don't use "Spark" as part of the product name.
+**KindlingControl** ("the kindling that controls your Spark"), © 2026 **blueDog Consulting**, which owns, builds and maintains it. Licence: **GPL-3.0-or-later**. `LICENSE` is the verbatim GPLv3 text (never edit it); the copyright line and licence notice live in `NOTICE` and the README. Only borrow code or data under GPL-compatible licences (Apache-2.0, MIT, BSD are fine) and record it in `NOTICE`. Repo: https://github.com/bluedog-consulting/kindling-control-spark-amps (previously jerdog/positive-grid-spark; GitHub redirects). App ID: `io.github.jerdog.kindlingcontrol`; slug: `kindling-control`. Describe it as "an open controller for Positive Grid Spark amps"; don't use "Spark" as part of the product name.
 
 An open re-implementation of the Positive Grid Spark amp's Bluetooth protocol, with a control UI that runs everywhere from one codebase. Supported amps: Spark 40, MINI, GO, 2 and NEO.
 
