@@ -120,6 +120,20 @@ export class SparkClient extends EventTarget {
     await this.selectPreset(slot);
   }
 
+  /**
+   * Experimental: try a preset whose pedals are in a non-standard order. It is
+   * loaded into the temporary slot (nothing stored changes) and read back. If
+   * the amp normalises the order, accepted is false.
+   * Note: accepted only means the amp *kept* the order; whether the DSP
+   * processes it in that order has to be confirmed by ear.
+   */
+  async tryChainOrder(preset) {
+    await this.loadPreset(preset, TEMP_SLOT);
+    const readBack = await this.getPreset('current');
+    const names = (p) => p.pedals.map((f) => f.name.toLowerCase()).join('|');
+    return { accepted: names(readBack) === names(preset), preset: readBack };
+  }
+
   /** Upload a preset (default: temp slot) and make it live. */
   async loadPreset(preset, slot = TEMP_SLOT, { activate = true } = {}) {
     await this.command(M.sendPreset(preset, slot), { timeoutMs: 5000 });

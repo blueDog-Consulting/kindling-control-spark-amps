@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#14161a">
   <title>Spark Control</title>
   <link rel="manifest" href="manifest.webmanifest">
@@ -67,12 +67,16 @@
         </div>
       </div>
 
-      <section id="amp-strip" class="amp-strip" aria-labelledby="amp-strip-title" hidden>
-        <h2 id="amp-strip-title">Amp <span id="amp-strip-model"></span></h2>
-        <div class="amp-knobs"></div>
-      </section>
-
-      <div id="chain" class="chain"></div>
+      <div id="rig" class="rig" hidden>
+        <section class="chain-strip" aria-label="Signal chain">
+          <div class="chain-track"></div>
+          <div class="chain-tools"></div>
+        </section>
+        <section class="stage" aria-label="Amp and pedals">
+          <div class="amp-head" aria-label="Amp"></div>
+          <div class="pedalboard"></div>
+        </section>
+      </div>
     </section>
 
     <section id="panel-library" role="tabpanel" aria-labelledby="tab-library" hidden>
@@ -125,6 +129,8 @@
     </section>
   </main>
 
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
   <dialog id="bt-picker" aria-labelledby="bt-title">
     <h2 id="bt-title">Choose your amp</h2>
     <p id="bt-scanning">Scanning… make sure the amp is on and the official app is closed.</p>
@@ -168,15 +174,5 @@
     </form>
   </dialog>
 
-  <template id="fx-card">
-    <article class="fx">
-      <header>
-        <span class="slot"></span>
-        <label class="onoff"><input type="checkbox" role="switch" class="switch"><span class="sr-only">Enabled</span></label>
-      </header>
-      <select class="model" aria-label="Model"></select>
-      <div class="params"></div>
-    </article>
-  </template>
 </body>
 </html>

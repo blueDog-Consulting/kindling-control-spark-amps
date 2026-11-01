@@ -14,7 +14,13 @@ Build instructions for each are in [docs/APPS.md](docs/APPS.md).
 
 ## What it does
 
-* **Tone:** switch hardware presets (both banks on the Spark 2; changing bank keeps your position, so 3 in bank 1 goes to 3 in bank 2). Gain, bass, middle, treble and volume sit in a strip at the top. You can also turn every effect on or off, swap amp and effect models, and edit every parameter. Turning a knob on the amp updates the UI live.
+* **Tone:** a rig view in the style of desktop amp sims.
+  * A signal-chain strip runs along the top: IN → gate → comp → drive → amp → mod → delay → reverb → OUT.
+  * The amp appears as an amp head, with chicken-head knobs for gain, bass, middle, treble and volume.
+  * Every other effect is a stompbox with rotary knobs, a status LED and a footswitch. Swap any model from its nameplate, which also shows the real gear it's based on.
+  * Switch hardware presets on both banks of the Spark 2. Changing bank keeps your position, so preset 3 in bank 1 goes to preset 3 in bank 2.
+  * Turning a knob on the amp updates the UI live.
+  * **Reorder chain** (experimental) lets you drag effects into a new order and try it on the amp. The Spark firmware is believed to use a fixed order, so the app reads the result back and tells you whether your amp kept it.
 * **Presets:** **New** creates a preset, either from the current sound or blank, and puts it on the amp to shape. **Save…** keeps it in *My presets* on this device, stores it in one of the amp's preset slots, or both. The Presets tab lists saved presets to load, export or delete, and imports JSON files. The format is compatible with [Ignitron](https://github.com/stangreg/Ignitron)'s preset files.
 * **Tuner** on models that support it.
 * **Console:** every message in both directions, decoded, with the raw hex. You can also send arbitrary commands.
@@ -29,6 +35,7 @@ npm run serve          # http://localhost:8787  (no dependencies)
                        # http://localhost:8787/?mock            simulated Spark 40
                        # http://localhost:8787/?mock=Spark%20GO  simulated GO (battery, tuner)
                        # http://localhost:8787/?mock=Spark%202   simulated Spark 2 (two banks, 8 presets)
+                       # …&reorder=1                              simulated amp that accepts reordered chains
 ```
 
 Close the official Spark app first; it may hold the BLE connection. Then tap **Connect** and pick your amp.
@@ -106,6 +113,8 @@ The tests include a real Spark 40 preset dump. The decoder has to reproduce its 
 Read [AGENTS.md](AGENTS.md) first. It describes how the system fits together, and it applies to people as well as AI agents. One rule is enforced in CI: **any change to how the system works must update the docs and `AGENTS.md` in the same change.** CI also runs the tests on every pull request and on every push to `main`.
 
 ## Credits
+
+Model "based on" information follows Positive Grid's own model descriptions. Gear names are trademarks of their owners.
 
 The protocol knowledge comes from Paul Hamshere's [Spark](https://github.com/paulhamsh/Spark) and [Spark-Parser](https://github.com/paulhamsh/Spark-Parser) (Apache-2.0), and from stangreg's [Ignitron](https://github.com/stangreg/Ignitron) (BSD-3-Clause). See [NOTICE](NOTICE).
 

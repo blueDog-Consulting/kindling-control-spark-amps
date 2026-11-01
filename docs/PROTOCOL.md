@@ -132,6 +132,18 @@ Values have to round-trip bit-exactly (float32), or the checksum and the `02 2A`
 
 Effect ids and parameter names are listed in [`src/spark/effects.js`](../src/spark/effects.js). The reverb model is always `bias.reverb`; its parameter 6 picks the reverb type (0.0, 0.1, … 0.8).
 
+## Signal chain order
+
+Every preset has exactly 7 blocks, and factory presets always use the order gate → comp/wah → drive → amp → mod/EQ → delay → reverb. The official app has no way to reorder them, and it treats the blocks as slot types: the wah is chosen in the compressor slot, and the EQs in the modulation slot. **Whether the firmware accepts or processes a different order is unknown (unverified).**
+
+The app's **Reorder chain** feature probes this safely:
+
+1. It sends the reordered preset to the temporary slot `7F` (`01 01`), then selects it (`01 38`).
+2. It reads the live state back (`02 01 01 00`).
+3. If the amp returns the canonical order, the firmware normalises the order. If it returns the new order, the amp at least *stored* it; confirm by ear whether the sound changed.
+
+Please record real-amp results here (model, firmware, outcome).
+
 ## Spark 2 preset banks
 
 The Spark 2 stores 8 presets in two banks of four. The bank button on the amp just changes which four the preset buttons select. On the wire there's no "bank" message: the slot number covers both banks, with **0–3 for bank 1 and 4–7 for bank 2**, in `01 38`, `03 38`, `02 10`/`03 10` and `02 01`. Ignitron also uses `02 2B 00` (extended checksums) instead of `02 2A` on the Spark 2.

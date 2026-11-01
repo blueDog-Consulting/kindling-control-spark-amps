@@ -187,3 +187,84 @@ export function blankPreset(name = 'New preset') {
     ],
   };
 }
+
+// Real-world gear each model is based on. Only well-established mappings are
+// listed, following Positive Grid's own model descriptions. Names are trademarks
+// of their owners and are used only to describe the sound; this project is not
+// affiliated with them.
+export const BASED_ON = {
+  LA2AComp: 'Teletronix LA-2A',
+  BlueComp: 'BOSS CS-3',
+  Compressor: 'MXR Dyna Comp',
+  BassComp: 'EBS MultiComp',
+  BBEOpticalComp: 'BBE Opto Stomp',
+  Booster: 'MXR Micro Amp',
+  KlonCentaurSilver: 'Klon Centaur',
+  DistortionTS9: 'Ibanez TS9 Tube Screamer',
+  Fuzz: 'Dallas Arbiter Fuzz Face',
+  ProCoRat: 'ProCo RAT',
+  BassBigMuff: 'Electro-Harmonix Bass Big Muff',
+  GuitarMuff: 'Electro-Harmonix Big Muff',
+  MaestroBassmaster: 'Maestro Bass Brassmaster',
+  RolandJC120: 'Roland JC-120',
+  Twin: 'Fender Twin Reverb',
+  '94MatchDCV2': 'Matchless DC-30',
+  ODS50CN: 'Dumble ODS 50',
+  BluesJrTweed: 'Fender Blues Junior',
+  Bassman: 'Fender Bassman',
+  'AC Boost': 'Vox AC30',
+  Checkmate: 'Teisco Checkmate',
+  TwoStoneSP50: 'Two-Rock Studio Pro 50',
+  Deluxe65: 'Fender Deluxe Reverb',
+  Plexi: 'Marshall Super Lead',
+  OverDrivenJM45: 'Marshall JTM45',
+  Bogner: 'Bogner Ecstasy 101',
+  OrangeAD30: 'Orange AD30',
+  Rectifier: 'Mesa/Boogie Triple Rectifier',
+  SLO100: 'Soldano SLO-100',
+  YJM100: 'Marshall YJM100',
+  EVH: 'EVH 5150 III',
+  '6505Plus': 'Peavey 6505+',
+  SwitchAxeLead: 'Hughes & Kettner Switchblade',
+  Invader: 'Orange Rockerverb',
+  BE101: 'Friedman BE-100',
+  AcousticAmpV2: 'Fishman Loudbox',
+  Cloner: 'Electro-Harmonix Small Clone',
+  UniVibe: 'Shin-ei Uni-Vibe',
+  MiniVibe: 'Voodoo Lab Micro Vibe',
+  Phaser: 'MXR Phase 90',
+  Flanger: 'Electro-Harmonix Electric Mistress',
+  DelayMono: 'BOSS DD-3',
+  DelayRe201: 'Roland RE-201 Space Echo',
+  'JH.Vox846': 'Vox V846 wah',
+  'JH.Octavia': 'Octavia',
+  'JH.SupaFuzz': 'Supa Fuzz',
+  'JH.FuzzTone': 'Maestro Fuzz-Tone',
+  'JH.DualShowman': 'Fender Dual Showman',
+  'JH.Sunn100': 'Sunn 100S',
+  'JH.JTM45': 'Marshall JTM45/100',
+  'JH.SuperLead100': 'Marshall Super Lead 100',
+  'JH.SoundCity100': 'Sound City 100',
+  'JH.VoodooVibeJr': 'Uni-Vibe',
+};
+
+export function basedOn(effectId) {
+  const e = findEffect(effectId);
+  return BASED_ON[e?.id ?? effectId];
+}
+
+/** The order of the 7 blocks in every factory preset, which the firmware treats as fixed slots. */
+export const SLOT_ORDER = SLOTS.map((s) => s.key);
+
+/** Which slot a block belongs to: from the catalog, or its position for unknown models. */
+export function slotOf(effectId, index) {
+  return findEffect(effectId)?.slot ?? SLOTS[index]?.key ?? 'unknown';
+}
+
+/** Rearrange pedals into the canonical gate -> comp -> drive -> amp -> mod -> delay -> reverb order. */
+export function canonicalOrder(pedals) {
+  return pedals
+    .map((fx, i) => ({ fx, rank: SLOT_ORDER.indexOf(slotOf(fx.name, i)), i }))
+    .sort((a, b) => (a.rank < 0 ? a.i : a.rank) - (b.rank < 0 ? b.i : b.rank))
+    .map((x) => x.fx);
+}

@@ -94,3 +94,14 @@ test('Spark 2: second bank is hardware slots 4-7 via the same 01 38 message', as
   await new Promise((r) => setTimeout(r, 20));
   assert.deepEqual(got, [7]);
 });
+
+test('tryChainOrder: fixed-chain amp normalises the order, flexible amp keeps it', async () => {
+  const reordered = (p) => ({ ...p, pedals: [p.pedals[0], p.pedals[2], p.pedals[1], ...p.pedals.slice(3)] }); // drive before comp
+  for (const fixedChain of [true, false]) {
+    const { c } = await connected({ fixedChain });
+    const p = await c.getPreset('current');
+    const r = await c.tryChainOrder(reordered(p));
+    assert.equal(r.accepted, !fixedChain);
+    assert.equal(r.preset.pedals[1].name, fixedChain ? p.pedals[1].name : p.pedals[2].name);
+  }
+});

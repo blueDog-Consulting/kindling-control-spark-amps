@@ -3,11 +3,8 @@ import {
   WebBluetoothTransport,
   CapacitorBleTransport,
   MockSparkTransport,
-  SLOTS,
   EFFECTS,
   findEffect,
-  effectsForSlot,
-  paramInfo,
   decode,
   decodeBtsnoop,
   presetToJson,
@@ -16,11 +13,11 @@ import {
   fromHex,
   TEMP_SLOT,
   PRESETS_PER_BANK,
-  AMP_KNOB_ORDER,
   blankPreset,
   randomUuid,
 } from '../spark/index.js';
 import { PresetLibrary } from './library.js';
+import { createRig } from './rig.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -47,7 +44,11 @@ const state = {
 
 function makeTransport() {
   if (useMock) {
-    state.mock = new MockSparkTransport({ name: params.get('mock') || 'Spark 40', battery: params.get('mock') !== 'Spark 40' && !!params.get('mock') });
+    state.mock = new MockSparkTransport({
+      name: params.get('mock') || 'Spark 40',
+      battery: params.get('mock') !== 'Spark 40' && !!params.get('mock'),
+      fixedChain: !params.has('reorder'), // ?mock&reorder=1 simulates an amp that accepts reordered chains
+    });
     window.mockAmp = state.mock; // play with it from devtools: mockAmp.turnKnob(3, 0, 0.9)
     return state.mock;
   }
@@ -109,16 +110,16 @@ function wireClient(c) {
     const i = state.preset.pedals.findIndex((f) => f.name === effect);
     if (i < 0) return;
     state.preset.pedals[i].params[index] = value;
-    updateParamUi(i, index, value);
-    flash(i);
+    rig.updateParam(i, index, value);
+    rig.flash(i);
   });
   c.addEventListener('effectOnOff', (e) => {
     const { effect, on } = e.detail;
     const i = state.preset?.pedals.findIndex((f) => f.name === effect) ?? -1;
     if (i < 0) return;
     state.preset.pedals[i].isOn = on;
-    $$('.fx')[i].querySelector('.onoff input').checked = on;
-    flash(i);
+    rig.setOnOff(i, on);
+    rig.flash(i);
   });
   c.addEventListener('effectChanged', () => refreshPreset());
   c.addEventListener('presetSelected', (e) => {
@@ -422,34 +423,70 @@ $('#export-current').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// signal chain UI
+// rig (chain strip, amp head, pedalboard) -- see rig.js
 // ---------------------------------------------------------------------------
 
-// Every on-screen control for a parameter registers a setter here, keyed by
-// "fxIndex:param", so the amp strip, the effect card and knob moves on the
-// amp all stay in sync.
-const controls = new Map();
-function registerControl(fxIndex, p, setter) {
-  const key = `${fxIndex}:${p}`;
-  if (!controls.has(key)) controls.set(key, new Set());
-  controls.get(key).add(setter);
-}
-function syncControls(fxIndex, p, value, except) {
-  for (const set of controls.get(`${fxIndex}:${p}`) ?? []) if (set !== except) set(value);
-}
+const rig = createRig({
+  root: $('#rig'),
+  state,
+  actions: {
+    setParam: (effect, p, v) => state.client?.setParam(effect, p, v).catch((e) => logLine('err', e.message)),
+    setOnOff: (effect, on) => state.client?.setEffectOnOff(effect, on).catch((e) => logLine('err', e.message)),
+    async changeEffect(from, to) {
+      if (!state.connected) {
+        const fx = state.preset.pedals.find((f) => f.name === from);
+        if (fx) fx.name = to;
+        renderPreset();
+        return true;
+      }
+      try {
+        await state.client.changeEffect(from, to);
+        await refreshPreset();
+        return true;
+      } catch (err) {
+        logLine('err', err.message);
+        return false;
+      }
+    },
+    async applyOrder(pedals) {
+      if (!state.connected) {
+        state.preset = { ...state.preset, pedals };
+        state.unsaved = true;
+        renderPreset();
+        toast('Chain order changed. Connect to an amp to try it.');
+        return;
+      }
+      try {
+        toast('Trying the new order on the amp (temporary slot, nothing stored changes)…');
+        const tone = await liveTone();
+        const { accepted, preset } = await state.client.tryChainOrder({ ...tone, pedals: pedals.map((fx) => tone.pedals.find((t) => t.name === fx.name) ?? fx) });
+        state.slot = TEMP_SLOT;
+        state.unsaved = true;
+        highlightSlot();
+        state.preset = preset;
+        renderPreset();
+        logLine('info', `chain reorder ${accepted ? 'kept' : 'normalised'} by amp: ${preset.pedals.map((f) => f.name).join(' → ')}`);
+        toast(
+          accepted
+            ? 'Your amp kept the new order. Listen to check it really processes it that way, then Save… if you like it.'
+            : 'Your amp put the effects back in its fixed order (gate → comp → drive → amp → mod → delay → reverb). Its firmware doesn\'t support reordering. Nothing stored was changed.',
+          accepted ? 'ok' : 'warn',
+        );
+      } catch (err) {
+        logLine('err', `reorder failed: ${err.message}`);
+        toast(`Reorder failed: ${err.message}`, 'warn');
+      }
+    },
+  },
+});
 
 function renderPreset() {
   const p = state.preset;
   renderPresetHeader();
-  controls.clear();
-  const chain = $('#chain');
-  chain.replaceChildren();
   $('#save-preset').disabled = !p;
   $('#export-current').disabled = !p;
-  renderAmpStrip();
+  rig.render();
   renderLibrary();
-  if (!p) return;
-  p.pedals.forEach((fx, i) => chain.append(renderFx(fx, i)));
 }
 
 function renderPresetHeader() {
@@ -460,164 +497,16 @@ function renderPresetHeader() {
   $('#preset-desc').textContent = p ? [p.description, p.bpm ? `${Math.round(p.bpm)} BPM` : ''].filter(Boolean).join(' · ') : '';
 }
 
-function ampIndex(p = state.preset) {
-  const i = p?.pedals.findIndex((f) => findEffect(f.name)?.slot === 'amp') ?? -1;
-  return i >= 0 ? i : 3; // the amp is always the 4th block in the chain
+let toastTimer;
+function toast(text, kind = 'info') {
+  const t = $('#toast');
+  t.textContent = text;
+  t.dataset.kind = kind;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.hidden = true), kind === 'info' ? 4000 : 9000);
 }
-
-/** The amp's main knobs, pinned above the signal chain in top-panel order. */
-function renderAmpStrip() {
-  const strip = $('#amp-strip');
-  const knobs = strip.querySelector('.amp-knobs');
-  knobs.replaceChildren();
-  const i = ampIndex();
-  const amp = state.preset?.pedals[i];
-  strip.hidden = !amp;
-  if (!amp) return;
-  $('#amp-strip-model').textContent = findEffect(amp.name)?.name ?? amp.name;
-  for (const p of AMP_KNOB_ORDER) if (p < Math.max(amp.params.length, 5)) knobs.append(renderParam(amp, i, p, amp.params[p] ?? 0, 'amp', 'strip'));
-}
-
-function renderFx(fx, i) {
-  const card = $('#fx-card').content.firstElementChild.cloneNode(true);
-  const known = findEffect(fx.name);
-  const slotKey = known?.slot ?? SLOTS[i]?.key;
-  card.querySelector('.slot').textContent = SLOTS.find((s) => s.key === slotKey)?.label ?? `Slot ${i + 1}`;
-
-  const onoff = card.querySelector('.onoff input');
-  onoff.checked = fx.isOn;
-  onoff.setAttribute('aria-label', `${known?.name ?? fx.name} enabled`);
-  onoff.addEventListener('change', () => {
-    fx.isOn = onoff.checked;
-    state.client?.setEffectOnOff(fx.name, onoff.checked).catch((e) => logLine('err', e.message));
-  });
-
-  const sel = card.querySelector('.model');
-  const options = effectsForSlot(slotKey);
-  if (!known) options.unshift({ id: fx.name, name: `${fx.name} (unknown)` });
-  for (const e of options) sel.append(new Option(e.name, e.id, false, e.id.toLowerCase() === fx.name.toLowerCase()));
-  sel.addEventListener('change', async () => {
-    const from = fx.name;
-    const to = sel.value;
-    try {
-      await state.client.changeEffect(from, to);
-      await refreshPreset();
-    } catch (err) {
-      logLine('err', err.message);
-      sel.value = from;
-    }
-  });
-
-  const box = card.querySelector('.params');
-  const count = Math.max(fx.params.length, known?.params.length ?? 0);
-  for (let p = 0; p < count; p++) box.append(renderParam(fx, i, p, fx.params[p] ?? 0, slotKey));
-  return card;
-}
-
-function renderParam(fx, fxIndex, p, value, slotKey, idPrefix = 'p') {
-  const info = paramInfo(fx.name, p, slotKey);
-  const row = document.createElement('div');
-  row.className = `param kind-${info.kind}`;
-  row.dataset.index = p;
-  const id = `${idPrefix}-${fxIndex}-${p}`;
-  const label = document.createElement('label');
-  label.className = 'name';
-  label.htmlFor = id;
-  label.textContent = info.name;
-  label.title = info.name;
-  row.append(label);
-
-  const send = throttle((v) => state.client?.setParam(fx.name, p, v).catch((e) => logLine('err', e.message)), 40);
-
-  if (info.kind === 'switch') {
-    const input = Object.assign(document.createElement('input'), { type: 'checkbox', id, className: 'switch', checked: value >= 0.5 });
-    input.setAttribute('role', 'switch');
-    const set = (v) => (input.checked = v >= 0.5);
-    registerControl(fxIndex, p, set);
-    input.addEventListener('change', () => {
-      fx.params[p] = input.checked ? 1 : 0;
-      syncControls(fxIndex, p, fx.params[p], set);
-      send(fx.params[p]);
-    });
-    row.append(input);
-  } else if (info.kind === 'select') {
-    const input = Object.assign(document.createElement('select'), { id });
-    info.options.forEach((o, k) => input.append(new Option(o.label, String(k))));
-    const set = (v) => (input.value = String(nearest(info.options, v)));
-    set(value);
-    registerControl(fxIndex, p, set);
-    input.addEventListener('change', () => {
-      fx.params[p] = info.options[Number(input.value)].value;
-      syncControls(fxIndex, p, fx.params[p], set);
-      send(fx.params[p]);
-    });
-    row.append(input);
-  } else {
-    const input = Object.assign(document.createElement('input'), { type: 'range', id, min: '0', max: '1', step: '0.005', value: String(value) });
-    const out = document.createElement('output');
-    out.htmlFor = id;
-    const sync = () => {
-      const v = Number(input.value);
-      input.style.setProperty('--control-value', input.value);
-      out.textContent = (v * 10).toFixed(1);
-      input.setAttribute('aria-valuetext', `${(v * 10).toFixed(1)} of 10`);
-    };
-    sync();
-    const set = (v) => {
-      input.value = String(v);
-      sync();
-    };
-    registerControl(fxIndex, p, set);
-    input.addEventListener('input', () => {
-      fx.params[p] = Number(input.value);
-      sync();
-      syncControls(fxIndex, p, fx.params[p], set);
-      send(fx.params[p]);
-    });
-    row.append(input, out);
-  }
-  return row;
-}
-
-function updateParamUi(fxIndex, p, value) {
-  syncControls(fxIndex, p, value);
-}
-
-function flash(i) {
-  const card = $$('.fx')[i];
-  if (!card) return;
-  card.classList.add('flash');
-  setTimeout(() => card.classList.remove('flash'), 400);
-}
-
-function nearest(options, v) {
-  let best = 0;
-  options.forEach((o, k) => {
-    if (Math.abs(o.value - v) < Math.abs(options[best].value - v)) best = k;
-  });
-  return best;
-}
-
-/** Leading + trailing throttle: knob drags send at most one 01 04 per `ms`. */
-function throttle(fn, ms) {
-  let last = 0;
-  let timer = null;
-  let pending;
-  return (v) => {
-    pending = v;
-    const now = performance.now();
-    if (now - last >= ms) {
-      last = now;
-      fn(v);
-    } else if (!timer) {
-      timer = setTimeout(() => {
-        timer = null;
-        last = performance.now();
-        fn(pending);
-      }, ms - (now - last));
-    }
-  };
-}
+$('#toast').addEventListener('click', () => ($('#toast').hidden = true));
 
 // ---------------------------------------------------------------------------
 // tuner

@@ -6,7 +6,7 @@
 import { encodeMessage, StreamDecoder, MsgWriter } from './codec.js';
 import { CMD, SUB, TEMP_SLOT } from './constants.js';
 import { decode, presetWriter, randomUuid } from './messages.js';
-import { findEffect } from './effects.js';
+import { findEffect, canonicalOrder } from './effects.js';
 
 const P = (name, desc, pedals) => ({ uuid: randomUuid(), name, version: '0.7', description: desc, icon: 'icon.png', bpm: 120, pedals });
 const fx = (name, isOn, params) => ({ name, isOn, params });
@@ -56,8 +56,11 @@ export function demoPresets(count = 4) {
 }
 
 export class MockSparkTransport {
-  constructor({ name = 'Spark 40', latencyMs = 15, battery = true } = {}) {
+  constructor({ name = 'Spark 40', latencyMs = 15, battery = true, fixedChain = true } = {}) {
     this.ampName = name;
+    // Real firmware is believed to use fixed slots; with fixedChain the mock
+    // stores uploaded presets in canonical order, like an amp that ignores reordering.
+    this.fixedChain = fixedChain;
     this.latencyMs = latencyMs;
     this.battery = battery;
     this.onData = () => {};
@@ -176,6 +179,7 @@ export class MockSparkTransport {
         break;
       case SUB.PRESET: {
         const p = d.preset;
+        if (this.fixedChain) p.pedals = canonicalOrder(p.pedals);
         if (p.slot === TEMP_SLOT) this.tempPreset = p;
         else this.presets[p.slot] = p;
         break;

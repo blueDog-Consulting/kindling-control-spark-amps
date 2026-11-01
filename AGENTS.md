@@ -41,9 +41,11 @@ It's an independent interoperability project. Never add Positive Grid's code, as
 ```
 src/                     everything that ships; served as-is, no bundler, no build step
   index.html             the app shell (tabs: Tone, Presets, Tuner, Console, Capture)
-  app/app.js             UI logic (plain DOM)
+  app/app.js             app logic: connection, presets/banks, New/Save, library tab, console, capture, tabs
+  app/rig.js             the rig view: chain strip (incl. reorder), amp head, pedalboard; param sync registry
+  app/controls.js        reusable controls: rotary knob (native range + SVG dial), footswitch, toggle, selector
   app/library.js         "My presets" on-device library (localStorage, falls back to memory)
-  app/styles.css         styles (light/dark tokens on :root)
+  app/styles.css         dark "stage" theme; colour tokens on :root, per-slot pedal colours
   spark/                 protocol library: no DOM, no dependencies, runs in Node 20+ too
     constants.js         UUIDs, command/sub-command ids, per-model settings (AMP_MODELS)
     codec.js             msgpack-ish writer/reader, 7-bit packing, block/chunk framing, StreamDecoder
@@ -51,7 +53,7 @@ src/                     everything that ships; served as-is, no bundler, no bui
     client.js            SparkClient: seq numbers, request/response + ack matching, write queue, events
     transport-*.js       ble (Web Bluetooth), capacitor (native), mock (simulated amp)
     btsnoop.js           Android HCI snoop log -> Spark messages (BLE ATT + RFCOMM)
-    effects.js           effect/amp catalog, param labels, AMP_KNOB_ORDER, blankPreset()
+    effects.js           effect/amp catalog, param labels, AMP_KNOB_ORDER, blankPreset(), BASED_ON, SLOT_ORDER
 desktop/                 Electron main + preload (serves src/ over the secure spark:// scheme)
 android/, ios/           Capacitor native projects (generated; web assets are synced in, not committed)
 tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs
@@ -65,6 +67,7 @@ docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAP
 npm test                         # all tests; needs no npm install
 npm run serve                    # http://localhost:8787 (Web Bluetooth works on localhost)
                                  #   ?mock  ?mock=Spark%20GO  ?mock=Spark%202  -> simulated amps
+                                 #   add &reorder=1 for a simulated amp that accepts reordered chains
 npm run check:docs               # the documentation rule, against origin/main
 npm install                      # only needed for the desktop/mobile shells
 npm run desktop:mock             # Electron against the simulated Spark GO
@@ -94,9 +97,18 @@ npx wrangler deploy              # web app to Cloudflare (wrangler.jsonc, static
 - Switching bank in the UI selects the same position in the new bank.
 - **New** loads a preset into the temporary slot, so nothing stored changes. **Save…** may overwrite a hardware slot (`client.storePreset`) and must keep its overwrite warning. Never write to a hardware slot without explicit user action.
 
-**UI:**
-- Every parameter control registers with `registerControl(fxIndex, param, setter)`. The amp strip, the effect cards and knob moves reported by the amp all sync through `syncControls`; add new controls the same way instead of querying the DOM.
-- Amp models missing from the catalog get the standard labels `AMP_PARAMS` (Gain, Treble, Middle, Bass, Volume). Other unknown effects get "Param N". The catalog lives in `src/spark/effects.js`.
+**Signal chain order:**
+- Presets carry 7 blocks. The firmware is believed to treat them as fixed slots: gate → comp/wah → drive → amp → mod/EQ → delay → reverb (`SLOT_ORDER`). Community sources agree, but no official documentation exists.
+- **Reorder chain** in the UI is **experimental**. You edit a draft (drag, or arrow keys), and **Apply** calls `client.tryChainOrder()`. That loads the new order into the temporary slot (nothing stored changes), reads it back, and reports whether the amp kept it or normalised it. "Kept" doesn't prove the DSP processes that order; that has to be confirmed by ear. Record real-amp results in `docs/PROTOCOL.md`.
+- `MockSparkTransport` normalises uploads to canonical order by default (`fixedChain: true`); `fixedChain: false` (`?mock&reorder=1`) keeps them.
+
+**UI (rig):**
+- `rig.js` renders from `state.preset.pedals`: a chain strip (IN → blocks → OUT), the amp as an amp head (chicken-head knobs in `AMP_KNOB_ORDER`), and the other blocks as stompboxes in chain order, with an "→ AMP →" marker where the amp sits.
+- Every parameter control registers a setter under `"fxIndex:param"`. The amp head, the pedals and knob moves reported by the amp (`rig.updateParam`) all sync through that registry; add new controls the same way instead of querying the DOM. Parameter sends are throttled per parameter (40 ms).
+- The knob (`controls.js`) is a real `<input type="range">`, kept focusable but invisible, with an SVG dial on top. Keyboard and screen readers use the native slider. Pointer: drag up or right to turn, Shift for fine control, double-click to reset to 5.
+- The theme is dark only (`color-scheme: dark`). Pedal colours come from `--pedal-<slot>` tokens. Check phone width (390px) for horizontal overflow after layout changes.
+- `BASED_ON` in `effects.js` lists the real gear each model is modelled on. Only add well-established mappings. Never copy descriptive text from third-party guides.
+- Amp models missing from the catalog get the standard labels `AMP_PARAMS` (Gain, Treble, Middle, Bass, Volume). Other unknown effects get "Param N".
 
 **Desktop security:**
 - Keep `contextIsolation: true`, `sandbox: true` and `nodeIntegration: false`.
@@ -106,7 +118,7 @@ npx wrangler deploy              # web app to Cloudflare (wrangler.jsonc, static
 ## Verifying changes
 
 - `npm test` must pass. Add tests next to the area you change. Protocol changes should come with byte-level tests, ideally from a real capture in `test/fixtures/` (credit the source in `NOTICE`).
-- For UI changes, run `npm run serve` and exercise the flow with `?mock=Spark%202` (8 presets, battery, tuner) and `?mock` (Spark 40: no banks, no battery). Check phone width (~390px) for horizontal overflow. In devtools, `mockAmp.turnKnob(fxIndex, param, value)` and `mockAmp.pressPreset(slot)` simulate the amp's physical controls.
+- For UI changes, run `npm run serve` and exercise the flow with `?mock=Spark%202` (8 presets, battery, tuner) and `?mock` (Spark 40: no banks, no battery). Use `&reorder=1` to see the "amp kept the order" path. Check phone width (~390px) for horizontal overflow. In devtools, `mockAmp.turnKnob(fxIndex, param, value)` and `mockAmp.pressPreset(slot)` simulate the amp's physical controls.
 - Nothing here has a real amp in CI. Say clearly what was tested only against the simulator, and mark protocol behaviour that hasn't been seen on real hardware as **(unverified)** in `docs/PROTOCOL.md`.
 
 ## Conventions
