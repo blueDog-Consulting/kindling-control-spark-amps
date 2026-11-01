@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Zero-dependency static server for local development: node tools/serve.js [port]
+// Zero-dependency static server for local development:
+//   node tools/serve.js [port] [dir]     dir defaults to src/ (the app); use site-dist for the full website
 // Web Bluetooth works on http://localhost (a secure context). For a phone, deploy
 // to Cloudflare (npm run deploy) or use `wrangler dev` with a tunnel, since
 // the browser requires HTTPS on anything but localhost.
@@ -8,9 +9,9 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = fileURLToPath(new URL('../src/', import.meta.url));
+const root = fileURLToPath(new URL(`../${(process.argv[3] || 'src').replace(/\/?$/, '/')}`, import.meta.url));
 const port = Number(process.argv[2] || process.env.PORT || 8787);
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json' };
 
 createServer(async (req, res) => {
   try {
@@ -23,4 +24,4 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404).end('not found');
   }
-}).listen(port, () => console.log(`KindlingControl on http://localhost:${port}  (simulated amp: http://localhost:${port}/?mock)`));
+}).listen(port, () => console.log(process.argv[3] ? `serving ${process.argv[3]} on http://localhost:${port}` : `KindlingControl on http://localhost:${port}  (simulated amp: http://localhost:${port}/?mock)`));

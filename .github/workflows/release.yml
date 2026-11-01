@@ -75,10 +75,12 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+      - name: Build site (landing page at /, app at /app/)
+        run: node tools/build-site.js
       - name: Package
         run: |
           mkdir -p out
-          (cd src && zip -qr "../out/kindling-control-${VERSION}-web.zip" .)
+          (cd site-dist && zip -qr "../out/kindling-control-${VERSION}-web.zip" .)
       - uses: actions/upload-artifact@v7
         with:
           name: web

@@ -26,7 +26,7 @@ Watch it under **Actions → Release**. To rebuild an existing tag, for example 
 
 | App | Rebuilt when these change | Output |
 |---|---|---|
-| Web | `src/`, `wrangler.jsonc` | `kindling-control-<v>-web.zip`; deployed to Cloudflare if the secret is set |
+| Web | `src/`, `site/`, `wrangler.jsonc`, `tools/build-site.js` | `kindling-control-<v>-web.zip` (landing page at `/`, app at `/app/`); deployed to Cloudflare if the secret is set |
 | Android | `src/`, `android/`, `capacitor.config.json`, `package.json`, `package-lock.json` | `…-android.apk` + `.aab` (signed), or `…-android-debug.apk` |
 | Desktop | `src/`, `desktop/`, `build/` (icons), `package.json`, `package-lock.json` | Windows `.exe` (NSIS), macOS `.dmg` (arm64 + x64), Linux `.AppImage` + `.deb` |
 
@@ -49,7 +49,7 @@ Everything works without secrets: the web app is packaged but not deployed, Andr
 | `ANDROID_KEY_ALIAS` | Key alias in the keystore |
 | `ANDROID_KEY_PASSWORD` | Key password |
 
-**Web:** final releases run `wrangler deploy` to production. Pre-releases run `wrangler versions upload`, which creates a preview version without touching production. Wrangler is pinned in the workflow (`wrangler@4.151.3`).
+**Web:** CI first runs `tools/build-site.js`, which builds `site-dist/` with the landing page at `/` and the app at `/app/`. Final releases then run `wrangler deploy` to production. Pre-releases run `wrangler versions upload`, which creates a preview version without touching production. Wrangler is pinned in the workflow (`wrangler@4.151.3`).
 
 **Android keystore:** create it once and keep it safe. If you lose it, you can never ship an update to the same app on Google Play.
 

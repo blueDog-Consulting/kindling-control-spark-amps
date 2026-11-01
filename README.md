@@ -44,15 +44,23 @@ npm run serve          # http://localhost:8787  (no dependencies)
 
 Close the official Spark app first; it may hold the BLE connection. Then tap **Connect** and pick your amp.
 
-### Deploy to Cloudflare
+### Website and deploy to Cloudflare
 
-The whole app is static files in `src/`, deployed as Workers static assets:
+The website is static files, deployed as Workers static assets. It has two parts:
+
+* `/` is the **landing page** (`site/`): what the app does, screenshots, how to use it, and credits.
+* `/app/` is the **web app** (`src/`).
+
+`tools/build-site.js` combines them into `site-dist/`:
 
 ```sh
-npx wrangler deploy    # uses wrangler.jsonc
+npm run site                   # build site-dist/
+npm run serve -- 8788 site-dist  # preview the whole site locally
+npm run deploy                 # build + wrangler deploy (wrangler.jsonc)
+npm run screenshots            # re-capture site/screenshots/ from the app (needs Playwright)
 ```
 
-Open the resulting `https://kindling-control.<you>.workers.dev` on your phone. Add it to your home screen and it runs like an app.
+Open `https://kindling-control.<you>.workers.dev/app/` on your phone. Add it to your home screen and it runs like an app.
 
 ## Library
 
@@ -99,6 +107,7 @@ The protocol itself is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `android/`, `ios/` | Capacitor projects for Android and iPad/iPhone |
 | `tools/` | capture decoder CLI, dev server, docs check |
 | `test/` | `node:test` suites and real-capture fixtures |
+| `site/` | the landing page (`index.html`, `site.css`, `screenshots/`), served at `/` with the app at `/app/` |
 | `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md) |
 | `.github/workflows/` | CI (tests + docs check) and the tag-driven release pipeline |
 

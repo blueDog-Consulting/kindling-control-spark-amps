@@ -1,10 +1,10 @@
-// Cloudflare Workers static-assets deployment: `npx wrangler deploy`.
+// Cloudflare Workers static-assets deployment: `npm run deploy` (builds site-dist/, then `wrangler deploy`).
+// site-dist/ = the landing page (site/) at / and the web app (src/) at /app/  (tools/build-site.js).
 // Everything is client-side (Web Bluetooth runs in the browser), so no Worker script is needed.
 {
   "name": "kindling-control",
   "compatibility_date": "2025-09-01",
   "assets": {
-    "directory": "./src",
-    "not_found_handling": "single-page-application"
+    "directory": "./site-dist"
   }
 }

@@ -56,9 +56,11 @@ src/                     everything that ships; served as-is, no bundler, no bui
     transport-*.js       ble (Web Bluetooth), capacitor (native), mock (simulated amp)
     btsnoop.js           Android HCI snoop log -> Spark messages (BLE ATT + RFCOMM)
     effects.js           effect/amp catalog, param labels, AMP_KNOB_ORDER, blankPreset(), BASED_ON, SLOT_ORDER
+site/                    landing page (index.html, site.css, screenshots/); deployed at / with the app (src/) at /app/
 desktop/                 Electron main + preload (serves src/ over the secure kindling:// scheme)
 android/, ios/           Capacitor native projects (generated; web assets are synced in, not committed)
-tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release-plan, build-icons
+tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release-plan, build-icons,
+                         build-site (site-dist/ = site/ + src/ at /app/), screenshots (landing-page images via Playwright)
 assets/logo/concepts/    logo source SVGs (kindling, knob, monogram, necks, amp, pick); `npm run icons` renders all platform icons
 build/                   generated desktop icons for electron-builder (committed)
 .github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release)
@@ -80,7 +82,10 @@ npm run desktop:dist             # installer for the current OS (dist/, git-igno
 npx cap sync                     # copy src/ into android/ and ios/ after web changes
 npm run android | npm run ios    # sync + open Android Studio / Xcode
 node tools/btsnoop-decode.js btsnoop_hci.log [--raw|--json|--unknown]
-npx wrangler deploy              # web app to Cloudflare (wrangler.jsonc, static assets from src/)
+npm run site                     # build site-dist/: landing page at /, web app at /app/
+npm run serve -- 8788 site-dist  # preview the whole website
+npm run deploy                   # build-site + wrangler deploy (wrangler.jsonc serves site-dist/)
+npm run screenshots              # re-capture site/screenshots/*.jpg from the app + simulated Spark 2 (needs Playwright)
 npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 ```
 
@@ -120,6 +125,17 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 - Keep `contextIsolation: true`, `sandbox: true` and `nodeIntegration: false`.
 - The preload only exposes the Bluetooth picker bridge (`window.kindlingDesktop`).
 - External links open in the system browser.
+
+## Website (landing page)
+
+- `site/index.html` is the promotional landing page. It has no JS, uses the same palette as the app, and pulls its icons from `app/` (the built site). The deploy is `site-dist/`: `site/` at `/` and `src/` at `/app/`, from `tools/build-site.js`. The Electron and Capacitor shells still use `src/` directly.
+- Screenshots come from `npm run screenshots` (real app + `MockSparkTransport` Spark 2). Re-run it after visible UI changes; don't hand-edit them.
+- Keep the copy honest:
+  - Say what has actually been tested (a Spark 2) versus what follows the documented protocol.
+  - Mark plans as plans (e.g. the iPad app).
+  - Don't disparage the official app.
+  - Keep the credits section crediting Paul Hamshere's protocol work, Ignitron and the other sources in `NOTICE`.
+- If you change the landing page, the app's URL or the deploy layout, update this section and the README.
 
 ## Branding and icons
 

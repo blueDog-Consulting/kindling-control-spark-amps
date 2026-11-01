@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 
 /** Paths that affect each app. `src/` is shared by all of them. */
 export const APP_PATHS = {
-  web: [/^src\//, /^wrangler\.jsonc$/],
+  web: [/^src\//, /^site\//, /^wrangler\.jsonc$/, /^tools\/build-site\.js$/], // site/ = landing page
   android: [/^src\//, /^android\//, /^capacitor\.config\.json$/, /^package(-lock)?\.json$/],
   desktop: [/^src\//, /^desktop\//, /^build\//, /^package(-lock)?\.json$/], // build/ = desktop icons
 };

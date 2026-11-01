@@ -9,7 +9,7 @@
     "test": "node --test test/*.test.js",
     "serve": "node tools/serve.js",
     "decode": "node tools/btsnoop-decode.js",
-    "deploy": "wrangler deploy",
+    "deploy": "node tools/build-site.js && wrangler deploy",
     "desktop": "electron .",
     "desktop:mock": "electron . --mock",
     "desktop:dist": "electron-builder",
@@ -18,7 +18,9 @@
     "ios": "cap sync ios && cap open ios",
     "check:docs": "node tools/check-docs.js",
     "release:plan": "node tools/release-plan.js",
-    "icons": "node tools/build-icons.js"
+    "icons": "node tools/build-icons.js",
+    "site": "node tools/build-site.js",
+    "screenshots": "node tools/screenshots.js"
   },
   "engines": {
     "node": ">=20"
