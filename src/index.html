@@ -18,6 +18,7 @@
   <header class="topbar">
     <h1 class="brand"><img src="icon.svg" alt="" width="32" height="32"><span>Kindling<b>Control</b></span></h1>
     <span id="status" class="pill" data-state="idle">Not connected</span>
+    <button type="button" class="help-btn" data-help="" aria-label="Help: user guide"><span aria-hidden="true">?</span><span class="help-btn-text">Help</span></button>
     <button id="connect" class="primary" type="button">Connect</button>
   </header>
 
@@ -25,6 +26,7 @@
     This browser has no Web Bluetooth. Use Chrome on Android or desktop Chrome/Edge,
     or install the KindlingControl app (iPhone / iPad need the app).
     You can also <a href="?mock">try the simulated amp</a>. The Capture tab works everywhere.
+    <button type="button" class="linklike" data-help="requirements">What you need</button>
   </div>
 
   <section id="info" class="info" aria-label="Amp info" hidden>
@@ -64,6 +66,7 @@
           <span id="preset-desc"></span>
         </div>
         <div class="preset-actions">
+          <button type="button" class="help-link" data-help="tone" aria-label="Help: the Tone screen, presets and banks">?</button>
           <button type="button" id="refresh" disabled>Refresh</button>
           <button type="button" id="new-preset">New</button>
           <button type="button" id="save-preset" class="primary" disabled>Save…</button>
@@ -87,6 +90,7 @@
         <p class="library-note">Presets saved on this device. Load one onto the amp to play it, or store it in one of the amp's preset slots.</p>
         <label class="button">Import JSON…<input type="file" id="import" accept=".json,application/json" multiple hidden></label>
         <button type="button" id="export-current" disabled>Export current tone</button>
+        <button type="button" class="help-link" data-help="library" aria-label="Help: the Presets tab">?</button>
       </div>
       <p id="library-storage-warning" class="banner" hidden>This browser isn't letting the app store data, so saved presets will be lost when you close it. Export the ones you want to keep.</p>
       <ul id="library" class="library"></ul>
@@ -98,6 +102,7 @@
         <input type="checkbox" role="switch" id="tuner-on" class="switch" disabled>
         Tuner mode <small>(Spark GO / MINI / 2 / NEO; the Spark 40 has no tuner messages)</small>
       </label>
+      <button type="button" class="linklike" data-help="tuner">How to use the tuner</button>
       <div class="tuner" aria-live="polite">
         <div id="tuner-note" class="note">–</div>
         <div class="meter"><div id="tuner-needle" class="needle"></div></div>
@@ -115,7 +120,10 @@
       </form>
       <div class="row console-opts">
         <label><input type="checkbox" id="hide-params"> Hide param / tuner spam</label>
-        <button type="button" id="clear-log">Clear</button>
+        <span class="row">
+          <button type="button" id="clear-log">Clear</button>
+          <button type="button" class="help-link" data-help="console" aria-label="Help: the Console">?</button>
+        </span>
       </div>
       <ol id="log" class="log"></ol>
     </section>
@@ -123,7 +131,7 @@
     <section id="panel-capture" role="tabpanel" aria-labelledby="tab-capture" hidden>
       <p>
         Load an Android <code>btsnoop_hci.log</code> recorded while the official app was talking to your amp.
-        Everything is decoded locally in your browser. See <code>docs/CAPTURE.md</code> in the <a href="https://github.com/jerdog/positive-grid-spark">repo</a>.
+        Everything is decoded locally in your browser. <button type="button" class="linklike" data-help="capture">How to record a log</button>
       </p>
       <label class="button">Open capture…<input type="file" id="capture-file" hidden></label>
       <label><input type="checkbox" id="capture-unknown"> Only unknown messages</label>
@@ -134,6 +142,15 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
+  <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
+    <div class="help-bar">
+      <h2 id="help-title">Help</h2>
+      <a id="help-newtab" href="guide/" target="_blank" rel="noopener">Open in a new window</a>
+      <button type="button" id="help-close">Close</button>
+    </div>
+    <iframe id="help-frame" title="KindlingControl user guide"></iframe>
+  </dialog>
+
   <dialog id="bt-picker" aria-labelledby="bt-title">
     <h2 id="bt-title">Choose your amp</h2>
     <p id="bt-scanning">Scanning… make sure the amp is on and the official app is closed.</p>
@@ -143,7 +160,7 @@
 
   <dialog id="new-dialog" aria-labelledby="new-title">
     <form method="dialog" class="dialog-form">
-      <h2 id="new-title">New preset</h2>
+      <div class="dialog-title"><h2 id="new-title">New preset</h2><button type="button" class="help-link" data-help="saving" aria-label="Help: creating and saving presets">?</button></div>
       <label for="new-name">Name</label>
       <input id="new-name" required maxlength="31" autocomplete="off" value="New preset">
       <fieldset>
@@ -161,7 +178,7 @@
 
   <dialog id="save-dialog" aria-labelledby="save-title">
     <form method="dialog" class="dialog-form">
-      <h2 id="save-title">Save preset</h2>
+      <div class="dialog-title"><h2 id="save-title">Save preset</h2><button type="button" class="help-link" data-help="saving" aria-label="Help: creating and saving presets">?</button></div>
       <label for="save-name">Name</label>
       <input id="save-name" required maxlength="31" autocomplete="off">
       <label for="save-desc">Description <small>(optional)</small></label>

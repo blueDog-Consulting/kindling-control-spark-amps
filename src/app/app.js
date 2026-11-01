@@ -83,8 +83,11 @@ $('#connect').addEventListener('click', async () => {
     await refreshPreset();
   } catch (err) {
     console.error(err);
-    setStatus('idle', err.name === 'NotFoundError' ? 'Not connected' : 'Connection failed (see Console)');
+    setStatus('idle', err.name === 'NotFoundError' ? 'Not connected' : "Couldn't connect");
     logLine('err', `connect failed: ${err.message}`);
+    if (err.name !== 'NotFoundError') {
+      toast(`Couldn't connect: ${err.message}`, 'warn', { label: 'Troubleshooting', run: () => openHelp('troubleshooting') });
+    }
     try {
       await client.disconnect();
     } catch {}
@@ -139,6 +142,7 @@ function setStatus(st, text) {
   const el = $('#status');
   el.dataset.state = st;
   el.textContent = text;
+  el.title = text; // full text when the pill is truncated on narrow screens
 }
 
 function setConnectedUi(on) {
@@ -498,15 +502,58 @@ function renderPresetHeader() {
 }
 
 let toastTimer;
-function toast(text, kind = 'info') {
+/** Show a short message. `action` = { label, run } adds a button (e.g. open help). */
+function toast(text, kind = 'info', action = null) {
   const t = $('#toast');
-  t.textContent = text;
+  t.replaceChildren(Object.assign(document.createElement('span'), { textContent: text }));
+  if (action) {
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'toast-action', textContent: action.label });
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      t.hidden = true;
+      action.run();
+    });
+    t.append(b);
+  }
   t.dataset.kind = kind;
   t.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.hidden = true), kind === 'info' ? 4000 : 9000);
+  toastTimer = setTimeout(() => (t.hidden = true), kind === 'info' && !action ? 4000 : 10000);
 }
 $('#toast').addEventListener('click', () => ($('#toast').hidden = true));
+
+// ---------------------------------------------------------------------------
+// help: the user guide (src/guide/) in a panel, so the amp stays connected
+// ---------------------------------------------------------------------------
+
+/** Open the user guide, optionally at a section id (see src/guide/index.html). */
+function openHelp(section = '') {
+  const dialog = $('#help-dialog');
+  const frame = $('#help-frame');
+  const url = `guide/index.html${section ? `#${section}` : ''}`;
+  $('#help-newtab').href = url;
+  // open first: a closed dialog has no layout, so the guide couldn't scroll
+  if (!dialog.open) dialog.showModal();
+  const loaded = frame.getAttribute('src') && frame.contentDocument?.readyState === 'complete';
+  if (!loaded) {
+    frame.setAttribute('src', url); // the browser jumps to the #section on load
+    return;
+  }
+  // already loaded: scroll to the section without reloading
+  const doc = frame.contentDocument;
+  const target = (section && doc.getElementById(section)) || doc.querySelector('main h1') || doc.body;
+  target.scrollIntoView({ block: 'start' });
+  frame.contentWindow.history.replaceState(null, '', url.split('/').pop());
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-help]');
+  if (!b) return;
+  e.preventDefault();
+  openHelp(b.dataset.help);
+});
+$('#help-close').addEventListener('click', () => $('#help-dialog').close());
+// The native apps' web views can't open extra windows; keep the guide in the panel there.
+if (CapacitorBleTransport.isAvailable()) $('#help-newtab').hidden = true;
 
 // ---------------------------------------------------------------------------
 // tuner

@@ -32,6 +32,8 @@ Build instructions for each are in [docs/APPS.md](docs/APPS.md).
 
 ## Use it
 
+**New here? Read the [user guide](src/guide/index.html).** It's built into the app (the **Help** button, plus **?** links next to each feature), and on the website at `/app/guide/`.
+
 In a browser, Web Bluetooth needs **Chrome or Edge**: on Android, Windows, macOS, Linux or ChromeOS. iOS browsers don't support it, so iPad and iPhone need the native app. The page also has to be served over HTTPS (or `localhost`).
 
 ```sh
@@ -107,6 +109,7 @@ The protocol itself is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `android/`, `ios/` | Capacitor projects for Android and iPad/iPhone |
 | `tools/` | capture decoder CLI, dev server, docs check |
 | `test/` | `node:test` suites and real-capture fixtures |
+| `src/guide/` | the user guide, shown in the app's Help panel and at `/app/guide/` |
 | `site/` | the landing page (`index.html`, `site.css`, `screenshots/`), served at `/` with the app at `/app/` |
 | `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md) |
 | `.github/workflows/` | CI (tests + docs check) and the tag-driven release pipeline |

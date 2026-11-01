@@ -6,7 +6,7 @@ Guidance for AI coding agents and human contributors working on this repository.
 
 **Any material change to how the system works must, in the same change, update both:**
 
-1. **The docs that describe it:** `README.md` and/or the relevant file in `docs/`.
+1. **The docs that describe it:** `README.md`, the relevant file in `docs/`, and/or the **user guide** (`src/guide/index.html`) for anything users see or do.
 2. **This file** (`AGENTS.md`), so the next agent has an accurate picture.
 
 "Material" means anything that changes behaviour, interfaces or how to build and run things. Examples:
@@ -47,6 +47,7 @@ src/                     everything that ships; served as-is, no bundler, no bui
   app/rig.js             the rig view: chain strip (incl. reorder), amp head, pedalboard; param sync registry
   app/controls.js        reusable controls: rotary knob (native range + SVG dial), footswitch, toggle, selector
   app/library.js         "My presets" on-device library (localStorage, falls back to memory)
+  guide/                 user guide (index.html + guide.css), shown in the in-app Help panel; also /app/guide/
   app/styles.css         dark "stage" theme; colour tokens on :root, per-slot pedal colours
   spark/                 protocol library: no DOM, no dependencies, runs in Node 20+ too
     constants.js         UUIDs, command/sub-command ids, per-model settings (AMP_MODELS)
@@ -126,9 +127,17 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 - The preload only exposes the Bluetooth picker bridge (`window.kindlingDesktop`).
 - External links open in the system browser.
 
+## User guide and in-app help
+
+- `src/guide/index.html` is the user documentation. It ships with every app, so it works offline in the browser, desktop and native apps. When it's shown inside the Help panel (an iframe) it hides its own header; the inline script adds the `embedded` class.
+- The app opens it with `openHelp(section)` in a `<dialog>`, never by navigating away: leaving the page would drop the Bluetooth connection. Anything with `data-help="<section id>"` opens Help at that section (one delegated click handler). `data-help=""` opens the top.
+- Contextual help links: the top-bar Help button; **?** buttons on the Tone screen, Presets tab, Console, the New/Save dialogs and next to Reorder chain (`rig.js`); text links on the Tuner and Capture tabs and in the unsupported-browser banner; a **Troubleshooting** action on the connection-failed toast (`toast(text, kind, { label, run })`).
+- **Any change to what users see or do must update the guide in the same change.** Keep section ids stable, because the app links to them. `test/help-links.test.js` fails if a help link points at a missing section, or if the guide's contents list has a broken anchor. `check-docs` accepts the guide as documentation.
+- The desktop app opens "Open in a new window" for `kindling://app/guide/` in a separate sandboxed window with no preload. Link and navigation rules apply to every window via `app.on('web-contents-created')`. The native apps hide that link, because their web views can't open windows.
+
 ## Website (landing page)
 
-- `site/index.html` is the promotional landing page. It has no JS, uses the same palette as the app, and pulls its icons from `app/` (the built site). The deploy is `site-dist/`: `site/` at `/` and `src/` at `/app/`, from `tools/build-site.js`. The Electron and Capacitor shells still use `src/` directly.
+- `site/index.html` is the promotional landing page. It has no JS, uses the same palette as the app, and pulls its icons from `app/` (the built site). It links to the user guide at `app/guide/`. The deploy is `site-dist/`: `site/` at `/` and `src/` at `/app/`, from `tools/build-site.js`. The Electron and Capacitor shells still use `src/` directly.
 - Screenshots come from `npm run screenshots` (real app + `MockSparkTransport` Spark 2). Re-run it after visible UI changes; don't hand-edit them.
 - Keep the copy honest:
   - Say what has actually been tested (a Spark 2) versus what follows the documented protocol.

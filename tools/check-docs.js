@@ -31,7 +31,7 @@ export const MATERIAL = [
 ];
 
 /** Paths that count as user/developer documentation. */
-export const DOCS = [/^README\.md$/, /^docs\/.+\.md$/];
+export const DOCS = [/^README\.md$/, /^docs\/.+\.md$/, /^src\/guide\/index\.html$/]; // incl. the in-app user guide
 export const AGENTS = 'AGENTS.md';
 
 /**

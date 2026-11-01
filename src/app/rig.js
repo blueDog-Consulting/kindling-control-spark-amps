@@ -218,12 +218,19 @@ export function createRig({ root, state, actions }) {
       tools.append(b);
       return b;
     };
+    const help = () => {
+      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'help-link', textContent: '?' });
+      b.dataset.help = 'reorder';
+      b.setAttribute('aria-label', 'Help: reordering the chain');
+      tools.append(b);
+    };
     if (!reorder) {
       btn('Reorder chain', () => {
         reorder = { order: state.preset.pedals.map((_, i) => i) };
         renderStrip();
         strip.querySelector('.chain-block')?.focus();
       }).disabled = !state.preset;
+      help();
       return;
     }
     tools.append(
@@ -232,6 +239,7 @@ export function createRig({ root, state, actions }) {
         textContent: 'Drag blocks, or focus one and use ← →. Experimental: the Spark firmware is believed to use a fixed order.',
       }),
     );
+    help();
     btn('Cancel', () => {
       reorder = null;
       renderStrip();

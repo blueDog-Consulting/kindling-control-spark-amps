@@ -46,22 +46,39 @@ function createWindow() {
     );
   });
 
-  // Links to GitHub etc. open in the real browser, not inside the app.
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  const query = process.argv.includes('--mock') ? '?mock=Spark%20GO' : '';
+  win.loadURL(`${SCHEME}://app/index.html${query}`);
+  return win;
+}
+
+// Every window (the app and any guide window) gets the same link rules:
+// external https links open in the real browser; only our own scheme loads inside the app.
+app.on('web-contents-created', (_e, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    // The user guide ("Open in a new window" in Help) opens in its own locked-down window.
+    if (url.startsWith(`${SCHEME}://app/guide/`)) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 1000,
+          height: 820,
+          title: 'KindlingControl user guide',
+          backgroundColor: '#0d0e10',
+          autoHideMenuBar: true,
+          webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false }, // no preload
+        },
+      };
+    }
     if (url.startsWith('https:')) shell.openExternal(url);
     return { action: 'deny' };
   });
-  win.webContents.on('will-navigate', (e, url) => {
+  contents.on('will-navigate', (e, url) => {
     if (!url.startsWith(`${SCHEME}:`)) {
       e.preventDefault();
       if (url.startsWith('https:')) shell.openExternal(url);
     }
   });
-
-  const query = process.argv.includes('--mock') ? '?mock=Spark%20GO' : '';
-  win.loadURL(`${SCHEME}://app/index.html${query}`);
-  return win;
-}
+});
 
 ipcMain.on('bt:select', (_e, id) => {
   if (!pendingBluetoothCallback) return;

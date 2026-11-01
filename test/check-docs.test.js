@@ -13,6 +13,7 @@ test('material change needs both AGENTS.md and a doc', () => {
   assert.deepEqual(checkDocs([code, 'AGENTS.md']).missing, ['README.md or docs/*.md']);
   assert.equal(checkDocs([code, 'AGENTS.md', 'README.md']).ok, true);
   assert.equal(checkDocs(['desktop/main.js', 'AGENTS.md', 'docs/APPS.md']).ok, true);
+  assert.equal(checkDocs(['src/app/rig.js', 'AGENTS.md', 'src/guide/index.html']).ok, true, 'the user guide counts as docs');
 });
 
 test('native config, scripts and CI count as material', () => {
