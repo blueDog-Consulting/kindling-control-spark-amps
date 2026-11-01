@@ -1,6 +1,6 @@
 # Spark Control
 
-An open replacement for the Positive Grid Spark app. It's a JavaScript implementation of the amp's Bluetooth protocol, with a web UI that talks straight to the amp from your phone's browser over **Web Bluetooth**. You don't need to install anything, there's no account, and it doesn't phone home.
+An open replacement for the Positive Grid Spark app. It's a JavaScript implementation of the amp's Bluetooth protocol, with one UI that runs in the browser (over **Web Bluetooth**), as a desktop app, and as an Android or iPad app. There's no account, and it doesn't phone home.
 
 Works with Spark 40, Spark GO, Spark MINI, Spark 2 and Spark NEO. All of them use the same BLE service (`0xFFC0`).
 
@@ -28,6 +28,7 @@ In a browser, Web Bluetooth needs **Chrome or Edge**: on Android, Windows, macOS
 npm run serve          # http://localhost:8787  (no dependencies)
                        # http://localhost:8787/?mock            simulated Spark 40
                        # http://localhost:8787/?mock=Spark%20GO  simulated GO (battery, tuner)
+                       # http://localhost:8787/?mock=Spark%202   simulated Spark 2 (two banks, 8 presets)
 ```
 
 Close the official Spark app first; it may hold the BLE connection. Then tap **Connect** and pick your amp.
@@ -54,10 +55,13 @@ await amp.connect();
 const info = await amp.handshake();          // { name, serial, firmware, presetNumber, status }
 const tone = await amp.getPreset('current'); // { name, pedals: [{ name, isOn, params }] }
 
-await amp.selectPreset(2);
+await amp.selectPreset(2);                   // 0-3, or 0-7 on Spark 2 (4-7 = bank 2)
 await amp.setParam('Twin', 0, 0.7);          // gain to 7
 await amp.setEffectOnOff('ChorusAnalog', true);
 await amp.changeEffect('Twin', 'Plexi');
+
+await amp.loadPreset(tone);                  // play a preset via the temporary slot (nothing stored)
+await amp.storePreset(tone, 1);              // overwrite hardware slot 1 and switch to it
 
 amp.addEventListener('param', (e) => console.log('knob on amp', e.detail));
 ```
@@ -75,15 +79,31 @@ amp.addEventListener('param', (e) => console.log('knob on amp', e.detail));
 
 The protocol itself is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
+## Repository layout
+
+| path | |
+|---|---|
+| `src/` | everything that ships: `index.html`, the UI in `app/`, the protocol library in `spark/`. No build step. |
+| `desktop/` | Electron shell for Windows, macOS and Linux |
+| `android/`, `ios/` | Capacitor projects for Android and iPad/iPhone |
+| `tools/` | capture decoder CLI, dev server, docs check |
+| `test/` | `node:test` suites and real-capture fixtures |
+| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md) |
+
 ## Development
 
 ```sh
 npm test                                        # node:test, no install needed
 node tools/btsnoop-decode.js btsnoop_hci.log    # decode a capture
 npm install && npm run desktop:mock             # desktop app against the simulated amp
+npm run check:docs                              # docs rule (also runs in CI)
 ```
 
 The tests include a real Spark 40 preset dump. The decoder has to reproduce its checksums, and re-encoding has to give back the original bytes exactly.
+
+## Contributing
+
+Read [AGENTS.md](AGENTS.md) first. It describes how the system fits together, and it applies to people as well as AI agents. One rule is enforced in CI: **any change to how the system works must update the docs and `AGENTS.md` in the same change.** CI also runs the tests on every pull request and on every push to `main`.
 
 ## Credits
 

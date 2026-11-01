@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      # The protocol library and its tests have no dependencies: no npm install needed.
+      - run: npm test
+
+  docs:
+    # Material changes must update the docs and AGENTS.md (see AGENTS.md, "Documentation rule").
+    # Dependabot only bumps versions, which doesn't change how the system works.
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Require docs + AGENTS.md updates for material changes
+        env:
+          DOCS_NOT_NEEDED: ${{ contains(github.event.pull_request.labels.*.name, 'docs-not-needed') && 'PR label docs-not-needed' || '' }}
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: node tools/check-docs.js "$BASE"

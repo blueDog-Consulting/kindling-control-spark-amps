@@ -15,7 +15,8 @@
     "desktop:dist": "electron-builder",
     "mobile:sync": "cap sync",
     "android": "cap sync android && cap open android",
-    "ios": "cap sync ios && cap open ios"
+    "ios": "cap sync ios && cap open ios",
+    "check:docs": "node tools/check-docs.js"
   },
   "engines": {
     "node": ">=20"
