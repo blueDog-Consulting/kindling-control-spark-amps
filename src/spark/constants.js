@@ -58,8 +58,9 @@ export const SUB = {
   LOOPER_STATUS: 0x78,
 };
 
-// Hardware preset slots. 0x7f is the "temporary" slot the app uses for
-// presets that are not stored on the amp.
+// Hardware preset slots: 0-3 (0-7 on Spark 2, whose second bank is 4-7).
+// 0x7f is the "temporary" slot the app uses for presets not stored on the amp.
+export const PRESETS_PER_BANK = 4;
 export const TEMP_SLOT = 0x7f;
 
 // Per-model transport quirks (values from Ignitron's field testing):
@@ -70,7 +71,7 @@ export const AMP_MODELS = {
   'Spark GO': { maxBleWrite: 0xad, blockDelayMs: 0, presetSlots: 4 },
   'Spark NEO': { maxBleWrite: 0xad, blockDelayMs: 0, presetSlots: 4 },
   'Spark MINI': { maxBleWrite: 0x64, blockDelayMs: 80, presetSlots: 4 },
-  'Spark 2': { maxBleWrite: 0x64, blockDelayMs: 80, presetSlots: 4 },
+  'Spark 2': { maxBleWrite: 0x64, blockDelayMs: 80, presetSlots: 8 }, // two banks of 4: slots 0-3, 4-7
 };
 export const DEFAULT_MODEL = AMP_MODELS['Spark 40'];
 // Used until the amp has told us its name, and for names we don't recognise:

@@ -15,6 +15,7 @@ import {
   toHex,
   fromHex,
   TEMP_SLOT,
+  PRESETS_PER_BANK,
 } from '../spark/index.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -28,6 +29,8 @@ const state = {
   connected: false,
   preset: null, // current live state
   slot: null,
+  bank: 0, // which bank of four the preset buttons show
+  presetSlots: 4, // 8 on Spark 2
   mock: null,
 };
 
@@ -65,6 +68,8 @@ $('#connect').addEventListener('click', async () => {
     showInfo(info);
     setStatus('connected', info.name);
     setConnectedUi(true);
+    state.presetSlots = info.model?.presetSlots ?? 4;
+    $('.banks').hidden = state.presetSlots <= PRESETS_PER_BANK;
     state.slot = info.presetNumber;
     highlightSlot();
     await refreshPreset();
@@ -164,10 +169,19 @@ async function refreshPreset() {
 
 $('#refresh').addEventListener('click', refreshPreset);
 
+for (const b of $$('.banks button')) {
+  // Choosing a bank only changes which four presets the buttons address,
+  // like the bank button on the amp; nothing is sent until you pick a preset.
+  b.addEventListener('click', () => {
+    state.bank = Number(b.dataset.bank);
+    highlightSlot({ followSlot: false });
+  });
+}
+
 for (const b of $$('.preset-buttons button')) {
   b.addEventListener('click', async () => {
     if (!state.connected) return;
-    const slot = Number(b.dataset.slot);
+    const slot = state.bank * PRESETS_PER_BANK + Number(b.dataset.index);
     try {
       await state.client.selectPreset(slot);
       state.slot = slot;
@@ -179,8 +193,16 @@ for (const b of $$('.preset-buttons button')) {
   });
 }
 
-function highlightSlot() {
-  for (const b of $$('.preset-buttons button')) b.setAttribute('aria-pressed', String(Number(b.dataset.slot) === state.slot));
+/** Sync bank + preset buttons with state.slot. A slot in bank 2 (4-7) switches the view to bank 2. */
+function highlightSlot({ followSlot = true } = {}) {
+  const isHw = Number.isInteger(state.slot) && state.slot < state.presetSlots;
+  if (followSlot && isHw) state.bank = Math.floor(state.slot / PRESETS_PER_BANK);
+  for (const b of $$('.banks button')) b.setAttribute('aria-pressed', String(Number(b.dataset.bank) === state.bank));
+  for (const b of $$('.preset-buttons button')) {
+    const slot = state.bank * PRESETS_PER_BANK + Number(b.dataset.index);
+    b.setAttribute('aria-pressed', String(isHw && slot === state.slot));
+    b.setAttribute('aria-label', state.presetSlots > PRESETS_PER_BANK ? `Bank ${state.bank + 1}, preset ${b.dataset.index * 1 + 1}` : `Preset ${b.dataset.index * 1 + 1}`);
+  }
 }
 
 $('#export').addEventListener('click', () => {

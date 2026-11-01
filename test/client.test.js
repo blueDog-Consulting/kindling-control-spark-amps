@@ -77,3 +77,20 @@ test('amp-side events are emitted', async () => {
   assert.equal(got[0].solicited, false);
   assert.equal(got[1].slot, 3);
 });
+
+test('Spark 2: second bank is hardware slots 4-7 via the same 01 38 message', async () => {
+  const { t, c } = await connected({ name: 'Spark 2' });
+  const info = await c.handshake();
+  assert.equal(info.model.presetSlots, 8);
+
+  await c.selectPreset(5); // bank 2, preset 2
+  assert.equal(t.slot, 5);
+  assert.equal((await c.getPreset('current')).name, 'Crunch Plexi B');
+  assert.equal((await c.getPreset(6)).name, 'Treadplate Lead B');
+
+  const got = [];
+  c.addEventListener('presetSelected', (e) => got.push(e.detail.slot));
+  t.pressPreset(7); // bank 2, preset 4 pressed on the amp
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(got, [7]);
+});

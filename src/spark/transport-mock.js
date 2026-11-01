@@ -11,8 +11,8 @@ import { findEffect } from './effects.js';
 const P = (name, desc, pedals) => ({ uuid: randomUuid(), name, version: '0.7', description: desc, icon: 'icon.png', bpm: 120, pedals });
 const fx = (name, isOn, params) => ({ name, isOn, params });
 
-export function demoPresets() {
-  return [
+export function demoPresets(count = 4) {
+  const base = [
     P('Silver Clean', '1-Clean', [
       fx('bias.noisegate', true, [0.2, 0.3, 0]),
       fx('LA2AComp', true, [0, 0.6, 0.3]),
@@ -50,6 +50,9 @@ export function demoPresets() {
       fx('bias.reverb', true, [0.5, 0.5, 0.5, 0.6, 0.2, 0.6, 0.4]),
     ]),
   ];
+  // Spark 2: a second bank of four, variations of the first
+  const bank2 = base.map((p, i) => ({ ...clone(p), uuid: randomUuid(), name: `${p.name} B`, description: `${i + 5}-Bank 2` }));
+  return [...base, ...bank2].slice(0, count);
 }
 
 export class MockSparkTransport {
@@ -59,7 +62,7 @@ export class MockSparkTransport {
     this.battery = battery;
     this.onData = () => {};
     this.onDisconnect = () => {};
-    this.presets = demoPresets();
+    this.presets = demoPresets(/spark 2/i.test(name) ? 8 : 4);
     this.tempPreset = null;
     this.slot = 0;
     this.current = clone(this.presets[0]);

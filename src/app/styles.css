@@ -152,6 +152,11 @@ main { padding: 1rem; max-width: 1200px; margin-inline: auto; }
 @media (width < 640px) {
   .presets { grid-template-columns: 1fr; }
 }
+.preset-picker { display: flex; flex-direction: column; gap: 0.4rem; }
+.banks { display: flex; gap: 0.25rem; }
+.banks[hidden] { display: none; }
+.banks button { flex: 1; min-height: 2rem; padding-block: 0.2rem; font-size: 0.85rem; }
+.banks button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .preset-buttons { display: flex; gap: 0.4rem; }
 .preset-buttons button { min-width: 3.25rem; min-height: 3.25rem; font-size: 1.2rem; font-weight: 700; }
 .preset-buttons button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }

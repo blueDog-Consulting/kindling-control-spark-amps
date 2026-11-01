@@ -74,7 +74,7 @@ Parameter values are floats from 0.0 to 1.0. The app shows them as 0 to 10.
 | `01 06` | pstr old, pstr new | `04 06` | swap the model in a slot (e.g. `Twin` → `Plexi`) |
 | `01 15` | pstr effect, bool, `00` | `04 15` | effect on/off |
 | `01 28` | pstr effect, bool | `04 28` | ask the amp to report expression/wah volume (JH.Vox846) |
-| `01 38` | `00`, slot | `04 38` | select a hardware preset (0–3), or `7F` |
+| `01 38` | `00`, slot | `04 38` | select a hardware preset (0–3; **Spark 2: 0–7**, where 4–7 is bank 2), or `7F` |
 | `01 65` | bool | `04 65` | tuner on/off **(GO / MINI / 2 / NEO)** |
 | `01 70` | 64-byte key | `04 70` | licence key the app sends at startup. Not needed for control. |
 | `01 75` / `01 76` | … | | looper command / settings **(Spark 2 / GO / NEO, unverified)** |
@@ -97,7 +97,7 @@ Parameter values are floats from 0.0 to 1.0. The app shows them as 0 to 10.
 | `03 27` | `00`, slot | user long-pressed a preset button to store |
 | `03 28` | float | expression/wah volume |
 | `03 37` | pstr effect, int param, float value | a knob was turned on the amp |
-| `03 38` | `00`, slot | preset button pressed on the amp |
+| `03 38` | `00`, slot | preset button pressed on the amp (Spark 2 reports 4–7 for bank 2) |
 | `03 63` | float bpm | tap tempo |
 | `03 64` | int note (0 = C), float offset (0.5 = in tune) | tuner reading |
 | `03 65` | bool | tuner turned on/off from the amp |
@@ -127,6 +127,10 @@ checksum           (sum of all bytes after the 2 slot bytes) mod 256
 Values have to round-trip bit-exactly (float32), or the checksum and the `02 2A` slot checksums stop matching what the app expects.
 
 Effect ids and parameter names are listed in [`src/spark/effects.js`](../src/spark/effects.js). The reverb model is always `bias.reverb`; its parameter 6 picks the reverb type (0.0, 0.1, … 0.8).
+
+## Spark 2 preset banks
+
+The Spark 2 stores 8 presets in two banks of four. The bank button on the amp just changes which four the preset buttons select. On the wire there's no "bank" message: the slot number covers both banks, with **0–3 for bank 1 and 4–7 for bank 2**, in `01 38`, `03 38`, `02 10`/`03 10` and `02 01`. Ignitron also uses `02 2B 00` (extended checksums) instead of `02 2A` on the Spark 2.
 
 ## Startup sequence used by the official app
 

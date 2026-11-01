@@ -43,11 +43,17 @@
   <main>
     <section id="panel-tone" role="tabpanel" aria-labelledby="tab-tone">
       <div class="presets">
-        <div class="preset-buttons" role="group" aria-label="Hardware presets">
-          <button type="button" data-slot="0">1</button>
-          <button type="button" data-slot="1">2</button>
-          <button type="button" data-slot="2">3</button>
-          <button type="button" data-slot="3">4</button>
+        <div class="preset-picker">
+          <div class="banks" role="group" aria-label="Preset bank" hidden>
+            <button type="button" data-bank="0" aria-pressed="true">Bank 1</button>
+            <button type="button" data-bank="1" aria-pressed="false">Bank 2</button>
+          </div>
+          <div class="preset-buttons" role="group" aria-label="Hardware presets">
+            <button type="button" data-index="0">1</button>
+            <button type="button" data-index="1">2</button>
+            <button type="button" data-index="2">3</button>
+            <button type="button" data-index="3">4</button>
+          </div>
         </div>
         <div class="preset-meta">
           <strong id="preset-name">No preset loaded</strong>
