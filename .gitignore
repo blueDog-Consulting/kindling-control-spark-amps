@@ -1,6 +1,48 @@
+# dependencies
 node_modules/
-*.log
-!test/fixtures/*.log
+
+# Build artifacts
+*.apk
+*.aab
+build/
 dist/
 out/
 screenshots/
+
+# Environment / secrets (keep .env.example as the template)
+.env
+.env.*
+!.env.example
+
+# Signing & credentials
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+keystore.properties
+google-services.json
+GoogleService-Info.plist
+credentials.json
+
+# Keep archived release binaries for a historical record (tracked via Git LFS)
+!releases/*.apk
+!releases/*.aab
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Logs
+*.log
+!test/fixtures/*.log
+
+# macOS
+.DS_Store
+# Official store material lives in the private repo (see AGENTS.md "Private resources")
+/play-store/
+/store/
+/assets/store/

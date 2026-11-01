@@ -17,6 +17,8 @@
     "ios": "cap sync ios && cap open ios",
     "check:docs": "node tools/check-docs.js",
     "release:plan": "node tools/release-plan.js",
+    "release:notes": "node tools/release-notes.js",
+    "release:android": "bash tools/release-android.sh",
     "icons": "node tools/build-icons.js",
     "screenshots": "node tools/screenshots.js"
   },

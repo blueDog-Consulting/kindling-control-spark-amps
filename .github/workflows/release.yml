@@ -57,6 +57,16 @@ jobs:
         env:
           FORCE_ALL: ${{ github.event.inputs.force || 'false' }}
         run: node tools/release-plan.js "$TAG"
+      - name: Check store release notes
+        # A final Android build needs release-notes/<version>/android.txt (see release-notes/README.md).
+        # Fail here, before anything is built. Notes that exist are always validated (length limits).
+        env:
+          ANDROID_BUILT: ${{ steps.plan.outputs.android }}
+          PRERELEASE: ${{ steps.plan.outputs.prerelease }}
+        run: |
+          require=()
+          if [ "$ANDROID_BUILT" = "true" ] && [ "$PRERELEASE" != "true" ]; then require=(--require android); fi
+          node tools/release-notes.js "$TAG" "${require[@]}"
 
   android:
     needs: plan
@@ -172,12 +182,20 @@ jobs:
       DESKTOP_BUILT: ${{ needs.plan.outputs.desktop }}
       DESKTOP_REASON: ${{ needs.plan.outputs.desktop_reason }}
     steps:
+      - uses: actions/checkout@v7 # for release-notes/<version>/
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
       - uses: actions/download-artifact@v8
         continue-on-error: true # nothing to download when no app changed
         with:
           path: assets
           merge-multiple: true
       - name: Write release notes
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
           row() { if [ "$2" = "true" ]; then echo "| $1 | ✅ built | $3 |"; else echo "| $1 | – skipped | $3 |"; fi; }
           {
@@ -193,6 +211,9 @@ jobs:
             echo "Desktop builds are not code-signed yet: on Windows choose \"More info → Run anyway\"."
             echo
           } > notes.md
+          # Versioned store notes: shown in the release body and attached as <app>-whatsnew.txt files,
+          # ready to paste into Google Play Console / App Store Connect.
+          node tools/release-notes.js "$TAG" --out assets --markdown notes.md
           args=(-f tag_name="$TAG")
           [ -n "$PREVIOUS" ] && args+=(-f previous_tag_name="$PREVIOUS")
           gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" "${args[@]}" --jq .body >> notes.md || true
