@@ -1,4 +1,4 @@
-package io.github.jerdog.kindlingcontrol;
+package dev.bluedog.kindlingcontrol;
 
 import com.getcapacitor.BridgeActivity;
 

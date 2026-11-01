@@ -23,7 +23,7 @@ Changes that aren't material and need no docs: pure styling, typo fixes, refacto
 
 ## What this is
 
-**KindlingControl** ("the kindling that controls your Spark"), © 2026 **blueDog Consulting**, which owns, builds and maintains it. Licence: **GPL-3.0-or-later**. `LICENSE` is the verbatim GPLv3 text (never edit it); the copyright line and licence notice live in `NOTICE` and the README. Only borrow code or data under GPL-compatible licences (Apache-2.0, MIT, BSD are fine) and record it in `NOTICE`. Repo: https://github.com/bluedog-consulting/kindling-control-spark-amps (previously jerdog/positive-grid-spark; GitHub redirects). App ID: `io.github.jerdog.kindlingcontrol`; slug: `kindling-control`. Describe it as "an open controller for Positive Grid Spark amps"; don't use "Spark" as part of the product name.
+**KindlingControl** ("the kindling that controls your Spark"), © 2026 **blueDog Consulting and Jeremy Meiss** (the copyright holders; blueDog Consulting builds and maintains it). Licence: **GPL-3.0-or-later**. `LICENSE` is the verbatim GPLv3 text (never edit it); the copyright line and licence notice live in `NOTICE` and the README. Only borrow code or data under GPL-compatible licences (Apache-2.0, MIT, BSD are fine) and record it in `NOTICE`. Repo: https://github.com/bluedog-consulting/kindling-control-spark-amps (previously jerdog/positive-grid-spark; GitHub redirects). App ID: `dev.bluedog.kindlingcontrol` (Android `applicationId`/namespace, iOS bundle id, Capacitor `appId`, electron-builder `appId`; don't change it once an app is in a store); slug: `kindling-control`. Describe it as "an open controller for Positive Grid Spark amps"; don't use "Spark" as part of the product name.
 
 An open re-implementation of the Positive Grid Spark amp's Bluetooth protocol, with a control UI that runs everywhere from one codebase. Supported amps: Spark 40, MINI, GO, 2 and NEO.
 
@@ -137,7 +137,7 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 
 ## Website (landing page)
 
-- `site/index.html` is the promotional landing page. Its only JS is a tiny inline script that reveals the back-to-top button once the hero scrolls away (IntersectionObserver; without JS the button stays hidden). The footer carries the blueDog Consulting copyright. It uses the same palette as the app, and pulls its icons from `app/` (the built site). It links to the user guide at `app/guide/`. The deploy is `site-dist/`: `site/` at `/` and `src/` at `/app/`, from `tools/build-site.js`. The Electron and Capacitor shells still use `src/` directly.
+- `site/index.html` is the promotional landing page. Its only JS is a tiny inline script that reveals the back-to-top button once the hero scrolls away (IntersectionObserver; without JS the button stays hidden). The footer carries the copyright line (blueDog Consulting and Jeremy Meiss). It uses the same palette as the app, and pulls its icons from `app/` (the built site). It links to the user guide at `app/guide/`. The deploy is `site-dist/`: `site/` at `/` and `src/` at `/app/`, from `tools/build-site.js`. The Electron and Capacitor shells still use `src/` directly.
 - Screenshots come from `npm run screenshots` (real app + `MockSparkTransport` Spark 2). Re-run it after visible UI changes; don't hand-edit them.
 - Keep the copy honest:
   - Say what has actually been tested (a Spark 2) versus what follows the documented protocol.

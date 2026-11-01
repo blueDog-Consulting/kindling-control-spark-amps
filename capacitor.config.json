@@ -1,5 +1,5 @@
 {
-  "appId": "io.github.jerdog.kindlingcontrol",
+  "appId": "dev.bluedog.kindlingcontrol",
   "appName": "KindlingControl",
   "webDir": "src",
   "android": {

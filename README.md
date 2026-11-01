@@ -143,6 +143,6 @@ The protocol knowledge comes from Paul Hamshere's [Spark](https://github.com/pau
 
 ## License
 
-Copyright © 2026 blueDog Consulting. KindlingControl is designed, built and maintained by blueDog Consulting, and free software under the [GNU General Public License v3.0 or later](LICENSE) (GPL-3.0-or-later). If you distribute a modified version, you must share its source under the same licence, so improvements come back to everyone. Third-party notices are in [NOTICE](NOTICE).
+Copyright © 2026 blueDog Consulting and Jeremy Meiss. KindlingControl is designed, built and maintained by blueDog Consulting, and free software under the [GNU General Public License v3.0 or later](LICENSE) (GPL-3.0-or-later). If you distribute a modified version, you must share its source under the same licence, so improvements come back to everyone. Third-party notices are in [NOTICE](NOTICE).
 
 This is an independent interoperability project. It is not affiliated with or endorsed by Positive Grid. "Spark" and "Positive Grid" are their trademarks.

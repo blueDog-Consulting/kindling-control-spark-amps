@@ -29,7 +29,7 @@
   "author": "blueDog Consulting",
   "homepage": "https://github.com/bluedog-consulting/kindling-control-spark-amps",
   "build": {
-    "appId": "io.github.jerdog.kindlingcontrol",
+    "appId": "dev.bluedog.kindlingcontrol",
     "productName": "KindlingControl",
     "files": [
       "desktop/**/*",
@@ -91,7 +91,7 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     },
-    "copyright": "Copyright © 2026 blueDog Consulting"
+    "copyright": "Copyright © 2026 blueDog Consulting and Jeremy Meiss"
   },
   "devDependencies": {
     "@capacitor-community/bluetooth-le": "8.3.0",
