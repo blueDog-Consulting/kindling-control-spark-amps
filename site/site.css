@@ -58,7 +58,8 @@ a:hover { color: #ffc861; }
 .nav nav { display: flex; gap: 1.25rem; margin-inline-start: auto; }
 .nav nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 0.95rem; }
 .nav nav a:hover { color: var(--text); }
-@media (width < 820px) { .nav nav { display: none; } .nav .btn { margin-inline-start: auto; } }
+.nav-actions { display: flex; align-items: center; gap: 0.6rem; }
+@media (width < 820px) { .nav nav { display: none; } .nav-actions { margin-inline-start: auto; } }
 
 /* ---- buttons ----------------------------------------------------------------- */
 
@@ -205,3 +206,11 @@ a:hover { color: #ffc861; }
 .to-top[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .to-top, .to-top.show { transition: none; } }
 .copyright { color: var(--text); }
+
+/* buy me a coffee (header) */
+.btn-coffee { gap: 0.4rem; color: #000; background: #ffdd00; border-color: #000; }
+.btn-coffee:hover { color: #000; border-color: #000; filter: brightness(1.06); }
+.btn-coffee { white-space: nowrap; }
+@media (width < 560px) or ((width >= 820px) and (width < 1080px)) { .btn-coffee .coffee-text { display: none; } .btn-coffee { padding-inline: 0.65rem; } }
+.nav-actions .btn { white-space: nowrap; }
+@media (width < 440px) { .nav .brand > span { display: none; } } /* phones: logo only, so both header buttons fit */

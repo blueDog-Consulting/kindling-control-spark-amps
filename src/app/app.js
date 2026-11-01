@@ -554,6 +554,8 @@ document.addEventListener('click', (e) => {
 $('#help-close').addEventListener('click', () => $('#help-dialog').close());
 // The native apps' web views can't open extra windows; keep the guide in the panel there.
 if (CapacitorBleTransport.isAvailable()) $('#help-newtab').hidden = true;
+// No donation link inside the store apps (app store payment rules); web and desktop only.
+if (CapacitorBleTransport.isAvailable()) $('#coffee').hidden = true;
 
 // ---------------------------------------------------------------------------
 // tuner
