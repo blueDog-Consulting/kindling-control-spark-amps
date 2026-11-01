@@ -35,6 +35,7 @@
 
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button role="tab" id="tab-tone" aria-controls="panel-tone" aria-selected="true">Tone</button>
+    <button role="tab" id="tab-library" aria-controls="panel-library" aria-selected="false" tabindex="-1">Presets</button>
     <button role="tab" id="tab-tuner" aria-controls="panel-tuner" aria-selected="false" tabindex="-1">Tuner</button>
     <button role="tab" id="tab-console" aria-controls="panel-console" aria-selected="false" tabindex="-1">Console</button>
     <button role="tab" id="tab-capture" aria-controls="panel-capture" aria-selected="false" tabindex="-1">Capture</button>
@@ -61,11 +62,28 @@
         </div>
         <div class="preset-actions">
           <button type="button" id="refresh" disabled>Refresh</button>
-          <button type="button" id="export" disabled>Export</button>
-          <label class="button" id="import-label">Import<input type="file" id="import" accept=".json,application/json" hidden></label>
+          <button type="button" id="new-preset">New</button>
+          <button type="button" id="save-preset" class="primary" disabled>Save…</button>
         </div>
       </div>
+
+      <section id="amp-strip" class="amp-strip" aria-labelledby="amp-strip-title" hidden>
+        <h2 id="amp-strip-title">Amp <span id="amp-strip-model"></span></h2>
+        <div class="amp-knobs"></div>
+      </section>
+
       <div id="chain" class="chain"></div>
+    </section>
+
+    <section id="panel-library" role="tabpanel" aria-labelledby="tab-library" hidden>
+      <div class="row library-actions">
+        <p class="library-note">Presets saved on this device. Load one onto the amp to play it, or store it in one of the amp's preset slots.</p>
+        <label class="button">Import JSON…<input type="file" id="import" accept=".json,application/json" multiple hidden></label>
+        <button type="button" id="export-current" disabled>Export current tone</button>
+      </div>
+      <p id="library-storage-warning" class="banner" hidden>This browser isn't letting the app store data, so saved presets will be lost when you close it. Export the ones you want to keep.</p>
+      <ul id="library" class="library"></ul>
+      <p id="library-empty" class="library-note">No saved presets yet. Use <strong>New</strong> or <strong>Save…</strong> on the Tone tab, or import a JSON file.</p>
     </section>
 
     <section id="panel-tuner" role="tabpanel" aria-labelledby="tab-tuner" hidden>
@@ -112,6 +130,42 @@
     <p id="bt-scanning">Scanning… make sure the amp is on and the official app is closed.</p>
     <ul id="bt-list" class="bt-list"></ul>
     <button type="button" id="bt-cancel">Cancel</button>
+  </dialog>
+
+  <dialog id="new-dialog" aria-labelledby="new-title">
+    <form method="dialog" class="dialog-form">
+      <h2 id="new-title">New preset</h2>
+      <label for="new-name">Name</label>
+      <input id="new-name" required maxlength="31" autocomplete="off" value="New preset">
+      <fieldset>
+        <legend>Start from</legend>
+        <label><input type="radio" name="new-from" value="current" checked> The current sound</label>
+        <label><input type="radio" name="new-from" value="blank"> A clean, blank preset</label>
+      </fieldset>
+      <p class="hint">It goes onto the amp straight away so you can shape it. Nothing is stored until you press <strong>Save…</strong>.</p>
+      <div class="row dialog-buttons">
+        <button value="cancel" formnovalidate>Cancel</button>
+        <button value="ok" class="primary">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="save-dialog" aria-labelledby="save-title">
+    <form method="dialog" class="dialog-form">
+      <h2 id="save-title">Save preset</h2>
+      <label for="save-name">Name</label>
+      <input id="save-name" required maxlength="31" autocomplete="off">
+      <label for="save-desc">Description <small>(optional)</small></label>
+      <input id="save-desc" maxlength="60" autocomplete="off">
+      <label class="row"><input type="checkbox" id="save-library" checked> Save to My presets on this device</label>
+      <label for="save-slot">Store on the amp</label>
+      <select id="save-slot"></select>
+      <p id="save-warning" class="hint warn" hidden></p>
+      <div class="row dialog-buttons">
+        <button value="cancel" formnovalidate>Cancel</button>
+        <button value="ok" class="primary">Save</button>
+      </div>
+    </form>
   </dialog>
 
   <template id="fx-card">

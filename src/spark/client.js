@@ -110,6 +110,16 @@ export class SparkClient extends EventTarget {
   setTuner(on) {
     return this.command(M.setTuner(on), { optional: true });
   }
+  /**
+   * Store a preset in a hardware slot (0-3, or 0-7 on Spark 2), replacing what
+   * was there, and switch the amp to it.
+   */
+  async storePreset(preset, slot) {
+    if (!Number.isInteger(slot) || slot < 0 || slot >= TEMP_SLOT) throw new RangeError(`bad hardware slot ${slot}`);
+    await this.command(M.sendPreset(preset, slot), { timeoutMs: 5000 });
+    await this.selectPreset(slot);
+  }
+
   /** Upload a preset (default: temp slot) and make it live. */
   async loadPreset(preset, slot = TEMP_SLOT, { activate = true } = {}) {
     await this.command(M.sendPreset(preset, slot), { timeoutMs: 5000 });

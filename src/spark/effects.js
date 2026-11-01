@@ -150,8 +150,40 @@ export function effectsForSlot(slotKey) {
   return EFFECTS.filter((e) => e.slot === slotKey);
 }
 
-/** Parameter descriptor with a generic fallback. */
-export function paramInfo(effectId, index) {
+// Every Spark amp model uses this parameter order. Used for amp models that
+// aren't in the catalog yet (e.g. newer Spark 2 / NEO amps).
+export const AMP_PARAMS = ['Gain', 'Treble', 'Middle', 'Bass', 'Volume'];
+// Order of the knobs on the amp's top panel, as parameter indexes.
+export const AMP_KNOB_ORDER = [0, 3, 2, 1, 4]; // gain, bass, middle, treble, volume
+
+/**
+ * Parameter descriptor. Falls back to the standard amp knobs when slotKey is
+ * 'amp', otherwise to a generic "Param N" label.
+ */
+export function paramInfo(effectId, index, slotKey) {
   const e = findEffect(effectId);
-  return e?.params[index] ?? { name: `Param ${index + 1}`, kind: 'knob' };
+  if (e?.params[index]) return e.params[index];
+  if ((e?.slot ?? slotKey) === 'amp' && AMP_PARAMS[index]) return { name: AMP_PARAMS[index], kind: 'knob' };
+  return { name: `Param ${index + 1}`, kind: 'knob' };
+}
+
+/** A neutral starting point for a new preset: clean amp, gate + reverb on, the rest off. */
+export function blankPreset(name = 'New preset') {
+  const p = (id, isOn, params) => ({ name: id, isOn, params });
+  return {
+    name,
+    version: '0.7',
+    description: '',
+    icon: 'icon.png',
+    bpm: 120,
+    pedals: [
+      p('bias.noisegate', true, [0.2, 0.3, 0]),
+      p('LA2AComp', false, [0, 0.5, 0.3]),
+      p('Booster', false, [0.5]),
+      p('Twin', true, [0.4, 0.5, 0.5, 0.5, 0.6]),
+      p('ChorusAnalog', false, [0.4, 0.3, 0.5, 0.5]),
+      p('DelayMono', false, [0.2, 0.3, 0.4, 0.6, 0]),
+      p('bias.reverb', true, [0.3, 0.5, 0.5, 0.5, 0.2, 0.6, 0.3]),
+    ],
+  };
 }

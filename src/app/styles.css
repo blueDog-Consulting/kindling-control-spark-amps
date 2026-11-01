@@ -326,3 +326,53 @@ dialog#bt-picker h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
 /* ---- native app shells: keep clear of notches / home indicator -------- */
 
 main { padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right)); }
+
+/* ---- amp knob strip ------------------------------------------------------ */
+
+.amp-strip {
+  background: var(--surface); border: 1px solid var(--accent); border-radius: 0.9rem;
+  padding: 0.75rem 1rem; margin-bottom: 1rem;
+}
+.amp-strip[hidden] { display: none; }
+.amp-strip h2 { margin: 0 0 0.4rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.amp-strip h2 span { color: var(--text); text-transform: none; letter-spacing: 0; font-size: 0.9rem; margin-inline-start: 0.35rem; }
+.amp-knobs { display: grid; gap: 0.1rem 1.25rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.amp-knobs .param { grid-template-columns: 4.5rem 1fr 2.6rem; font-size: 1rem; }
+.amp-knobs .param .name { color: var(--text); font-weight: 600; }
+
+/* ---- dialogs ---------------------------------------------------------------- */
+
+dialog#new-dialog, dialog#save-dialog {
+  border: 1px solid var(--border); border-radius: 0.9rem;
+  background: var(--surface); color: var(--text);
+  inline-size: min(28rem, calc(100vw - 2rem)); padding: 1.25rem;
+}
+dialog#new-dialog::backdrop, dialog#save-dialog::backdrop { background: rgb(0 0 0 / 0.5); }
+.dialog-form { display: grid; gap: 0.5rem; }
+.dialog-form h2 { margin: 0 0 0.25rem; font-size: 1.1rem; }
+.dialog-form fieldset { border: 1px solid var(--border); border-radius: 0.6rem; display: grid; gap: 0.35rem; margin: 0.25rem 0; }
+.dialog-form .hint { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.dialog-form .hint.warn { color: var(--accent); }
+.dialog-buttons { justify-content: flex-end; margin-top: 0.5rem; }
+
+.unsaved { font-size: 0.75rem; font-weight: 600; color: var(--accent); margin-inline-start: 0.4rem; }
+
+/* ---- library ----------------------------------------------------------------- */
+
+.library-actions { margin-bottom: 0.75rem; }
+.library-note { color: var(--muted); margin: 0; flex-basis: 100%; }
+.library { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.library li {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 0.9rem; padding: 0.75rem;
+  display: grid; gap: 0.35rem;
+}
+.library li.active { border-color: var(--accent); }
+.library .lib-name { font-weight: 700; font-size: 1.05rem; }
+.library .lib-meta { color: var(--muted); font-size: 0.8rem; }
+.library .lib-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.25rem; }
+.library .lib-actions button { min-height: 2.25rem; padding-inline: 0.7rem; }
+
+@media (width < 480px) {
+  .tabs { gap: 0; padding-inline: 0.5rem; }
+  .tabs [role="tab"] { padding-inline: 0.55rem; }
+}

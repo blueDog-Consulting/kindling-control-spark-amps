@@ -14,8 +14,8 @@ Build instructions for each are in [docs/APPS.md](docs/APPS.md).
 
 ## What it does
 
-* **Tone:** switch hardware presets 1–4; turn every effect on or off; swap amp and effect models; edit every parameter. Turning a knob on the amp updates the UI live.
-* **Presets:** export the live tone as JSON, or import one. Imports go to the amp's temporary slot, so your stored presets are left alone. The JSON format is compatible with [Ignitron](https://github.com/stangreg/Ignitron)'s preset files.
+* **Tone:** switch hardware presets (both banks on the Spark 2; changing bank keeps your position, so 3 in bank 1 goes to 3 in bank 2). Gain, bass, middle, treble and volume sit in a strip at the top. You can also turn every effect on or off, swap amp and effect models, and edit every parameter. Turning a knob on the amp updates the UI live.
+* **Presets:** **New** creates a preset, either from the current sound or blank, and puts it on the amp to shape. **Save…** keeps it in *My presets* on this device, stores it in one of the amp's preset slots, or both. The Presets tab lists saved presets to load, export or delete, and imports JSON files. The format is compatible with [Ignitron](https://github.com/stangreg/Ignitron)'s preset files.
 * **Tuner** on models that support it.
 * **Console:** every message in both directions, decoded, with the raw hex. You can also send arbitrary commands.
 * **Capture decoder:** load an Android `btsnoop_hci.log` and see exactly what the official app sends. This is how you reverse engineer the features that aren't covered yet. See [docs/CAPTURE.md](docs/CAPTURE.md).
