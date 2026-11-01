@@ -22,7 +22,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const DEFAULT_MODEL = '@cf/zai-org/glm-5.3';
+export const DEFAULT_MODEL = '@cf/openai/gpt-oss-120b'; // 128k context; see docs/TELEMETRY.md "Model choice"
 /** Files the agent may change. Not src/app/telemetry.js (privacy-critical) or src/version.js. */
 export const ALLOWED_PATH = /^src\/(?:app\/(?!telemetry\.js$)|spark\/)[\w.-]+\.js$/;
 const MAX_FILES = 4;
