@@ -11,11 +11,13 @@
   <meta property="og:description" content="The kindling that controls your Spark. A free, open controller for Positive Grid Spark amps.">
   <meta property="og:image" content="screenshots/rig-desktop.jpg">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="KindlingControl">
+  <meta name="author" content="blueDog Consulting">
   <link rel="icon" href="app/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="app/icons/apple-touch-icon.png">
   <link rel="stylesheet" href="site.css">
 </head>
-<body>
+<body id="top">
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="nav">
@@ -43,7 +45,7 @@
         </p>
         <div class="cta">
           <a class="btn btn-primary" href="app/">Open the web app</a>
-          <a class="btn" href="https://github.com/jerdog/positive-grid-spark/releases/latest">Download for desktop &amp; Android</a>
+          <a class="btn" href="https://github.com/bluedog-consulting/positive-grid-spark/releases/latest">Download for desktop &amp; Android</a>
         </div>
         <p class="fine">The web app runs in Chrome or Edge. An iPad app is planned (it needs a native build).</p>
       </div>
@@ -133,7 +135,7 @@
         </li>
         <li>
           <h3>Open KindlingControl</h3>
-          <p>Use the <a href="app/">web app</a> in Chrome or Edge on Android, Windows, macOS, Linux or ChromeOS. You can also install the <a href="https://github.com/jerdog/positive-grid-spark/releases/latest">desktop or Android app</a>.</p>
+          <p>Use the <a href="app/">web app</a> in Chrome or Edge on Android, Windows, macOS, Linux or ChromeOS. You can also install the <a href="https://github.com/bluedog-consulting/positive-grid-spark/releases/latest">desktop or Android app</a>.</p>
         </li>
         <li>
           <h3>Connect</h3>
@@ -189,9 +191,9 @@
         </article>
       </div>
       <p>
-        Read the full protocol write-up in <a href="https://github.com/jerdog/positive-grid-spark/blob/main/docs/PROTOCOL.md">docs/PROTOCOL.md</a>,
+        Read the full protocol write-up in <a href="https://github.com/bluedog-consulting/positive-grid-spark/blob/main/docs/PROTOCOL.md">docs/PROTOCOL.md</a>,
         or record what the official app does with your own amp. See the
-        <a href="https://github.com/jerdog/positive-grid-spark/blob/main/docs/CAPTURE.md">capture guide</a>.
+        <a href="https://github.com/bluedog-consulting/positive-grid-spark/blob/main/docs/CAPTURE.md">capture guide</a>.
       </p>
     </section>
 
@@ -208,7 +210,7 @@
       </details>
       <details>
         <summary>Which amps has it been tested with?</summary>
-        <p>It has been used with a Spark&nbsp;2. The other models use the same community-documented protocol, so they should work, but if something's off on yours, please <a href="https://github.com/jerdog/positive-grid-spark/issues">open an issue</a>.</p>
+        <p>It has been used with a Spark&nbsp;2. The other models use the same community-documented protocol, so they should work, but if something's off on yours, please <a href="https://github.com/bluedog-consulting/positive-grid-spark/issues">open an issue</a>.</p>
       </details>
       <details>
         <summary>Why doesn't the web app work on my iPhone or iPad?</summary>
@@ -227,8 +229,9 @@
 
   <footer class="footer">
     <div class="footer-brand"><img src="app/icon.svg" alt="" width="28" height="28"><span>Kindling<b>Control</b></span></div>
+    <p class="copyright">© 2026 blueDog Consulting. KindlingControl is designed, built and maintained by blueDog Consulting.</p>
     <p>
-      <a href="app/guide/">User guide</a> · Open source under the Apache 2.0 licence · <a href="https://github.com/jerdog/positive-grid-spark">Source on GitHub</a>
+      <a href="app/guide/">User guide</a> · Open source under the Apache 2.0 licence · <a href="https://github.com/bluedog-consulting/positive-grid-spark">Source on GitHub</a>
     </p>
     <p class="disclaimer">
       KindlingControl is not affiliated with or endorsed by Positive Grid. "Spark" and "Positive Grid" are trademarks of
@@ -236,5 +239,18 @@
       only describe what each model sounds like.
     </p>
   </footer>
+
+  <a class="to-top" href="#top" hidden><span aria-hidden="true">↑</span> Top</a>
+  <script>
+    // Reveal the "back to top" button once the hero has scrolled out of view.
+    // Without JS (or IntersectionObserver) it simply stays hidden.
+    (() => {
+      const btn = document.querySelector('.to-top');
+      const hero = document.querySelector('.hero');
+      if (!btn || !hero || !('IntersectionObserver' in window)) return;
+      btn.hidden = false;
+      new IntersectionObserver(([entry]) => btn.classList.toggle('show', !entry.isIntersecting)).observe(hero);
+    })();
+  </script>
 </body>
 </html>

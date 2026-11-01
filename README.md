@@ -127,7 +127,7 @@ The tests include a real Spark 40 preset dump. The decoder has to reproduce its 
 
 ## Releases
 
-Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions then rebuilds whichever of the web app, the Android app and the desktop apps changed since the last release, and publishes them on the [Releases](https://github.com/jerdog/positive-grid-spark/releases) page. See [docs/RELEASING.md](docs/RELEASING.md) for details and the optional signing and deploy secrets.
+Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions then rebuilds whichever of the web app, the Android app and the desktop apps changed since the last release, and publishes them on the [Releases](https://github.com/bluedog-consulting/positive-grid-spark/releases) page. See [docs/RELEASING.md](docs/RELEASING.md) for details and the optional signing and deploy secrets.
 
 ## Contributing
 
@@ -138,5 +138,9 @@ Read [AGENTS.md](AGENTS.md) first. It describes how the system fits together, an
 Model "based on" information follows Positive Grid's own model descriptions. Gear names are trademarks of their owners.
 
 The protocol knowledge comes from Paul Hamshere's [Spark](https://github.com/paulhamsh/Spark) and [Spark-Parser](https://github.com/paulhamsh/Spark-Parser) (Apache-2.0), and from stangreg's [Ignitron](https://github.com/stangreg/Ignitron) (BSD-3-Clause). See [NOTICE](NOTICE).
+
+## License
+
+Copyright © 2026 blueDog Consulting. KindlingControl is designed, built and maintained by blueDog Consulting, and open source under the [Apache License 2.0](LICENSE). Third-party notices are in [NOTICE](NOTICE).
 
 This is an independent interoperability project. It is not affiliated with or endorsed by Positive Grid. "Spark" and "Positive Grid" are their trademarks.

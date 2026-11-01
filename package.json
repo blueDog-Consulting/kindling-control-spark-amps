@@ -26,8 +26,8 @@
     "node": ">=20"
   },
   "main": "desktop/main.js",
-  "author": "Jeremy Meiss",
-  "homepage": "https://github.com/jerdog/positive-grid-spark",
+  "author": "blueDog Consulting",
+  "homepage": "https://github.com/bluedog-consulting/positive-grid-spark",
   "build": {
     "appId": "io.github.jerdog.kindlingcontrol",
     "productName": "KindlingControl",
@@ -82,7 +82,7 @@
         }
       ],
       "category": "Audio",
-      "maintainer": "jerdog <jerdog@users.noreply.github.com>",
+      "maintainer": "blueDog Consulting <jerdog@users.noreply.github.com>",
       "syncDesktopName": true
     },
     "artifactName": "kindling-control-${version}-${os}-${arch}.${ext}",
@@ -90,7 +90,8 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "copyright": "Copyright © 2026 blueDog Consulting"
   },
   "devDependencies": {
     "@capacitor-community/bluetooth-le": "8.3.0",
