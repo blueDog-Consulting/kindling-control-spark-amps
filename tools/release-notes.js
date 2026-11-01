@@ -64,7 +64,7 @@ function main(argv) {
     const i = args.indexOf(flag);
     if (i === -1) return undefined;
     const [, value] = args.splice(i, 2);
-    if (!value) throw new Error(`${flag} needs a value`);
+    if (!value || value.startsWith('--')) throw new Error(`${flag} needs a value`);
     return value;
   };
   const require = (opt('--require') ?? '').split(',').filter(Boolean);

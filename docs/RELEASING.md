@@ -81,7 +81,7 @@ Without a keystore, CI builds `assembleDebug`. That APK installs by sideloading,
 
 ## Building Android locally
 
-`tools/release-android.sh` does what the `android` job in `release.yml` does, on your machine. It needs JDK 21+ and the Android SDK platform named by `compileSdkVersion` in `android/variables.gradle`; it checks both and prints the fix.
+`tools/release-android.sh` does what the `android` job in `release.yml` does, on your machine. It needs JDK 21+ and the Android SDK platform named by `compileSdkVersion` in `android/variables.gradle`; it checks both and prints the fix. It finds the SDK through `ANDROID_HOME` / `ANDROID_SDK_ROOT`, then `sdk.dir` in `android/local.properties` (written by Android Studio), then Android Studio's default location on macOS (`~/Library/Android/sdk`) and Linux (`~/Android/Sdk`).
 
 ```sh
 export ANDROID_KEYSTORE_FILE=~/keys/release.jks   # a .jks and a .keystore are the same thing

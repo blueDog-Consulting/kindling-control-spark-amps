@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadStoreNotes, notesMarkdown, STORES } from '../tools/release-notes.js';
 
 function repoWith(version, files) {
@@ -58,4 +60,12 @@ test('markdown lists each store that has notes', () => {
   const md = notesMarkdown({ macos: 'Hi' });
   assert.match(md, /### Mac App Store/);
   assert.doesNotMatch(md, /Google Play/);
+});
+
+test('an option followed by another option is an error, not its value', () => {
+  const cli = fileURLToPath(new URL('../tools/release-notes.js', import.meta.url));
+  const cwd = mkdtempSync(join(tmpdir(), 'release-notes-cli-'));
+  const r = spawnSync(process.execPath, [cli, '0.3.0', '--out', '--markdown', 'notes.md'], { cwd, encoding: 'utf8' });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /--out needs a value/);
 });

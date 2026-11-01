@@ -79,7 +79,20 @@ if [ "$(java_major "$current")" -lt 21 ] 2>/dev/null || ! command -v "$current" 
     exit 1
   fi
 fi
-sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
+# Android SDK: ANDROID_HOME / ANDROID_SDK_ROOT if set, else what Android Studio wrote to android/local.properties,
+# else Android Studio's default location on macOS, then Linux.
+sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+if [ -z "$sdk" ]; then
+  for dir in "$(sed -n 's/^sdk\.dir=//p' android/local.properties 2>/dev/null || true)" \
+    "$HOME/Library/Android/sdk" "$HOME/Android/Sdk"; do
+    if [ -n "$dir" ] && [ -d "$dir" ]; then sdk="$dir"; break; fi
+  done
+fi
+if [ -z "$sdk" ]; then
+  echo "error: no Android SDK found (looked at ANDROID_HOME, ANDROID_SDK_ROOT, android/local.properties," >&2
+  echo "  ~/Library/Android/sdk and ~/Android/Sdk). Install one with Android Studio, or set ANDROID_HOME." >&2
+  exit 1
+fi
 compile_sdk=$(sed -n 's/.*compileSdkVersion = \([0-9]*\).*/\1/p' android/variables.gradle)
 if [ ! -d "$sdk/platforms/android-$compile_sdk" ]; then
   echo "error: Android SDK platform $compile_sdk not found in $sdk." >&2

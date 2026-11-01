@@ -4,7 +4,7 @@ node_modules/
 # Build artifacts
 *.apk
 *.aab
-build/
+# No root build/ rule: build/ holds the committed desktop icons. android/ and ios/ ignore their own build output.
 dist/
 out/
 screenshots/
@@ -26,10 +26,6 @@ keystore.properties
 google-services.json
 GoogleService-Info.plist
 credentials.json
-
-# Keep archived release binaries for a historical record (tracked via Git LFS)
-!releases/*.apk
-!releases/*.aab
 
 # debug
 npm-debug.*
