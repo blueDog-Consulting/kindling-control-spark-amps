@@ -38,7 +38,7 @@ It's an independent interoperability project. Never add Positive Grid's code, as
 
 `src/app/app.js` picks the transport at runtime: the native plugin if present, then Web Bluetooth. `?mock` swaps in the simulated amp.
 
-The website **kindlingspark.app** (landing page, the user guide at `/guide/`, and the **presets hub** at `/presets/`) is a **separate repository**, https://github.com/bluedog-consulting/kindling-control-website, so the app can be forked without it. See "Website" below for the files it copies from here.
+The website **kindlingcontrol.app** (the project's only domain; the old kindlingspark.app is retired, never use it) (landing page, the user guide at `/guide/`, and the **presets hub** at `/presets/`) is a **separate repository**, https://github.com/bluedog-consulting/kindling-control-website, so the app can be forked without it. See "Website" below for the files it copies from here.
 
 ## Layout
 
@@ -149,7 +149,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 
 ## Error reports (telemetry)
 
-- Released apps send anonymous error reports **only if the user opts in** to the Cloudflare Worker in `telemetry/` (`https://errors.kindlingcontrol.app/v1/report`, `ENDPOINT` in `src/app/telemetry.js`). The error-report Worker lives on **kindlingcontrol.app** (zone `kindlingcontrol.app`), not on the website's domain; keep `ENDPOINT` and the `routes` entry in `telemetry/wrangler.jsonc` on the same host, which writes one structured line per report to Workers Logs. Full details: `docs/TELEMETRY.md`.
+- Released apps send anonymous error reports **only if the user opts in** to the Cloudflare Worker in `telemetry/` (`https://errors.kindlingcontrol.app/v1/report`, `ENDPOINT` in `src/app/telemetry.js`). The project's domain is **kindlingcontrol.app** (website, presets hub, error reports); the old kindlingspark.app is retired, never use it. Keep `ENDPOINT` and the `routes` entry in `telemetry/wrangler.jsonc` on the same host, which writes one structured line per report to Workers Logs. Full details: `docs/TELEMETRY.md`.
 - **Consent:** first run shows `#consent-dialog`; nothing is sent until the user answers (up to 5 errors wait in memory, dropped on "no"). Afterwards the switch lives in **Settings** (`#settings-dialog`, gear button `#settings-open` in the top bar), which also holds **About** (version, which app, licence, links). localStorage key `kindling-control.error-reports` = `on`/`off`; missing = not asked yet. The "what is sent" text is one `<template id="reports-explainer">` used by both dialogs; keep it, the guide's `#privacy` and `docs/TELEMETRY.md` in agreement.
 - **Only non-identifying data:** app (`desktop`/`android`/`ios`/`web`), desktop OS, app version, kind, `where` (a short action tag), error name, scrubbed message and stack, and `first` (whether this install reports this error for the first time; the device remembers reported fingerprints locally in `kindling-control.error-reports.seen`). That's how installs are counted with no install id. Never add ids (user, device, install, session), amp serials or names, Bluetooth ids, preset names, timestamps, IPs, user agents or locations. New fields need an entry in `sanitizeReport()`'s allow-list, `docs/TELEMETRY.md` and the guide's `#privacy` section.
 - The Worker never reads the IP, headers or `request.cf`, and re-scrubs with the same `sanitizeReport()`. `wrangler.jsonc` keeps **invocation logs and traces off** for it (traces would record user agent, location and ASN); keep it that way, and keep it a separate Worker. Its custom-domain route must keep `zone_name` (wrangler can't always infer the zone: error 10082).
@@ -160,7 +160,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 
 ## Website
 
-- kindlingspark.app (landing page, user guide, presets hub) lives in **https://github.com/bluedog-consulting/kindling-control-website**. It was split out so this repo stays a clean, forkable app. Don't add website code back here.
+- kindlingcontrol.app (landing page, user guide, presets hub) lives in **https://github.com/bluedog-consulting/kindling-control-website**. It was split out so this repo stays a clean, forkable app. Don't add website code back here.
 - The website **copies** some files from this repo into its `vendor/app/` (list: `FILES` in its `tools/app-source.js`). It only picks up changes when someone runs its `npm run sync:app`, and it warns weekly when this repo has moved on. The copied files are:
   - `src/spark/messages.js`, `codec.js`, `constants.js`, `effects.js`: the hub validates uploads with `presetToJson` and the effects catalog. Keep them DOM-free, and keep the preset JSON format backwards compatible, because shared presets are stored in it and imported by the app's **Import JSON…**.
   - `src/guide/index.html` and `guide.css`, served at `/guide/`. The website's build rewrites the header link `<a class="back" href="../">Open the app →</a>`; if you change it, the website build fails until its `tools/build.js` is updated.

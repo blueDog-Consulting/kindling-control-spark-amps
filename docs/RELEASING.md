@@ -66,7 +66,7 @@ Everything works without secrets: Android ships a debug-signed APK, and desktop 
 | `ANDROID_KEY_ALIAS` | Key alias in the keystore |
 | `ANDROID_KEY_PASSWORD` | Key password |
 
-**Website:** kindlingspark.app isn't part of app releases; it lives and deploys from [kindling-control-website](https://github.com/bluedog-consulting/kindling-control-website). The web app isn't published anywhere.
+**Website:** kindlingcontrol.app isn't part of app releases; it lives and deploys from [kindling-control-website](https://github.com/bluedog-consulting/kindling-control-website). The web app isn't published anywhere.
 
 **Android keystore:** create it once and keep it safe. If you lose it, you can never ship an update to the same app on Google Play.
 
