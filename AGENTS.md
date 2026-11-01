@@ -44,7 +44,7 @@ The website **kindlingspark.app** (landing page, the user guide at `/guide/`, an
 
 ```
 src/                     everything that ships; served as-is, no bundler, no build step
-  index.html             the app shell (tabs: Tone, Presets, Tuner, Console, Capture)
+  index.html             the app shell (tabs: Tone, Presets, Tuner, Console, Capture; Settings/About and first-run dialogs)
   console.html           empty host page for the popped-out Console (app.js moves the live Console into it)
   app/app.js             app logic: connection, presets/banks, New/Save, library tab, console, capture, tabs
   app/rig.js             the rig view: chain strip (incl. reorder), amp head, pedalboard; param sync registry
@@ -64,15 +64,16 @@ src/                     everything that ships; served as-is, no bundler, no bui
     effects.js           effect/amp catalog, param labels, AMP_KNOB_ORDER, blankPreset(), BASED_ON, SLOT_ORDER
 desktop/                 Electron main + preload (serves src/ over the secure kindling:// scheme)
 android/, ios/           Capacitor native projects (generated; web assets are synced in, not committed)
-tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release-plan, build-icons,
+tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release-plan, build-icons, stamp-version, autofix,
                          screenshots (marketing images via Playwright; the website repo runs it)
 assets/logo/concepts/    logo source SVGs (kindling, knob, monogram, necks, amp, pick); `npm run icons` renders all platform icons
 build/                   generated desktop icons for electron-builder (committed)
-.github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release)
+.github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release),
+                         autofix.yml (error-report issue -> Workers AI fix -> draft PR)
 test/                    node:test suites; test/fixtures holds real captures
 docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md,
                          TELEMETRY.md (anonymous error reports)
-telemetry/               Cloudflare Worker (worker.js + wrangler.jsonc) that receives error reports; deployed by hand
+telemetry/               Cloudflare Worker (worker.js, wrangler.jsonc, schema.sql for D1) that receives error reports and opens issues; deployed by hand
 ```
 
 ## Commands
@@ -136,17 +137,20 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 - `src/guide/index.html` is the user documentation. It ships with every app, so it works offline in the browser, desktop and native apps. When it's shown inside the Help panel (an iframe) it hides its own header; the inline script adds the `embedded` class.
 - The app opens it with `openHelp(section)` in a `<dialog>`, never by navigating away: leaving the page would drop the Bluetooth connection. Anything with `data-help="<section id>"` opens Help at that section (one delegated click handler). `data-help=""` opens the top.
 - **Buy me a coffee** (`#coffee`, https://www.buymeacoffee.com/jerdog) sits in the top bar of the web and desktop apps, the landing page header and the README. It's a plain styled link, not Buy Me a Coffee's embed script: `src/` loads no third-party code and must work offline. `app.js` hides it in the Capacitor apps, because store payment rules restrict donation links; keep it that way.
-- Contextual help links: the top-bar Help button; **?** buttons on the Tone screen, Presets tab, Console, the New/Save dialogs and next to Reorder chain (`rig.js`); text links on the Tuner and Capture tabs and in the unsupported-browser banner; a **Troubleshooting** action on the connection-failed toast (`toast(text, kind, { label, run })`).
+- Contextual help links: the top-bar Help button; **?** buttons in the Settings and first-run error-report dialogs; **?** buttons on the Tone screen, Presets tab, Console, the New/Save dialogs and next to Reorder chain (`rig.js`); text links on the Tuner and Capture tabs and in the unsupported-browser banner; a **Troubleshooting** action on the connection-failed toast (`toast(text, kind, { label, run })`).
 - **Any change to what users see or do must update the guide in the same change.** Keep section ids stable, because the app links to them. `test/help-links.test.js` fails if a help link points at a missing section, or if the guide's contents list has a broken anchor. `check-docs` accepts the guide as documentation.
 - The desktop app opens "Open in a new window" for `kindling://app/guide/` in a separate sandboxed window with no preload. Link and navigation rules apply to every window via `app.on('web-contents-created')`. The native apps hide that link, because their web views can't open windows.
 - **Console pop-out:** **Pop out** opens `console.html` (same origin; on desktop an allowed sandboxed window with no preload) and *moves* the live `#console-body` nodes into it with `adoptNode`, so their listeners keep working and the Bluetooth connection stays in the main window. Closing the pop-out (its `pagehide`) or **Bring it back** moves them home; closing the main window closes the pop-out. Console code must therefore use the cached `consoleEls` references, never `$('#log')` and friends, which only search the main document. Capacitor hides the button.
 
 ## Error reports (telemetry)
 
-- Released apps send anonymous error reports to the Cloudflare Worker in `telemetry/` (`https://errors.kindlingspark.app/v1/report`, `ENDPOINT` in `src/app/telemetry.js`), which writes one structured line per report to Workers Logs. Full details: `docs/TELEMETRY.md`.
-- **Only non-identifying data:** app (`desktop`/`android`/`ios`/`web`), desktop OS, app version, kind, `where` (a short action tag), error name, scrubbed message and stack. Never add ids (user, device, install, session), amp serials or names, Bluetooth ids, preset names, timestamps, IPs, user agents or locations. New fields need an entry in `sanitizeReport()`'s allow-list, `docs/TELEMETRY.md` and the guide's `#privacy` section.
-- The Worker never reads the IP, headers or `request.cf`, and re-scrubs with the same `sanitizeReport()`. `wrangler.jsonc` keeps **invocation logs and traces off** for it (traces would record user agent, location and ASN); keep it that way.
-- Reports are sent only when `src/version.js` is stamped (the committed value `'dev'` sends nothing; `?errors=on` overrides for testing), never with `?mock`, at most 20 per session and each error once. Users opt out in the Help panel (`#error-reports`, localStorage key `kindling-control.error-reports`).
+- Released apps send anonymous error reports **only if the user opts in** to the Cloudflare Worker in `telemetry/` (`https://errors.kindlingspark.app/v1/report`, `ENDPOINT` in `src/app/telemetry.js`), which writes one structured line per report to Workers Logs. Full details: `docs/TELEMETRY.md`.
+- **Consent:** first run shows `#consent-dialog`; nothing is sent until the user answers (up to 5 errors wait in memory, dropped on "no"). Afterwards the switch lives in **Settings** (`#settings-dialog`, gear button `#settings-open` in the top bar), which also holds **About** (version, which app, licence, links). localStorage key `kindling-control.error-reports` = `on`/`off`; missing = not asked yet. The "what is sent" text is one `<template id="reports-explainer">` used by both dialogs; keep it, the guide's `#privacy` and `docs/TELEMETRY.md` in agreement.
+- **Only non-identifying data:** app (`desktop`/`android`/`ios`/`web`), desktop OS, app version, kind, `where` (a short action tag), error name, scrubbed message and stack, and `first` (whether this install reports this error for the first time; the device remembers reported fingerprints locally in `kindling-control.error-reports.seen`). That's how installs are counted with no install id. Never add ids (user, device, install, session), amp serials or names, Bluetooth ids, preset names, timestamps, IPs, user agents or locations. New fields need an entry in `sanitizeReport()`'s allow-list, `docs/TELEMETRY.md` and the guide's `#privacy` section.
+- The Worker never reads the IP, headers or `request.cf`, and re-scrubs with the same `sanitizeReport()`. `wrangler.jsonc` keeps **invocation logs and traces off** for it (traces would record user agent, location and ASN); keep it that way, and keep it a separate Worker.
+- With D1 (`DB`, `telemetry/schema.sql`) it counts installs per fingerprint and, at `ISSUE_THRESHOLD` (2), opens one public GitHub issue labelled `error-report` (secret `GITHUB_TOKEN`, capped by `MAX_ISSUES_PER_DAY`). The issue's `<!-- error-report -->` JSON block is the contract with the auto-fix agent; change `issueBody()` and `parseIssueReport()` together.
+- **Auto-fix:** `.github/workflows/autofix.yml` + `tools/autofix.js` (off unless the repo variable `AUTOFIX_ENABLED` is `true`). A Workers AI model (`AUTOFIX_MODEL`, default `@cf/zai-org/glm-5.3`) proposes search/replace edits; they're tested in a read-only job and become a **draft** PR, or an issue comment. Issue content is untrusted: only the report block is used, edits are limited to `ALLOWED_PATH` (`src/app/*.js` except `telemetry.js`, and `src/spark/*.js`), the writing job never runs the patched code, and nothing is merged automatically. Don't widen any of that without thinking through prompt injection from forged reports.
+- Reports are sent only when `src/version.js` is stamped (the committed value `'dev'` sends nothing; `?errors=on` overrides for testing), never with `?mock`, at most 20 per session and each error once per session.
 - In `app.js`, report failures with `reportError('<where>', err)` next to the `logLine('err', …)`. Don't report errors whose messages are about the user's own files (import, capture). `src/app/telemetry.js` must stay DOM-free at import: the Worker bundles it.
 
 ## Website

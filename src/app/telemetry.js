@@ -3,12 +3,14 @@
 // errors happen in which build. Nothing identifying is sent:
 //
 //   sent:     app (desktop/android/ios/web), os (desktop only: windows/macos/linux),
-//             app version, error name, scrubbed message and stack, where it happened
+//             app version, error name, scrubbed message and stack, where it happened,
+//             and whether this install is reporting that error for the first time
 //   not sent: no user/device/session ids, no amp serial or device names, no preset
 //             names, no URLs or file paths with user names, no timestamps, no cookies
 //
 // Reports are only sent from released builds (src/version.js stamped by the release
-// workflow), never with the simulated amp, and users can turn them off (Help panel).
+// workflow), never with the simulated amp, and only after the user opts in (first-run
+// question; changeable in Settings).
 // The Worker re-validates and re-scrubs everything with sanitizeReport() below, and
 // is configured so Cloudflare doesn't record IPs, user agents or locations either.
 //
@@ -18,8 +20,10 @@
 /** Where reports go. Forks: point this at your own Worker, or set it to '' to send nothing. */
 export const ENDPOINT = 'https://errors.kindlingspark.app/v1/report';
 
-/** localStorage key for the user's choice ('off' = don't send). */
+/** localStorage key for the user's answer: 'on' or 'off' (missing = not asked yet, send nothing). */
 export const PREF_KEY = 'kindling-control.error-reports';
+/** localStorage key for the fingerprints this install has reported (device only, never sent as a list). */
+export const SEEN_KEY = 'kindling-control.error-reports.seen';
 
 export const APPS = ['desktop', 'android', 'ios', 'web'];
 export const OSES = ['windows', 'macos', 'linux'];
@@ -27,6 +31,8 @@ export const KINDS = ['error', 'unhandledrejection', 'caught'];
 
 const LIMITS = { message: 300, stack: 1500, where: 32, name: 40 };
 const MAX_PER_SESSION = 20;
+const MAX_PENDING = 5; // held until the user answers the first-run question
+const MAX_KNOWN = 200;
 
 /**
  * Remove anything that could identify a person or their gear from free text:
@@ -98,7 +104,7 @@ export function buildReport(err, { kind = 'caught', where = '', app = 'web', os,
  */
 export function sanitizeReport(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
-  const { app, os, version, kind, name, message, stack, where } = input;
+  const { app, os, version, kind, name, message, stack, where, first } = input;
   if (!APPS.includes(app) || !KINDS.includes(kind)) return null;
   if (typeof version !== 'string' || !/^(?:dev|\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]{1,32})?)$/.test(version)) return null;
   if (typeof message !== 'string' || typeof name !== 'string') return null;
@@ -112,6 +118,7 @@ export function sanitizeReport(input) {
   if (app === 'desktop' && OSES.includes(os)) out.os = os;
   if (typeof where === 'string' && /^[a-z][a-z0-9-]{0,31}$/.test(where)) out.where = where;
   if (typeof stack === 'string' && stack) out.stack = scrub(stack, LIMITS.stack);
+  out.first = first === true;
   return out;
 }
 
@@ -124,44 +131,93 @@ export async function fingerprint(report) {
 }
 
 /**
- * The reporter used by the app.
+ * The reporter used by the app. Reports are **opt-in**: nothing is sent until the user
+ * says yes (first-run prompt or Settings). Errors that happen before they answer are
+ * held in memory (a few) and sent if they say yes, dropped if they say no.
+ *
+ * Each report carries `first: true` the first time this install reports that error
+ * (fingerprints are remembered on the device only). The Worker counts those to know
+ * how many installs hit an error without any install id being sent.
+ *
  * @param {{ endpoint?: string, version: string, app: string, os?: string, storage?: Storage|null,
  *           send?: (url: string, body: string) => void, force?: boolean }} opts
  *   `force` sends from 'dev' builds too (?errors=on, for testing the Worker).
  */
 export function createReporter({ endpoint = ENDPOINT, version, app, os, storage = null, send = defaultSend, force = false }) {
-  const seen = new Set();
+  const seenThisSession = new Set();
+  const pending = [];
   let sent = 0;
   const available = !!endpoint && (version !== 'dev' || force);
+
+  const read = (key) => {
+    try {
+      return storage?.getItem(key) ?? null;
+    } catch {
+      return null;
+    }
+  };
+  const write = (key, value) => {
+    try {
+      storage?.setItem(key, value);
+    } catch {}
+  };
+
+  /** Fingerprints this install has already reported (kept on the device only). */
+  const known = () => {
+    try {
+      const list = JSON.parse(read(SEEN_KEY) ?? '[]');
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  };
+
+  async function deliver(report) {
+    const fp = await fingerprint(report);
+    const list = known();
+    const first = !list.includes(fp);
+    if (first) write(SEEN_KEY, JSON.stringify([...list, fp].slice(-MAX_KNOWN)));
+    send(endpoint, JSON.stringify({ ...report, first }));
+    return { ...report, first };
+  }
 
   const reporter = {
     /** Could reports be sent from this build at all? (false in dev builds and forks without an endpoint) */
     available,
-    /** Has the user left reports on? Default: on. */
+    /** The user's answer: 'on', 'off', or null if they haven't been asked yet. */
+    get consent() {
+      const v = read(PREF_KEY);
+      return v === 'on' || v === 'off' ? v : null;
+    },
+    /** Should the first-run question be shown? */
+    get needsConsent() {
+      return available && reporter.consent === null;
+    },
     get enabled() {
-      try {
-        return storage?.getItem(PREF_KEY) !== 'off';
-      } catch {
-        return true;
-      }
+      return reporter.consent === 'on';
     },
     set enabled(on) {
-      try {
-        if (on) storage?.removeItem(PREF_KEY);
-        else storage?.setItem(PREF_KEY, 'off');
-      } catch {}
+      write(PREF_KEY, on ? 'on' : 'off');
+      const queued = pending.splice(0);
+      if (on) for (const r of queued) deliver(r).catch(() => {});
     },
-    /** Report an error. Never throws. Returns the report it sent, or null. */
-    report(err, { where = '', kind = 'caught' } = {}) {
+    /**
+     * Report an error. Never throws. Resolves to the report it sent (or queued until the
+     * user answers the first-run question), or null.
+     */
+    async report(err, { where = '', kind = 'caught' } = {}) {
       try {
-        if (!available || !reporter.enabled || sent >= MAX_PER_SESSION || ignorable(err)) return null;
+        if (!available || reporter.consent === 'off' || sent >= MAX_PER_SESSION || ignorable(err)) return null;
         const report = buildReport(err, { kind, where, app, os, version });
         const key = `${report.name}|${report.message}|${report.where ?? ''}`;
-        if (seen.has(key)) return null; // once per session is enough
-        seen.add(key);
+        if (seenThisSession.has(key)) return null; // once per session is enough
+        seenThisSession.add(key);
         sent++;
-        send(endpoint, JSON.stringify(report));
-        return report;
+        if (reporter.consent === null) {
+          if (pending.length < MAX_PENDING) pending.push(report);
+          return report;
+        }
+        return await deliver(report);
       } catch {
         return null;
       }

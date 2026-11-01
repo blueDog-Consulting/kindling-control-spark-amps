@@ -1,0 +1,122 @@
+name: Auto-fix error reports
+
+# When the error-report Worker opens an issue labelled `error-report` (see
+# docs/TELEMETRY.md), ask a Workers AI model for a fix. If its change passes the
+# tests, open a DRAFT pull request for a person to review; otherwise comment on
+# the issue with the model's analysis. Nothing is ever merged automatically.
+#
+# Off until the repository variable AUTOFIX_ENABLED is "true". Needs the secrets
+# CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN (Workers AI read + edit).
+# Optional: variable AUTOFIX_MODEL (default in tools/autofix.js) and secret
+# AUTOFIX_PR_TOKEN (so CI runs on the PR; PRs opened with the default token don't
+# trigger workflows). Re-run for an issue by removing and re-adding the label.
+#
+# The issue content is untrusted (anyone can post an error report), so the jobs are
+# split: the model call and the tests run with read-only permissions, and the job
+# that can write only applies a patch whose paths it has checked; it never runs it.
+
+on:
+  issues:
+    types: [labeled]
+
+permissions: {}
+
+concurrency:
+  group: autofix-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  propose:
+    if: github.event.label.name == 'error-report' && vars.AUTOFIX_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      patch: ${{ steps.ask.outputs.patch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Ask the model for a fix
+        id: ask
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          AUTOFIX_MODEL: ${{ vars.AUTOFIX_MODEL }}
+        run: |
+          node tools/autofix.js propose "$GITHUB_EVENT_PATH" autofix-out
+          if [ -s autofix-out/autofix.patch ]; then echo "patch=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: autofix
+          path: autofix-out/
+          if-no-files-found: error
+
+  test:
+    needs: propose
+    if: needs.propose.outputs.patch == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v8
+        with:
+          name: autofix
+          path: autofix-out
+      - name: Apply the proposed change and run the tests
+        run: |
+          node tools/autofix.js check-patch autofix-out/autofix.patch
+          git apply autofix-out/autofix.patch
+          npm test
+
+  publish:
+    needs: [propose, test]
+    if: always() && needs.propose.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.AUTOFIX_PR_TOKEN || github.token }}
+      ISSUE: ${{ github.event.issue.number }}
+      TESTS: ${{ needs.test.result }}
+      BASE: ${{ github.event.repository.default_branch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.AUTOFIX_PR_TOKEN || github.token }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: autofix
+          path: autofix-out
+      - name: Open a draft PR, or comment with the analysis
+        run: |
+          if [ -s autofix-out/autofix.patch ] && [ "$TESTS" = "success" ]; then
+            node tools/autofix.js check-patch autofix-out/autofix.patch
+            branch="autofix/issue-$ISSUE"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git checkout -b "$branch"
+            git apply autofix-out/autofix.patch
+            git commit -a -F - <<EOF
+          $(cat autofix-out/title.txt)
+
+          Proposed by the auto-fix agent from anonymous error reports (issue #$ISSUE).
+          Docs-Not-Needed: automated bug fix proposal; a reviewer adds docs if behaviour changes
+          EOF
+            git push --force origin "$branch"
+            gh pr create --draft --base "$BASE" --head "$branch" \
+              --title "$(cat autofix-out/title.txt)" --body-file autofix-out/pr.md
+          else
+            gh issue comment "$ISSUE" --body-file autofix-out/comment.md
+          fi

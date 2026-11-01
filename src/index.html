@@ -20,6 +20,7 @@
     <h1 class="brand"><img src="icon.svg" alt="" width="32" height="32"><span>Kindling<b>Control</b></span></h1>
     <span id="status" class="pill" data-state="idle">Not connected</span>
     <a id="coffee" class="coffee-btn" href="https://www.buymeacoffee.com/jerdog" target="_blank" rel="noopener" title="Buy me a coffee" aria-label="Buy me a coffee (opens buymeacoffee.com)"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h13v5a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6z"/><path d="M17 11h1.5a2.5 2.5 0 0 1 0 5H16.5"/><path d="M8 3.5c-.6.9.6 1.6 0 2.5M12 3.5c-.6.9.6 1.6 0 2.5"/></svg><span class="coffee-text">Buy me a coffee</span></a>
+    <button type="button" id="settings-open" class="settings-btn" aria-label="Settings and about"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <button type="button" class="help-btn" data-help="" aria-label="Help: user guide"><span aria-hidden="true">?</span><span class="help-btn-text">Help</span></button>
     <button id="connect" class="primary" type="button">Connect</button>
   </header>
@@ -155,7 +156,6 @@
   <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
     <div class="help-bar">
       <h2 id="help-title">Help</h2>
-      <label id="error-reports" class="help-toggle" hidden><input type="checkbox" id="error-reports-on"> Send anonymous error reports</label>
       <a id="help-newtab" href="guide/" target="_blank" rel="noopener">Open in a new window</a>
       <button type="button" id="help-close">Close</button>
     </div>
@@ -201,6 +201,53 @@
       <div class="row dialog-buttons">
         <button value="cancel" formnovalidate>Cancel</button>
         <button value="ok" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- What anonymous error reports contain: shown in the first-run question and in Settings (app.js clones it). -->
+  <template id="reports-explainer">
+    <div class="reports-explainer">
+      <p class="hint">If something goes wrong, KindlingControl can send a short anonymous report so the problem can be found and fixed.</p>
+      <p class="hint"><strong>Sent:</strong> which app (desktop, Android, iPhone/iPad) and desktop system, the app version, and the error message and where in the code it happened, with names, IDs, serial numbers and file paths removed.</p>
+      <p class="hint"><strong>Never sent:</strong> any ID for you, your device or your amp, your IP address or location, preset or amp names, or anything you play.</p>
+    </div>
+  </template>
+
+  <dialog id="consent-dialog" aria-labelledby="consent-title">
+    <form method="dialog" class="dialog-form">
+      <div class="dialog-title"><h2 id="consent-title">Help improve KindlingControl?</h2><button type="button" class="help-link" data-help="privacy" aria-label="Help: privacy and error reports">?</button></div>
+      <div class="consent-body"></div>
+      <p class="hint">You can change this any time in <strong>Settings</strong> (the gear in the top bar).</p>
+      <div class="row dialog-buttons">
+        <button value="off">No thanks</button>
+        <button value="on" class="primary">Send error reports</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <form method="dialog" class="dialog-form">
+      <div class="dialog-title"><h2 id="settings-title">Settings</h2><button type="button" class="help-link" data-help="settings" aria-label="Help: settings and about">?</button></div>
+      <section id="settings-reports" class="settings-section" aria-labelledby="settings-reports-title" hidden>
+        <h3 id="settings-reports-title">Error reports</h3>
+        <label class="row"><input type="checkbox" id="error-reports-on"> Send anonymous error reports</label>
+        <div class="settings-reports-body"></div>
+        <button type="button" class="linklike" data-help="privacy">More about privacy</button>
+      </section>
+      <section class="settings-section" aria-labelledby="about-title">
+        <h3 id="about-title">About</h3>
+        <p class="about-name"><strong>KindlingControl</strong> <span id="about-version"></span></p>
+        <p class="hint">An open controller for Positive Grid Spark amps. An independent project, not affiliated with or endorsed by Positive Grid.</p>
+        <p class="hint">© 2026 blueDog Consulting and Jeremy Meiss. Free software under the GNU General Public License v3 or later.</p>
+        <ul class="about-links">
+          <li><a href="https://github.com/bluedog-consulting/kindling-control-spark-amps" target="_blank" rel="noopener">Source code</a></li>
+          <li><a href="https://github.com/bluedog-consulting/kindling-control-spark-amps/issues" target="_blank" rel="noopener">Report a problem</a></li>
+          <li><button type="button" class="linklike" data-help="">User guide</button></li>
+        </ul>
+      </section>
+      <div class="row dialog-buttons">
+        <button value="close" class="primary">Close</button>
       </div>
     </form>
   </dialog>

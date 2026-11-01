@@ -59,7 +59,9 @@ test('buildReport has only the allowed fields', () => {
 
 test('sanitizeReport validates and re-scrubs', () => {
   const ok = { app: 'android', version: '0.3.0', kind: 'caught', name: 'Error', message: 'name "x"', stack: 'at /x.js:1:1', where: 'connect', ip: '1.2.3.4', userId: 'u1' };
-  assert.deepEqual(sanitizeReport(ok), { app: 'android', version: '0.3.0', kind: 'caught', name: 'Error', message: 'name "…"', stack: 'at /x.js:1:1', where: 'connect' });
+  assert.deepEqual(sanitizeReport(ok), { app: 'android', version: '0.3.0', kind: 'caught', name: 'Error', message: 'name "…"', stack: 'at /x.js:1:1', where: 'connect', first: false });
+  assert.equal(sanitizeReport({ ...ok, first: 'yes' }).first, false);
+  assert.equal(sanitizeReport({ ...ok, first: true }).first, true);
   assert.equal(sanitizeReport({ ...ok, app: 'toaster' }), null);
   assert.equal(sanitizeReport({ ...ok, version: 'jeremy' }), null);
   assert.equal(sanitizeReport({ ...ok, kind: 'x' }), null);
@@ -77,41 +79,81 @@ test('fingerprint is stable and ignores numbers', async () => {
   assert.match(a, /^[0-9a-f]{12}$/);
 });
 
-test('reporter: dev builds send nothing unless forced', () => {
+const tick = () => new Promise((r) => setTimeout(r, 30));
+
+test('reporter: dev builds send nothing unless forced', async () => {
   const sent = [];
   const send = (url, body) => sent.push(JSON.parse(body));
-  const dev = createReporter({ version: 'dev', app: 'web', send });
+  const dev = createReporter({ version: 'dev', app: 'web', send, storage: memoryStorage() });
   assert.equal(dev.available, false);
-  assert.equal(dev.report(new Error('x')), null);
-  const forced = createReporter({ version: 'dev', app: 'web', send, force: true });
-  assert.ok(forced.report(new Error('x')));
+  assert.equal(dev.needsConsent, false);
+  assert.equal(await dev.report(new Error('x')), null);
+  const forced = createReporter({ version: 'dev', app: 'web', send, force: true, storage: memoryStorage() });
+  forced.enabled = true;
+  assert.ok(await forced.report(new Error('x')));
   assert.equal(sent.length, 1);
   assert.equal(createReporter({ endpoint: '', version: '1.0.0', app: 'web', send }).available, false);
 });
 
-test('reporter: opt-out, dedupe, ignorable errors, never throws', () => {
+test('reporter: opt-in; errors before the answer wait, and are dropped on "no"', async () => {
+  for (const answer of [true, false]) {
+    const sent = [];
+    const storage = memoryStorage();
+    const r = createReporter({ version: '1.0.0', app: 'android', storage, send: (u, b) => sent.push(JSON.parse(b)) });
+    assert.equal(r.consent, null);
+    assert.equal(r.needsConsent, true);
+    assert.equal(r.enabled, false);
+    for (let i = 0; i < 8; i++) await r.report(new Error(`early ${'x'.repeat(i)}`));
+    assert.equal(sent.length, 0, 'nothing is sent before the user answers');
+    r.enabled = answer;
+    await tick();
+    assert.equal(storage.getItem(PREF_KEY), answer ? 'on' : 'off');
+    assert.equal(r.needsConsent, false);
+    assert.equal(sent.length, answer ? 5 : 0, 'at most 5 are held');
+  }
+});
+
+test('reporter: opt-out, dedupe, ignorable errors, never throws', async () => {
   const sent = [];
   const storage = memoryStorage();
+  storage.setItem(PREF_KEY, 'on');
   const r = createReporter({ endpoint: 'https://e.test/v1/report', version: '1.0.0', app: 'ios', storage, send: (u, b) => sent.push([u, JSON.parse(b)]) });
   assert.equal(r.enabled, true);
-  r.report(new Error('boom'), { where: 'connect' });
-  r.report(new Error('boom'), { where: 'connect' }); // duplicate
-  r.report(Object.assign(new Error('User cancelled'), { name: 'NotFoundError' }));
+  await r.report(new Error('boom'), { where: 'connect' });
+  await r.report(new Error('boom'), { where: 'connect' }); // duplicate
+  await r.report(Object.assign(new Error('User cancelled'), { name: 'NotFoundError' }));
   assert.equal(sent.length, 1);
   assert.equal(sent[0][0], 'https://e.test/v1/report');
   assert.equal(sent[0][1].app, 'ios');
   assert.equal(sent[0][1].version, '1.0.0');
   r.enabled = false;
   assert.equal(storage.getItem(PREF_KEY), 'off');
-  r.report(new Error('another'));
+  await r.report(new Error('another'));
   assert.equal(sent.length, 1);
   r.enabled = true;
-  r.report(new Error('another'));
+  await r.report(new Error('another'));
   assert.equal(sent.length, 2);
-  const broken = createReporter({ version: '1.0.0', app: 'ios', send: () => { throw new Error('offline'); } });
-  assert.equal(broken.report(new Error('x')), null);
-  for (let i = 0; i < 40; i++) r.report(new Error(`e${'x'.repeat(i)}`));
+  const broken = createReporter({ version: '1.0.0', app: 'ios', storage, send: () => { throw new Error('offline'); } });
+  assert.equal(await broken.report(new Error('x')), null);
+  for (let i = 0; i < 40; i++) await r.report(new Error(`e${'x'.repeat(i)}`));
   assert.ok(sent.length <= 20);
+});
+
+test('reporter: "first" is true once per install per error, with no id sent', async () => {
+  const fail = (m) => new Error(m); // same code path = same top stack frame
+  const storage = memoryStorage();
+  storage.setItem(PREF_KEY, 'on');
+  const sent = [];
+  const make = () => createReporter({ version: '1.0.0', app: 'desktop', os: 'linux', storage, send: (u, b) => sent.push(JSON.parse(b)) });
+  await make().report(fail('same'));
+  await make().report(fail('same')); // next launch, same install
+  await make().report(fail('different'));
+  assert.deepEqual(sent.map((r) => r.first), [true, false, true]);
+  assert.ok(sent.every((r) => Object.keys(r).every((k) => ['v', 'app', 'os', 'version', 'kind', 'name', 'message', 'stack', 'where', 'first'].includes(k))));
+  const other = memoryStorage(); // another install
+  other.setItem(PREF_KEY, 'on');
+  await createReporter({ version: '1.0.0', app: 'android', storage: other, send: (u, b) => sent.push(JSON.parse(b)) }).report(fail('same'));
+  assert.equal(sent.at(-1).first, true);
 });
 
 test('worker logs only the sanitised report', async () => {
@@ -123,26 +165,26 @@ test('worker logs only the sanitised report', async () => {
     body,
     headers: { 'Content-Type': 'text/plain', 'CF-Connecting-IP': '1.2.3.4', 'User-Agent': 'Secret/1.0' },
   });
-  const res = await handle(req, log);
+  const res = await handle(req, {}, undefined, log);
   assert.equal(res.status, 204);
   assert.equal(res.headers.get('access-control-allow-origin'), '*');
   assert.equal(logs.length, 1);
   const { fingerprint: fp, ...rest } = logs[0];
   assert.match(fp, /^[0-9a-f]{12}$/);
-  assert.deepEqual(rest, { event: 'client_error', app: 'desktop', os: 'macos', version: '0.3.0', kind: 'error', name: 'TypeError', message: 'bad "…"' });
+  assert.deepEqual(rest, { event: 'client_error', app: 'desktop', os: 'macos', version: '0.3.0', kind: 'error', name: 'TypeError', message: 'bad "…"', first: false });
   assert.ok(!JSON.stringify(logs).includes('1.2.3.4'));
   assert.ok(!JSON.stringify(logs).includes('Secret'));
 });
 
 test('worker rejects bad requests', async () => {
   const log = { error: () => assert.fail('should not log') };
-  const post = (body, path = '/v1/report') => handle(new Request(`https://e.test${path}`, { method: 'POST', body }), log);
+  const post = (body, path = '/v1/report') => handle(new Request(`https://e.test${path}`, { method: 'POST', body }), {}, undefined, log);
   assert.equal((await post('not json')).status, 400);
   assert.equal((await post(JSON.stringify({ app: 'x' }))).status, 400);
   assert.equal((await post('x'.repeat(9000))).status, 413);
   assert.equal((await post('{}', '/other')).status, 404);
-  assert.equal((await handle(new Request('https://e.test/v1/report'), log)).status, 405);
-  assert.equal((await handle(new Request('https://e.test/v1/report', { method: 'OPTIONS' }), log)).status, 204);
+  assert.equal((await handle(new Request('https://e.test/v1/report'), {}, undefined, log)).status, 405);
+  assert.equal((await handle(new Request('https://e.test/v1/report', { method: 'OPTIONS' }), {}, undefined, log)).status, 204);
 });
 
 test('stamp-version writes the version', () => {

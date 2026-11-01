@@ -8,6 +8,17 @@
   // The apps post to https://errors.kindlingspark.app/v1/report (ENDPOINT in src/app/telemetry.js).
   "routes": [{ "pattern": "errors.kindlingspark.app", "custom_domain": true }],
   "workers_dev": false,
+  // Counts each distinct error, to open a GitHub issue once ISSUE_THRESHOLD installs hit it.
+  // Create once: npx wrangler@4.151.1 d1 create kindling-errors, paste its id below, then apply schema.sql.
+  // Remove this block to only log reports (no counting, no issues).
+  "d1_databases": [{ "binding": "DB", "database_name": "kindling-errors", "database_id": "REPLACE_WITH_D1_DATABASE_ID" }],
+  "vars": {
+    "GITHUB_REPO": "bluedog-consulting/kindling-control-spark-amps",
+    "ISSUE_THRESHOLD": "2",
+    "MAX_ISSUES_PER_DAY": "5"
+  },
+  // Secret (not in this file): npx wrangler@4.151.1 secret put GITHUB_TOKEN
+  //   a fine-grained token for this repository only, with "Issues: read and write". Without it, no issues are opened.
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,

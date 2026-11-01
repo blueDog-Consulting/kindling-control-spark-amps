@@ -38,7 +38,8 @@ const params = new URLSearchParams(location.search);
 const useMock = params.has('mock');
 
 // Anonymous error reports (see telemetry.js and docs/TELEMETRY.md): released builds only,
-// never with the simulated amp. ?errors=on sends from a dev build, to test the Worker.
+// never with the simulated amp, and only after the user opts in (first-run question below,
+// then Settings). ?errors=on sends from a dev build, to test the Worker.
 const errors = createReporter({
   version: VERSION,
   ...detectApp(window),
@@ -593,15 +594,50 @@ document.addEventListener('click', onHelpClick);
 $('#help-close').addEventListener('click', () => $('#help-dialog').close());
 // The native apps' web views can't open extra windows; keep the guide in the panel there.
 if (CapacitorBleTransport.isAvailable()) $('#help-newtab').hidden = true;
-// The anonymous error reports switch, in the Help panel (hidden where reports can't be sent).
-if (errors.available && !useMock) {
-  const box = $('#error-reports-on');
-  box.checked = errors.enabled;
-  box.addEventListener('change', () => (errors.enabled = box.checked));
-  $('#error-reports').hidden = false;
-}
 // No donation link inside the store apps (app store payment rules); web and desktop only.
 if (CapacitorBleTransport.isAvailable()) $('#coffee').hidden = true;
+
+// ---------------------------------------------------------------------------
+// settings + about, and the first-run question about error reports
+// ---------------------------------------------------------------------------
+
+const APP_LABEL = { desktop: 'Desktop', android: 'Android', ios: 'iPhone/iPad', web: 'Web' };
+
+function explainReports(host) {
+  host.replaceChildren($('#reports-explainer').content.cloneNode(true));
+}
+
+function openSettings() {
+  const { app } = detectApp(window);
+  $('#about-version').textContent = `${VERSION === 'dev' ? 'development build' : `version ${VERSION}`} · ${APP_LABEL[app] ?? app}`;
+  const reports = errors.available && !useMock;
+  $('#settings-reports').hidden = !reports;
+  if (reports) {
+    $('#error-reports-on').checked = errors.enabled;
+    explainReports($('.settings-reports-body'));
+  }
+  $('#settings-dialog').showModal();
+}
+$('#settings-open').addEventListener('click', openSettings);
+$('#error-reports-on').addEventListener('change', (e) => (errors.enabled = e.target.checked));
+// Help links inside these dialogs open the guide on top of them.
+$('#settings-dialog').addEventListener('click', (e) => {
+  if (e.target.closest('[data-help]')) $('#settings-dialog').close();
+});
+
+// First run: ask before sending anything. Until they answer, nothing is sent.
+if (errors.needsConsent && !useMock) {
+  const dialog = $('#consent-dialog');
+  explainReports($('.consent-body', dialog));
+  dialog.addEventListener('close', () => {
+    // Escape / closing without choosing counts as "not now": ask again next launch.
+    if (dialog.returnValue === 'on' || dialog.returnValue === 'off') errors.enabled = dialog.returnValue === 'on';
+  });
+  dialog.addEventListener('click', (e) => {
+    if (e.target.closest('[data-help]')) dialog.close();
+  });
+  dialog.showModal();
+}
 
 // ---------------------------------------------------------------------------
 // tuner

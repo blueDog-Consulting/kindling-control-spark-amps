@@ -112,9 +112,9 @@ The protocol itself is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `tools/` | capture decoder CLI, dev server, docs check, release plan, icons, screenshots |
 | `test/` | `node:test` suites and real-capture fixtures |
 | `src/guide/` | the user guide, shown in the app's Help panel (the website also serves a copy at `/guide/`) |
-| `telemetry/` | Cloudflare Worker that receives the apps' anonymous error reports ([TELEMETRY.md](docs/TELEMETRY.md)) |
+| `telemetry/` | Cloudflare Worker (+ D1 schema) that receives the apps' anonymous error reports and opens issues ([TELEMETRY.md](docs/TELEMETRY.md)) |
 | `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md), [TELEMETRY.md](docs/TELEMETRY.md) |
-| `.github/workflows/` | CI (tests + docs check) and the tag-driven app releases |
+| `.github/workflows/` | CI (tests + docs check), the tag-driven app releases, and the error-report auto-fix agent |
 
 ## Development
 
@@ -133,7 +133,7 @@ Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions 
 
 ## Error reports and privacy
 
-Released apps send anonymous error reports to a Cloudflare Worker so we can see which errors happen in which build: only the app (desktop/Android/iOS), the desktop OS, the app version and the scrubbed error. No ids, IP addresses, device or amp names, serial numbers or preset names. Users can turn it off in the Help panel. Details, the Worker and how to query the reports: [docs/TELEMETRY.md](docs/TELEMETRY.md).
+If the user agrees (the apps ask on first run; the switch is in **Settings**, the gear in the top bar, next to **About**), released apps send anonymous error reports to a Cloudflare Worker so we can see which errors happen in which build: only the app (desktop/Android/iOS), the desktop OS, the app version and the scrubbed error. No ids, IP addresses, device or amp names, serial numbers or preset names. When the same error comes from 2+ installs, the Worker opens a GitHub issue, and an optional auto-fix workflow asks a Workers AI model for a fix and opens a **draft** PR if the tests pass. Details, setup and how to query the reports: [docs/TELEMETRY.md](docs/TELEMETRY.md).
 
 ## Contributing
 
