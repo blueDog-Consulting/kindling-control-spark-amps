@@ -83,7 +83,7 @@ Every platform's icons are generated from the logo SVGs in `assets/logo/concepts
 
 ```sh
 npm run icons              # regenerate everything from the current concept
-npm run icons -- kindling  # try another concept: kindling, knob, monogram
+npm run icons -- kindling  # try another concept: kindling, knob, monogram, necks, amp, pick
 ```
 
 The script writes, and you commit:

@@ -118,6 +118,7 @@ export function createRig({ root, state, actions }) {
       fx.isOn = !fx.isOn;
       set(fx.isOn);
       markBlock(i, fx.isOn);
+      board.querySelector('.amp-link')?.classList.toggle('off', !fx.isOn);
       actions.setOnOff(fx.name, fx.isOn);
     });
     switches.set(i, set);
@@ -126,7 +127,7 @@ export function createRig({ root, state, actions }) {
 
   // ---- pedals --------------------------------------------------------------------
 
-  function renderPedal(fx, i, slotKey) {
+  function renderPedal(fx, i, slotKey, pos) {
     const known = findEffect(fx.name);
     const el = document.createElement('article');
     el.className = 'pedal';
@@ -138,7 +139,12 @@ export function createRig({ root, state, actions }) {
     const top = document.createElement('div');
     top.className = 'pedal-top';
     const led = Object.assign(document.createElement('span'), { className: 'led', title: fx.isOn ? 'On' : 'Off' });
-    top.append(Object.assign(document.createElement('span'), { className: 'pedal-slot', textContent: SLOTS.find((s) => s.key === slotKey)?.label ?? 'Effect' }), led);
+    const pos_ = Object.assign(document.createElement('span'), { className: 'pedal-pos', textContent: String(pos), title: `Position ${pos} in the signal chain` });
+    const name = Object.assign(document.createElement('span'), { className: 'pedal-slot', textContent: SLOTS.find((s) => s.key === slotKey)?.label ?? 'Effect' });
+    const left = document.createElement('span');
+    left.className = 'pedal-top-left';
+    left.append(pos_, name);
+    top.append(left, led);
 
     const knobs = document.createElement('div');
     knobs.className = 'pedal-knobs';
@@ -330,15 +336,49 @@ export function createRig({ root, state, actions }) {
     let ampIdx = p.pedals.findIndex((fx, i) => slotOf(fx.name, i) === 'amp');
     if (ampIdx < 0) ampIdx = 3;
     renderAmp(p.pedals[ampIdx], ampIdx);
-    p.pedals.forEach((fx, i) => {
-      if (i === ampIdx) {
-        // marks where the amp sits in the chain, between the pre- and post-amp pedals
-        board.append(Object.assign(document.createElement('div'), { className: 'amp-marker', textContent: 'Amp', ariaHidden: 'true' }));
-        return;
-      }
-      board.append(renderPedal(fx, i, slotOf(fx.name, i)));
-    });
+    // Two rows in signal order: the pedals before the amp, a link showing where
+    // the amp sits, then the pedals after it (3 + 3 for a standard chain).
+    const row = (stage, title, indices) => {
+      const section = document.createElement('section');
+      section.className = 'pedal-row';
+      section.dataset.stage = stage;
+      section.setAttribute('aria-label', title);
+      const head = Object.assign(document.createElement('h3'), { className: 'row-title', textContent: title });
+      const grid = document.createElement('div');
+      grid.className = 'row-pedals';
+      for (const i of indices) grid.append(renderPedal(p.pedals[i], i, slotOf(p.pedals[i].name, i), i + 1));
+      if (!indices.length) grid.append(Object.assign(document.createElement('p'), { className: 'row-empty', textContent: 'No effects here' }));
+      section.append(head, grid);
+      return section;
+    };
+    const all = p.pedals.map((_, i) => i);
+    board.append(
+      row('pre', 'Into the amp', all.filter((i) => i < ampIdx)),
+      ampLink(p.pedals[ampIdx], ampIdx),
+      row('post', 'After the amp', all.filter((i) => i > ampIdx)),
+    );
     renderStrip();
+  }
+
+  /** The bar between the two rows: shows the amp's place in the chain and jumps to the amp head. */
+  function ampLink(fx, i) {
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'amp-link' });
+    b.classList.toggle('off', !fx.isOn);
+    const name = findEffect(fx.name)?.name ?? fx.name;
+    b.setAttribute('aria-label', `Amp, position ${i + 1} in the chain: ${name}. Show amp controls.`);
+    const badge = document.createElement('span');
+    badge.className = 'amp-link-badge';
+    badge.append(
+      Object.assign(document.createElement('span'), { className: 'pedal-pos', textContent: String(i + 1) }),
+      Object.assign(document.createElement('span'), { className: 'amp-link-kicker', textContent: 'Amp' }),
+      Object.assign(document.createElement('span'), { className: 'amp-link-name', textContent: name }),
+    );
+    b.append(badge);
+    b.addEventListener('click', () => {
+      ampEl.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+      flashEl(ampEl);
+    });
+    return b;
   }
 
   function flashEl(el) {
@@ -354,6 +394,7 @@ export function createRig({ root, state, actions }) {
     setOnOff(i, on) {
       switches.get(i)?.(on);
       markBlock(i, on);
+      if (ampEl.dataset.index === String(i)) board.querySelector('.amp-link')?.classList.toggle('off', !on);
     },
     flash: (i) => flashEl(root.querySelector(`.pedal[data-index="${i}"], .amp-head[data-index="${i}"]`)),
     isCanonical: (pedals) => pedals.every((fx, i) => SLOT_ORDER[i] === slotOf(fx.name, i)),

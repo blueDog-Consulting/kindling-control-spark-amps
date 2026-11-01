@@ -21,7 +21,7 @@ Build instructions for each are in [docs/APPS.md](docs/APPS.md).
 * **Tone:** a rig view in the style of desktop amp sims.
   * A signal-chain strip runs along the top: IN → gate → comp → drive → amp → mod → delay → reverb → OUT.
   * The amp appears as an amp head, with chicken-head knobs for gain, bass, middle, treble and volume.
-  * Every other effect is a stompbox with rotary knobs, a status LED and a footswitch. Swap any model from its nameplate, which also shows the real gear it's based on.
+  * Every other effect is a stompbox with rotary knobs, a status LED and a footswitch, laid out in signal order: the three pedals *into the amp* on the first row, the three *after the amp* on the second. A badge between the rows marks where the amp sits. Swap any model from its nameplate, which also shows the real gear it's based on.
   * Switch hardware presets on both banks of the Spark 2. Changing bank keeps your position, so preset 3 in bank 1 goes to preset 3 in bank 2.
   * Turning a knob on the amp updates the UI live.
   * **Reorder chain** (experimental) lets you drag effects into a new order and try it on the amp. The Spark firmware is believed to use a fixed order, so the app reads the result back and tells you whether your amp kept it.

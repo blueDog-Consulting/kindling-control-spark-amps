@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>KindlingControl: Amp Fire</title>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="64%" r="70%">
+      <stop offset="0" stop-color="#40240c"/>
+      <stop offset="0.5" stop-color="#18191d"/>
+      <stop offset="1" stop-color="#0c0d0f"/>
+    </radialGradient>
+    <linearGradient id="flameOuter" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd166"/>
+      <stop offset="0.45" stop-color="#ff8a1f"/>
+      <stop offset="1" stop-color="#e0391c"/>
+    </linearGradient>
+    <linearGradient id="flameInner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff7da"/>
+      <stop offset="1" stop-color="#ffc23d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ff9a2e" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff9a2e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="tolex" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2b2b"/><stop offset="1" stop-color="#101010"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#efe6d2"/><stop offset="1" stop-color="#b8ad94"/>
+    </linearGradient>
+    <pattern id="grille" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="22" height="22" fill="#5a2a22"/><rect width="11" height="22" fill="#6e3429"/>
+    </pattern>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a8754a"/><stop offset="1" stop-color="#5a3820"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+    <ellipse cx="512" cy="430" rx="300" ry="260" fill="url(#glow)"/>
+    <g transform="translate(512 512) scale(0.84) translate(-512 -512)">
+      <g transform="translate(512 300) scale(0.5) translate(-512 -490)">
+      <path fill="url(#flameOuter)" d="M512 180 C 600 300, 720 380, 720 560 C 720 700, 625 800, 512 800 C 399 800, 304 700, 304 560 C 304 470, 350 410, 400 360 C 400 440, 430 480, 470 500 C 460 400, 480 290, 512 180 Z"/>
+      <path fill="url(#flameInner)" d="M512 430 C 560 500, 620 540, 620 630 C 620 700, 570 745, 512 745 C 454 745, 404 700, 404 635 C 404 580, 440 545, 470 520 C 475 570, 495 590, 512 600 C 505 540, 500 480, 512 430 Z"/>
+      </g>
+      <g transform="translate(512 470)">
+        <g transform="rotate(-14)"><rect x="-170" y="-24" width="340" height="48" rx="24" fill="url(#wood)"/><ellipse cx="-146" cy="0" rx="16" ry="20" fill="#d9ab78"/><ellipse cx="146" cy="0" rx="16" ry="20" fill="#d9ab78"/></g>
+        <g transform="rotate(14)"><rect x="-170" y="-24" width="340" height="48" rx="24" fill="url(#wood)"/><ellipse cx="-146" cy="0" rx="16" ry="20" fill="#d9ab78"/><ellipse cx="146" cy="0" rx="16" ry="20" fill="#d9ab78"/></g>
+      </g>
+      <rect x="452" y="488" width="120" height="26" rx="13" fill="#0a0a0a"/>
+      <rect x="232" y="510" width="560" height="380" rx="44" fill="url(#tolex)" stroke="#000" stroke-width="6"/>
+      <rect x="262" y="538" width="500" height="78" rx="12" fill="url(#panel)"/>
+      <circle cx="318" cy="577" r="22" fill="#1b1b1b"/><line x1="318" y1="577" x2="328" y2="561" stroke="#f5f1e6" stroke-width="5" stroke-linecap="round"/><circle cx="400" cy="577" r="22" fill="#1b1b1b"/><line x1="400" y1="577" x2="410" y2="561" stroke="#f5f1e6" stroke-width="5" stroke-linecap="round"/><circle cx="482" cy="577" r="22" fill="#1b1b1b"/><line x1="482" y1="577" x2="492" y2="561" stroke="#f5f1e6" stroke-width="5" stroke-linecap="round"/><circle cx="564" cy="577" r="22" fill="#1b1b1b"/><line x1="564" y1="577" x2="574" y2="561" stroke="#f5f1e6" stroke-width="5" stroke-linecap="round"/><circle cx="646" cy="577" r="22" fill="#1b1b1b"/><line x1="646" y1="577" x2="656" y2="561" stroke="#f5f1e6" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="728" cy="577" r="13" fill="#e11d1d"/>
+      <rect x="262" y="634" width="500" height="228" rx="16" fill="url(#grille)"/>
+      <rect x="262" y="634" width="500" height="228" rx="16" fill="none" stroke="#c9bfa6" stroke-width="6"/>
+    </g>
+</svg>

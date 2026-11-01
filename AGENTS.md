@@ -59,7 +59,7 @@ src/                     everything that ships; served as-is, no bundler, no bui
 desktop/                 Electron main + preload (serves src/ over the secure kindling:// scheme)
 android/, ios/           Capacitor native projects (generated; web assets are synced in, not committed)
 tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release-plan, build-icons
-assets/logo/concepts/    logo source SVGs (kindling, knob, monogram); `npm run icons` renders all platform icons
+assets/logo/concepts/    logo source SVGs (kindling, knob, monogram, necks, amp, pick); `npm run icons` renders all platform icons
 build/                   generated desktop icons for electron-builder (committed)
 .github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release)
 test/                    node:test suites; test/fixtures holds real captures
@@ -109,7 +109,7 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 - `MockSparkTransport` normalises uploads to canonical order by default (`fixedChain: true`); `fixedChain: false` (`?mock&reorder=1`) keeps them.
 
 **UI (rig):**
-- `rig.js` renders from `state.preset.pedals`: a chain strip (IN → blocks → OUT), the amp as an amp head (chicken-head knobs in `AMP_KNOB_ORDER`), and the other blocks as stompboxes in chain order, with an "→ AMP →" marker where the amp sits.
+- `rig.js` renders from `state.preset.pedals`: a chain strip (IN → blocks → OUT), the amp as an amp head (chicken-head knobs in `AMP_KNOB_ORDER`), and the other blocks as stompboxes on a pedalboard in two rows: "Into the amp" (the blocks before the amp) and "After the amp". An amp-link badge sits between them, showing the amp's chain position and jumping to the amp head. Each pedal shows its chain position number (1–7). Rows are 3 columns wide (1 below 720px), and pedals in a row stretch so their footswitches line up.
 - Every parameter control registers a setter under `"fxIndex:param"`. The amp head, the pedals and knob moves reported by the amp (`rig.updateParam`) all sync through that registry; add new controls the same way instead of querying the DOM. Parameter sends are throttled per parameter (40 ms).
 - The knob (`controls.js`) is a real `<input type="range">`, kept focusable but invisible, with an SVG dial on top. Keyboard and screen readers use the native slider. Pointer: drag up or right to turn, Shift for fine control, double-click to reset to 5.
 - The theme is dark only (`color-scheme: dark`). Pedal colours come from `--pedal-<slot>` tokens. Check phone width (390px) for horizontal overflow after layout changes.
