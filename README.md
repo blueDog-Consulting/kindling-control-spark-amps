@@ -62,12 +62,6 @@ npm run serve          # http://localhost:8787  (no dependencies)
 
 Close the official Spark app first; it may hold the BLE connection. Then tap **Connect** and pick your amp.
 
-### Website
-
-[kindlingspark.app](https://kindlingspark.app) (the landing page, this user guide, and the **presets hub** where players share presets) lives in its own repository, [bluedog-consulting/kindling-control-website](https://github.com/bluedog-consulting/kindling-control-website), so you can fork the app without it. The website copies a few files from here: the preset code, the user guide and an icon (listed in its `tools/app-source.js`). It picks up changes when someone runs its `npm run sync:app`.
-
-`npm run screenshots` captures marketing screenshots from the app and the simulated Spark 2 (into `screenshots/`, or `--out <dir>`; needs Playwright). The website uses it for its images.
-
 ## Library
 
 `src/spark/` has no dependencies and runs in the browser or in Node 20+:
