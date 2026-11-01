@@ -1,0 +1,54 @@
+name: Website
+
+# Deploys kindlingspark.app (landing page, user guide, presets hub + API) to
+# Cloudflare Workers whenever something it's built from changes on main.
+# Without the CLOUDFLARE_API_TOKEN secret it only builds and tests.
+# Setup (D1 database, email, secrets): docs/PRESETS.md.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'src/guide/**'
+      - 'src/icon.svg'
+      - 'src/icons/**'
+      - 'src/spark/**' # the Worker validates presets with the protocol library
+      - 'worker/**'
+      - 'migrations/**'
+      - 'wrangler.jsonc'
+      - 'tools/build-site.js'
+      - '.github/workflows/site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Test
+        run: npm test
+      - name: Build site
+        run: node tools/build-site.js
+      - name: Apply database migrations
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: npx --yes wrangler@4.151.3 d1 migrations apply kindling-presets --remote
+      - name: Deploy to Cloudflare
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: npx --yes wrangler@4.151.3 deploy
+      - name: Note skipped deploy
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "::notice::CLOUDFLARE_API_TOKEN is not set; built and tested the website but skipped the Cloudflare deploy."

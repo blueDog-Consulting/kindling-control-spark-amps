@@ -9,7 +9,7 @@
     "test": "node --test test/*.test.js",
     "serve": "node tools/serve.js",
     "decode": "node tools/btsnoop-decode.js",
-    "deploy": "node tools/build-site.js && wrangler deploy",
+    "deploy": "node tools/build-site.js && npx --yes wrangler@4.151.3 d1 migrations apply kindling-presets --remote && npx --yes wrangler@4.151.3 deploy",
     "desktop": "electron .",
     "desktop:mock": "electron . --mock",
     "desktop:dist": "electron-builder",
@@ -20,10 +20,11 @@
     "release:plan": "node tools/release-plan.js",
     "icons": "node tools/build-icons.js",
     "site": "node tools/build-site.js",
+    "site:dev": "node tools/build-site.js && node tools/serve-site.js",
     "screenshots": "node tools/screenshots.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "main": "desktop/main.js",
   "author": "blueDog Consulting",

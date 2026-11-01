@@ -43,6 +43,7 @@
         </li>
         <li><a href="#saving">Creating and saving presets</a></li>
         <li><a href="#library">The Presets tab</a></li>
+        <li><a href="#sharing">Sharing presets online</a></li>
         <li><a href="#reorder">Reordering the chain (experimental)</a></li>
         <li><a href="#tuner">Tuner</a></li>
         <li><a href="#console">Console</a></li>
@@ -66,9 +67,9 @@
         <section id="requirements">
           <h3>What you need</h3>
           <ul>
-            <li><strong>A browser with Web Bluetooth</strong>: Chrome or Edge on Android, Windows, macOS, Linux or ChromeOS. Safari, Firefox and every browser on iPhone and iPad can't do Bluetooth.</li>
-            <li><strong>Or one of the apps</strong>: the desktop app (Windows, macOS, Linux) or the Android app, from the <a href="https://github.com/bluedog-consulting/kindling-control-spark-amps/releases/latest" target="_blank" rel="noopener">releases page</a>. An iPad and iPhone app is planned.</li>
-            <li><strong>Bluetooth switched on</strong>, and on macOS, Bluetooth permission for your browser (System Settings → Privacy &amp; Security → Bluetooth).</li>
+            <li><strong>The app</strong>: the desktop app (Windows, macOS, Linux) or the Android app, from the <a href="https://github.com/bluedog-consulting/kindling-control-spark-amps/releases/latest" target="_blank" rel="noopener">releases page</a>. An iPad and iPhone app is planned.</li>
+            <li><strong>Bluetooth switched on</strong>, and on macOS, Bluetooth permission for KindlingControl (System Settings → Privacy &amp; Security → Bluetooth).</li>
+            <li><strong>Developers</strong> can also run KindlingControl in Chrome or Edge from the source code (<code>npm run serve</code>, see the README). Safari, Firefox and every browser on iPhone and iPad can't do Bluetooth.</li>
           </ul>
         </section>
 
@@ -87,8 +88,9 @@
         <section id="simulator">
           <h3>Trying it without an amp</h3>
           <p>
-            The web app has a built-in simulated amp. Add <code>?mock=Spark%202</code> to the address, for example <code>…/app/?mock=Spark%202</code>,
-            and press Connect. Use <code>?mock</code> on its own for a Spark 40. Nothing you do there reaches a real amp.
+            KindlingControl has a built-in simulated amp for developers. Run it from the source code and add <code>?mock=Spark%202</code> to the address,
+            for example <code>http://localhost:8787/?mock=Spark%202</code>, then press Connect. Use <code>?mock</code> on its own for a Spark 40.
+            The desktop app starts with the simulator with <code>npm run desktop:mock</code>. Nothing you do there reaches a real amp.
           </p>
         </section>
       </section>
@@ -186,6 +188,32 @@
         <p class="note">
           The library lives in this browser or app. It isn't shared between devices, and private or incognito windows forget it when they close (the tab tells you if it can't store data).
           Export anything you want to keep safe.
+        </p>
+      </section>
+
+      <!-- ------------------------------------------------------------------ -->
+      <section id="sharing">
+        <h2>Sharing presets online</h2>
+        <p>
+          The <a href="https://kindlingspark.app/presets/" target="_blank" rel="noopener">presets hub</a> on kindlingspark.app is where players swap tones.
+          Browsing and downloading needs no account.
+        </p>
+        <h3>Get a preset</h3>
+        <ol>
+          <li>Find one on the hub and press <strong>Download</strong>. You get a <code>.json</code> file.</li>
+          <li>In KindlingControl, open the <strong>Presets</strong> tab and choose <strong>Import JSON…</strong>.</li>
+          <li>It appears in <em>My presets</em>. <strong>Load</strong> it to hear it; nothing stored on your amp changes until you choose <strong>Save…</strong>.</li>
+        </ol>
+        <h3>Share one of yours</h3>
+        <ol>
+          <li>In the <strong>Presets</strong> tab, press <strong>Export</strong> next to the preset (or <strong>Export current tone</strong>).</li>
+          <li>On the hub, choose <strong>Share a preset</strong> and sign in with your email address. You'll get a sign-in link by email; there's no password.</li>
+          <li>Upload the file, add a description if you like, and agree to share it under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener">CC0</a>, which lets anyone use and change it.</li>
+        </ol>
+        <p class="note">
+          Your email address is only used to send sign-in links and is never shown. Other players see the display name you choose.
+          You can delete your shared presets at any time. If a preset looks wrong or offensive, use <strong>Report this preset</strong> on its page;
+          presets with several reports are hidden until a moderator checks them.
         </p>
       </section>
 

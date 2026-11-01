@@ -31,12 +31,14 @@ It's an independent interoperability project. Never add Positive Grid's code, as
 
 | Platform | Shell | Bluetooth transport |
 |---|---|---|
-| Browser (Chrome/Edge) | none: static files in `src/`, deployed to Cloudflare | `src/spark/transport-ble.js` (Web Bluetooth) |
+| Browser (Chrome/Edge) | none: static files in `src/`, **development only** (`npm run serve`); deliberately not published on the website | `src/spark/transport-ble.js` (Web Bluetooth) |
 | Windows/macOS/Linux | Electron: `desktop/main.js`, `desktop/preload.cjs` | same Web Bluetooth transport, with an in-app device picker |
 | Android | Capacitor: `android/` | `src/spark/transport-capacitor.js` (native plugin `@capacitor-community/bluetooth-le`) |
 | iPad/iPhone | Capacitor: `ios/` (universal) | same Capacitor transport. iOS browsers have no Web Bluetooth. |
 
 `src/app/app.js` picks the transport at runtime: the native plugin if present, then Web Bluetooth. `?mock` swaps in the simulated amp.
+
+The website **kindlingspark.app** (Cloudflare Worker + static assets) has the landing page, the user guide at `/guide/` and the **presets hub** at `/presets/` (share and download presets; API in `worker/`, D1 database). Details: `docs/PRESETS.md` and "Website and presets hub" below.
 
 ## Layout
 
@@ -47,7 +49,7 @@ src/                     everything that ships; served as-is, no bundler, no bui
   app/rig.js             the rig view: chain strip (incl. reorder), amp head, pedalboard; param sync registry
   app/controls.js        reusable controls: rotary knob (native range + SVG dial), footswitch, toggle, selector
   app/library.js         "My presets" on-device library (localStorage, falls back to memory)
-  guide/                 user guide (index.html + guide.css), shown in the in-app Help panel; also /app/guide/
+  guide/                 user guide (index.html + guide.css), shown in the in-app Help panel; also /guide/ on the website
   app/styles.css         dark "stage" theme; colour tokens on :root, per-slot pedal colours
   spark/                 protocol library: no DOM, no dependencies, runs in Node 20+ too
     constants.js         UUIDs, command/sub-command ids, per-model settings (AMP_MODELS)
@@ -57,22 +59,29 @@ src/                     everything that ships; served as-is, no bundler, no bui
     transport-*.js       ble (Web Bluetooth), capacitor (native), mock (simulated amp)
     btsnoop.js           Android HCI snoop log -> Spark messages (BLE ATT + RFCOMM)
     effects.js           effect/amp catalog, param labels, AMP_KNOB_ORDER, blankPreset(), BASED_ON, SLOT_ORDER
-site/                    landing page (index.html, site.css, screenshots/); deployed at / with the app (src/) at /app/
+site/                    the website: landing page (index.html, site.css, screenshots/), presets hub pages (presets/),
+                         _headers (CSP etc.), _redirects (old /app/ links)
+worker/                  Cloudflare Worker for kindlingspark.app: presets API (api.js), magic-link auth (auth.js),
+                         email (mail.js), upload validation (preset.js, reuses src/spark/)
+migrations/              D1 schema for the presets hub (numbered; never edit an applied one)
 desktop/                 Electron main + preload (serves src/ over the secure kindling:// scheme)
 android/, ios/           Capacitor native projects (generated; web assets are synced in, not committed)
 tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release-plan, build-icons,
-                         build-site (site-dist/ = site/ + src/ at /app/), screenshots (landing-page images via Playwright)
+                         build-site (site-dist/ = site/ + guide at /guide/, no web app), serve-site (site + API locally),
+                         d1-sqlite (D1 stand-in on node:sqlite, for tests and serve-site), screenshots (via Playwright)
 assets/logo/concepts/    logo source SVGs (kindling, knob, monogram, necks, amp, pick); `npm run icons` renders all platform icons
 build/                   generated desktop icons for electron-builder (committed)
-.github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release)
+.github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release),
+                         site.yml (push to main -> D1 migrations + deploy kindlingspark.app)
 test/                    node:test suites; test/fixtures holds real captures
-docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md
+docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md,
+                         PRESETS.md (website, presets hub API, privacy, Cloudflare setup)
 ```
 
 ## Commands
 
 ```sh
-npm test                         # all tests; needs no npm install
+npm test                         # all tests; needs no npm install (Node 22+: the hub tests use node:sqlite)
 npm run serve                    # http://localhost:8787 (Web Bluetooth works on localhost)
                                  #   ?mock  ?mock=Spark%20GO  ?mock=Spark%202  -> simulated amps
                                  #   add &reorder=1 for a simulated amp that accepts reordered chains
@@ -83,9 +92,9 @@ npm run desktop:dist             # installer for the current OS (dist/, git-igno
 npx cap sync                     # copy src/ into android/ and ios/ after web changes
 npm run android | npm run ios    # sync + open Android Studio / Xcode
 node tools/btsnoop-decode.js btsnoop_hci.log [--raw|--json|--unknown]
-npm run site                     # build site-dist/: landing page at /, web app at /app/
-npm run serve -- 8788 site-dist  # preview the whole website
-npm run deploy                   # build-site + wrangler deploy (wrangler.jsonc serves site-dist/)
+npm run site                     # build site-dist/: landing page, /guide/, /presets/ (never the web app)
+npm run site:dev                 # site + presets API on http://localhost:8788 (in-memory DB, sign-in links shown on page)
+npm run deploy                   # build-site + D1 migrations + wrangler deploy (needs the setup in docs/PRESETS.md)
 npm run screenshots              # re-capture site/screenshots/*.jpg from the app + simulated Spark 2 (needs Playwright)
 npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 ```
@@ -136,16 +145,27 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 - **Any change to what users see or do must update the guide in the same change.** Keep section ids stable, because the app links to them. `test/help-links.test.js` fails if a help link points at a missing section, or if the guide's contents list has a broken anchor. `check-docs` accepts the guide as documentation.
 - The desktop app opens "Open in a new window" for `kindling://app/guide/` in a separate sandboxed window with no preload. Link and navigation rules apply to every window via `app.on('web-contents-created')`. The native apps hide that link, because their web views can't open windows.
 
-## Website (landing page)
+## Website and presets hub
 
-- `site/index.html` is the promotional landing page. Its only JS is a tiny inline script that reveals the back-to-top button once the hero scrolls away (IntersectionObserver; without JS the button stays hidden). The footer carries the copyright line (blueDog Consulting and Jeremy Meiss). It uses the same palette as the app, and pulls its icons from `app/` (the built site). It links to the user guide at `app/guide/`. The deploy is `site-dist/`: `site/` at `/` and `src/` at `/app/`, from `tools/build-site.js`. The Electron and Capacitor shells still use `src/` directly.
+- **kindlingspark.app** is one Cloudflare Worker (`wrangler.jsonc`, `main: worker/index.js`) with static assets from `site-dist/`. `tools/build-site.js` builds it: `site/` at `/`, `src/guide/` at `/guide/` (its header link is rewritten to point home), and the icons. **The web app is never published**: the build fails if `site-dist/app/` exists, the landing page never links to an app URL, and `site/_redirects` sends old `/app/…` links home. People install the desktop or Android app from GitHub Releases.
+- `.github/workflows/site.yml` deploys on pushes to `main` that touch the website, Worker, migrations, guide or `src/spark/`. It runs tests, builds, then runs `wrangler d1 migrations apply --remote` and `wrangler deploy`. It skips deploying without `CLOUDFLARE_API_TOKEN`. Releases (`release.yml`) no longer touch the website.
+- **Landing page** (`site/index.html`): its only JS is the inline back-to-top script (IntersectionObserver; without JS the button stays hidden). The primary action is **Download** (GitHub Releases), and the second is **Browse shared presets**. The footer carries the copyright line (blueDog Consulting and Jeremy Meiss). Same palette as the app.
+- **Presets hub** (`site/presets/`, `worker/`, `migrations/`; full detail in `docs/PRESETS.md`):
+  - Browse and download need no account. Sharing uses an **email magic link**: the token travels in the URL fragment to `/presets/signin.html` and is redeemed by a POST (mail scanners can't spend it). Sessions use `HttpOnly; Secure; SameSite=Lax` cookies, and tokens and sessions are stored hashed.
+  - Uploads are validated and **re-serialised** by `worker/preset.js` (reusing `presetToJson` and the effects catalog from `src/spark/`), and must confirm the **CC0** dedication. The downloaded file is what the app's **Import JSON…** reads.
+  - Emails are never returned by public endpoints, only display names. Keep it that way, and keep the FAQ's privacy answer accurate.
+  - Writes must be same-origin `application/json` (CSRF defence); don't add CORS to write endpoints. Downloads allow `*`.
+  - Moderation: 3 reports hide a preset; moderators (`ADMIN_EMAILS`) restore or delete it. Rate limits live in D1 (`rate_events`), and a daily cron cleans up.
+  - Email goes through Cloudflare Email Service (`send_email` binding `EMAIL`), then Resend (`RESEND_API_KEY`), then dev mode (`DEV_SHOW_LINKS=1`, local only, never in production). The Email Service call is **unverified** against a live account.
+  - Hub pages are plain DOM ES modules under a strict CSP (`site/_headers`: no inline script or style on `/presets/*`). Render user content with `textContent` only, never `innerHTML`.
+  - Test with `npm run site:dev` (the real Worker on `node:sqlite` via `tools/d1-sqlite.js`) and `test/presets-hub.test.js`. Schema changes go in a **new** numbered migration.
 - Screenshots come from `npm run screenshots` (real app + `MockSparkTransport` Spark 2). Re-run it after visible UI changes; don't hand-edit them.
 - Keep the copy honest:
   - Say what has actually been tested (a Spark 2) versus what follows the documented protocol.
   - Mark plans as plans (e.g. the iPad app).
   - Don't disparage the official app.
   - Keep the credits section crediting Paul Hamshere's protocol work, Ignitron and the other sources in `NOTICE`.
-- If you change the landing page, the app's URL or the deploy layout, update this section and the README.
+- If you change the landing page, the domain, the hub or the deploy layout, update this section, `docs/PRESETS.md` and the README.
 
 ## Branding and icons
 
@@ -156,10 +176,10 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 
 ## Releases
 
-- Pushing a `v*` tag runs `.github/workflows/release.yml`. `tools/release-plan.js` diffs against the previous `v*` tag and builds only the apps whose paths changed (`APP_PATHS`: `src/` is shared by all of them). It then publishes one GitHub Release. Full details are in `docs/RELEASING.md`.
+- Pushing a `v*` tag runs `.github/workflows/release.yml`. `tools/release-plan.js` diffs against the previous `v*` tag and builds only the apps whose paths changed (`APP_PATHS`: Android and desktop; `src/` is shared by both). It then publishes one GitHub Release. The website deploys separately (`site.yml`). Full details are in `docs/RELEASING.md`.
 - If you add a file or folder that affects an app's build, add its path to `APP_PATHS`, and update `docs/RELEASING.md`.
 - Versions come from the tag; don't hand-edit versions in `package.json` or `android/app/build.gradle`. The Android `versionCode` scheme is `versionFromTag()`, and it must stay strictly increasing (tested).
-- Secrets are optional: without them, CI ships a debug APK, unsigned desktop builds and no Cloudflare deploy. In workflows, never interpolate `${{ }}` values derived from repo content (e.g. file names) into `run:` scripts; pass them through `env:`.
+- Secrets are optional: without them, CI ships a debug APK and unsigned desktop builds, and the website workflow skips the Cloudflare deploy. In workflows, never interpolate `${{ }}` values derived from repo content (e.g. file names) into `run:` scripts; pass them through `env:`.
 - iOS isn't built in CI yet (it needs macOS signing).
 
 ## Verifying changes
@@ -171,7 +191,7 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 ## Conventions
 
 - **Dependencies:**
-  - `src/` has zero runtime dependencies and no build step. Keep it that way: ES modules, plain DOM, no frameworks.
+  - `src/` has zero runtime dependencies and no build step. Keep it that way: ES modules, plain DOM, no frameworks. The same goes for `worker/` (only Workers APIs, plus imports from `src/spark/`) and `site/presets/`.
   - All npm packages are devDependencies (Capacitor's CLI also scans devDependencies), pinned to **exact** versions that are at least two weeks old. The one exception is a security fix for something that ships, e.g. Electron.
   - `npm audit --omit=dev` must stay at 0. Moderate findings inside electron-builder or `@capacitor/cli` are build-only (see `docs/APPS.md`). Never run `npm audit fix --force`.
 - **Formatting:** 2-space indent, single quotes, semicolons, trailing commas, lines up to about 120 characters.

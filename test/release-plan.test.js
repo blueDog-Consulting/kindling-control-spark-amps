@@ -5,26 +5,25 @@ import { planRelease, versionFromTag } from '../tools/release-plan.js';
 const builds = (plan) => Object.entries(plan).filter(([, p]) => p.build).map(([a]) => a).sort();
 
 test('shared web code rebuilds every app', () => {
-  assert.deepEqual(builds(planRelease(['src/app/rig.js'])), ['android', 'desktop', 'web']);
+  assert.deepEqual(builds(planRelease(['src/app/rig.js'])), ['android', 'desktop']);
 });
 
 test('app-specific changes only rebuild that app', () => {
   assert.deepEqual(builds(planRelease(['desktop/main.js'])), ['desktop']);
   assert.deepEqual(builds(planRelease(['build/icon-mac.png'])), ['desktop']);
   assert.deepEqual(builds(planRelease(['android/app/build.gradle', 'capacitor.config.json'])), ['android']);
-  assert.deepEqual(builds(planRelease(['wrangler.jsonc'])), ['web']);
-  assert.deepEqual(builds(planRelease(['site/index.html', 'site/screenshots/rig-desktop.jpg'])), ['web']);
+  assert.deepEqual(builds(planRelease(['wrangler.jsonc', 'worker/api.js', 'site/index.html'])), [], 'the website deploys separately');
   assert.deepEqual(builds(planRelease(['package-lock.json'])), ['android', 'desktop']);
 });
 
 test('docs, tests, tools and iOS changes build nothing', () => {
   assert.deepEqual(builds(planRelease(['README.md', 'docs/APPS.md', 'test/codec.test.js', 'ios/App/App/Info.plist', 'AGENTS.md'])), []);
-  assert.equal(planRelease(['README.md']).web.reason, 'no changes');
+  assert.equal(planRelease(['README.md']).android.reason, 'no changes');
 });
 
 test('first release or force builds everything', () => {
-  assert.deepEqual(builds(planRelease(null)), ['android', 'desktop', 'web']);
-  assert.deepEqual(builds(planRelease([], { force: true })), ['android', 'desktop', 'web']);
+  assert.deepEqual(builds(planRelease(null)), ['android', 'desktop']);
+  assert.deepEqual(builds(planRelease([], { force: true })), ['android', 'desktop']);
 });
 
 test('version codes increase through alpha, beta, rc to the final release', () => {

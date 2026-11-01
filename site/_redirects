@@ -1,0 +1,3 @@
+# The web app is no longer published on the website; send old links somewhere useful.
+/app/guide/* /guide/:splat 301
+/app/* / 302

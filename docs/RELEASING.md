@@ -26,7 +26,6 @@ Watch it under **Actions → Release**. To rebuild an existing tag, for example 
 
 | App | Rebuilt when these change | Output |
 |---|---|---|
-| Web | `src/`, `site/`, `wrangler.jsonc`, `tools/build-site.js` | `kindling-control-<v>-web.zip` (landing page at `/`, app at `/app/`); deployed to Cloudflare if the secret is set |
 | Android | `src/`, `android/`, `capacitor.config.json`, `package.json`, `package-lock.json` | `…-android.apk` + `.aab` (signed), or `…-android-debug.apk` |
 | Desktop | `src/`, `desktop/`, `build/` (icons), `package.json`, `package-lock.json` | Windows `.exe` (NSIS), macOS `.dmg` (arm64 + x64), Linux `.AppImage` + `.deb` |
 
@@ -38,18 +37,18 @@ Watch it under **Actions → Release**. To rebuild an existing tag, for example 
 
 ## Secrets (repo Settings → Secrets and variables → Actions)
 
-Everything works without secrets: the web app is packaged but not deployed, Android ships a debug-signed APK, and desktop builds are unsigned. Add these to enable the rest:
+Everything works without secrets: Android ships a debug-signed APK, and desktop builds are unsigned. Add these to enable the rest:
 
 | Secret | Used for |
 |---|---|
-| `CLOUDFLARE_API_TOKEN` | Deploying the web app. Create a token with the *Edit Cloudflare Workers* template. |
+| `CLOUDFLARE_API_TOKEN` | Deploying the website (`site.yml`, not releases). Permissions are listed in [PRESETS.md](PRESETS.md). |
 | `CLOUDFLARE_ACCOUNT_ID` | The Cloudflare account to deploy to |
 | `ANDROID_KEYSTORE_BASE64` | Release keystore, base64-encoded (see below) |
 | `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
 | `ANDROID_KEY_ALIAS` | Key alias in the keystore |
 | `ANDROID_KEY_PASSWORD` | Key password |
 
-**Web:** CI first runs `tools/build-site.js`, which builds `site-dist/` with the landing page at `/` and the app at `/app/`. Final releases then run `wrangler deploy` to production. Pre-releases run `wrangler versions upload`, which creates a preview version without touching production. Wrangler is pinned in the workflow (`wrangler@4.151.3`).
+**Website:** kindlingspark.app isn't part of releases, and the web app isn't published at all. `.github/workflows/site.yml` deploys the landing page, guide and presets hub on pushes to `main` (see [PRESETS.md](PRESETS.md)). Wrangler is pinned there (`wrangler@4.151.3`).
 
 **Android keystore:** create it once and keep it safe. If you lose it, you can never ship an update to the same app on Google Play.
 

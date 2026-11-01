@@ -21,9 +21,12 @@ Works with Spark 40, Spark GO, Spark MINI, Spark 2 and Spark NEO. All of them us
 
 | Where | How |
 |---|---|
-| Android | the web app in Chrome, or the native app (`android/`) |
-| iPad / iPhone | the native app (`ios/`). iOS browsers have no Web Bluetooth. |
-| Windows / macOS / Linux | the desktop app (`desktop/`, Electron), or the web app in Chrome/Edge |
+| Android | the Android app (`android/`) |
+| iPad / iPhone | the native app (`ios/`, planned). iOS browsers have no Web Bluetooth. |
+| Windows / macOS / Linux | the desktop app (`desktop/`, Electron) |
+| Chrome / Edge | for development only: `npm run serve` runs the same UI over Web Bluetooth. The web app isn't published. |
+
+Download the apps from [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases). The website, [kindlingspark.app](https://kindlingspark.app), has the landing page, the user guide and the **presets hub**, where players share presets.
 
 Build instructions for each are in [docs/APPS.md](docs/APPS.md).
 
@@ -43,9 +46,9 @@ Build instructions for each are in [docs/APPS.md](docs/APPS.md).
 
 ## Use it
 
-**New here? Read the [user guide](src/guide/index.html).** It's built into the app (the **Help** button, plus **?** links next to each feature), and on the website at `/app/guide/`.
+**New here? Read the [user guide](src/guide/index.html).** It's built into the app (the **Help** button, plus **?** links next to each feature), and on the website at [kindlingspark.app/guide/](https://kindlingspark.app/guide/).
 
-In a browser, Web Bluetooth needs **Chrome or Edge**: on Android, Windows, macOS, Linux or ChromeOS. iOS browsers don't support it, so iPad and iPhone need the native app. The page also has to be served over HTTPS (or `localhost`).
+To run the app from source in a browser, use **Chrome or Edge** (Web Bluetooth) on Android, Windows, macOS, Linux or ChromeOS. iOS browsers don't support it. The page has to be served over HTTPS or `localhost`.
 
 ```sh
 npm run serve          # http://localhost:8787  (no dependencies)
@@ -57,23 +60,17 @@ npm run serve          # http://localhost:8787  (no dependencies)
 
 Close the official Spark app first; it may hold the BLE connection. Then tap **Connect** and pick your amp.
 
-### Website and deploy to Cloudflare
+### Website and presets hub
 
-The website is static files, deployed as Workers static assets. It has two parts:
-
-* `/` is the **landing page** (`site/`): what the app does, screenshots, how to use it, and credits.
-* `/app/` is the **web app** (`src/`).
-
-`tools/build-site.js` combines them into `site-dist/`:
+[kindlingspark.app](https://kindlingspark.app) runs on Cloudflare Workers: the landing page (`site/`), the user guide at `/guide/`, and the **presets hub** at `/presets/`. On the hub, anyone can browse and download presets; sharing needs an email sign-in link. The hub's API is a Worker (`worker/`) with a D1 database (`migrations/`). The web app itself is deliberately not published there.
 
 ```sh
-npm run site                   # build site-dist/
-npm run serve -- 8788 site-dist  # preview the whole site locally
-npm run deploy                 # build + wrangler deploy (wrangler.jsonc)
-npm run screenshots            # re-capture site/screenshots/ from the app (needs Playwright)
+npm run site:dev       # build site-dist/ and serve site + presets API on http://localhost:8788 (in-memory database)
+npm run deploy         # build, apply D1 migrations, wrangler deploy (needs Cloudflare setup)
+npm run screenshots    # re-capture site/screenshots/ from the app (needs Playwright)
 ```
 
-Open `https://kindling-control.<you>.workers.dev/app/` on your phone. Add it to your home screen and it runs like an app.
+CI deploys the website on pushes to `main` (`.github/workflows/site.yml`). Architecture, API, privacy and the one-time Cloudflare setup are in [docs/PRESETS.md](docs/PRESETS.md).
 
 ## Library
 
@@ -118,17 +115,18 @@ The protocol itself is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `src/` | everything that ships: `index.html`, the UI in `app/`, the protocol library in `spark/`. No build step. |
 | `desktop/` | Electron shell for Windows, macOS and Linux |
 | `android/`, `ios/` | Capacitor projects for Android and iPad/iPhone |
-| `tools/` | capture decoder CLI, dev server, docs check |
+| `tools/` | capture decoder CLI, dev servers, docs check, site build |
+| `worker/`, `migrations/` | the presets hub API (Cloudflare Worker) and its D1 schema |
 | `test/` | `node:test` suites and real-capture fixtures |
-| `src/guide/` | the user guide, shown in the app's Help panel and at `/app/guide/` |
-| `site/` | the landing page (`index.html`, `site.css`, `screenshots/`), served at `/` with the app at `/app/` |
-| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md) |
-| `.github/workflows/` | CI (tests + docs check) and the tag-driven release pipeline |
+| `src/guide/` | the user guide, shown in the app's Help panel and at `/guide/` on the website |
+| `site/` | the landing page (`index.html`, `site.css`, `screenshots/`) and the presets hub pages (`presets/`) |
+| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md), [PRESETS.md](docs/PRESETS.md) |
+| `.github/workflows/` | CI (tests + docs check), the tag-driven app releases, and the website deploy |
 
 ## Development
 
 ```sh
-npm test                                        # node:test, no install needed
+npm test                                        # node:test, no install needed (Node 22+)
 node tools/btsnoop-decode.js btsnoop_hci.log    # decode a capture
 npm install && npm run desktop:mock             # desktop app against the simulated amp
 npm run check:docs                              # docs rule (also runs in CI)
