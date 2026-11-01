@@ -101,7 +101,8 @@
     "@capacitor/ios": "8.5.3",
     "@resvg/resvg-js": "2.6.2",
     "electron": "44.9.3",
-    "electron-builder": "26.17.0"
+    "electron-builder": "26.17.0",
+    "wrangler": "latest"
   },
   "desktopName": "kindling-control.desktop"
 }

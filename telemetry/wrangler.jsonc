@@ -12,7 +12,7 @@
   // Counts each distinct error, to open a GitHub issue once ISSUE_THRESHOLD installs hit it.
   // Create once: npx wrangler@4.151.1 d1 create kindling-errors, paste its id below, then apply schema.sql.
   // Remove this block to only log reports (no counting, no issues).
-  "d1_databases": [{ "binding": "DB", "database_name": "kindling-errors", "database_id": "REPLACE_WITH_D1_DATABASE_ID" }],
+  "d1_databases": [{ "binding": "DB", "database_name": "kindling-errors", "database_id": "0cf98a32-fcea-4a47-9cf8-ac2360da98d0" }],
   "vars": {
     "GITHUB_REPO": "bluedog-consulting/kindling-control-spark-amps",
     "ISSUE_THRESHOLD": "2",
