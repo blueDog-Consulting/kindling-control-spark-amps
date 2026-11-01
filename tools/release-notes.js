@@ -4,13 +4,14 @@
 // v0.3.0 ships exactly the notes committed under release-notes/0.3.0/.
 //
 //   node tools/release-notes.js <tag|version> [--only android,macos] [--require android,macos]
-//                                             [--out <dir>] [--markdown <file>]
+//                                             [--out <dir>] [--markdown <file>] [--root <dir>]
 //
 //   --only      look only at these stores (default: all). The release job passes the apps it actually built,
 //               so a release that skipped Android doesn't carry Play notes.
 //   --require   stores whose notes must exist (the build fails if one is missing or invalid)
 //   --out       write each store's notes to <dir>/kindling-control-<version>-<store>-whatsnew.txt
 //   --markdown  append a "Store release notes" section to <file> (used for the GitHub Release body)
+//   --root      repository root that holds release-notes/ (default: this checkout; used by the tests)
 //
 // Used by .github/workflows/release.yml. See release-notes/README.md.
 
@@ -78,15 +79,18 @@ function main(argv) {
   const only = onlyArg.length ? onlyArg : Object.keys(STORES);
   const out = opt('--out');
   const markdown = opt('--markdown');
+  const root = opt('--root');
   const unknown = [...require, ...only].filter((s) => !STORES[s]);
   if (unknown.length) throw new Error(`unknown store(s): ${unknown.join(', ')} (expected ${Object.keys(STORES).join(', ')})`);
   const notLooked = require.filter((s) => !only.includes(s));
   if (notLooked.length) throw new Error(`--require ${notLooked.join(',')} is not in --only ${only.join(',')}`);
   if (!args[0]) {
-    throw new Error('usage: release-notes <tag|version> [--only stores] [--require stores] [--out dir] [--markdown file]');
+    throw new Error(
+      'usage: release-notes <tag|version> [--only stores] [--require stores] [--out dir] [--markdown file] [--root dir]',
+    );
   }
 
-  const { version, notes, errors } = loadStoreNotes(args[0], { only, require });
+  const { version, notes, errors } = loadStoreNotes(args[0], { only, require, ...(root && { root: resolve(root) }) });
   if (errors.length) {
     for (const e of errors) console.error(`  ✗ ${e}`);
     throw new Error(`release notes for ${version} are not ready`);

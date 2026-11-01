@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -80,11 +80,16 @@ test('--only limits the stores that are read', () => {
 
 test('the CLI writes only the --only stores and rejects --require outside them', () => {
   const cli = fileURLToPath(new URL('../tools/release-notes.js', import.meta.url));
-  const cwd = mkdtempSync(join(tmpdir(), 'release-notes-cli-'));
-  const out = join(cwd, 'out');
-  const ok = spawnSync(process.execPath, [cli, '0.1.0', '--only', 'macos', '--out', out], { cwd, encoding: 'utf8' });
+  const root = repoWith('0.3.0', { 'android.txt': 'Android', 'macos.txt': 'Mac' });
+  const out = join(root, 'out');
+  const run = (...args) => spawnSync(process.execPath, [cli, '0.3.0', '--root', root, ...args], { encoding: 'utf8' });
+
+  const ok = run('--only', 'macos', '--out', out);
   assert.equal(ok.status, 0, ok.stderr);
-  const bad = spawnSync(process.execPath, [cli, '0.1.0', '--only', 'macos', '--require', 'android'], { cwd, encoding: 'utf8' });
+  assert.deepEqual(readdirSync(out), ['kindling-control-0.3.0-macos-whatsnew.txt']);
+  assert.equal(readFileSync(join(out, 'kindling-control-0.3.0-macos-whatsnew.txt'), 'utf8'), 'Mac\n');
+
+  const bad = run('--only', 'macos', '--require', 'android');
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /--require android is not in --only macos/);
 });

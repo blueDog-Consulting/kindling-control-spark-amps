@@ -97,9 +97,16 @@ if [ -z "$sdk" ]; then
   exit 1
 fi
 compile_sdk=$(sed -n 's/.*compileSdkVersion = \([0-9]*\).*/\1/p' android/variables.gradle)
+[ -n "$compile_sdk" ] || { echo "error: no compileSdkVersion found in android/variables.gradle." >&2; exit 1; }
+sdkmanager=$(command -v sdkmanager || echo "$sdk/cmdline-tools/latest/bin/sdkmanager")
+if [ ! -d "$sdk/platforms/android-$compile_sdk" ] && [ "${CI:-}" = "true" ] && [ -x "$sdkmanager" ]; then
+  # On CI runners, install it. Locally we only say how: installing SDK packages is the user's call.
+  echo "Installing Android SDK platform $compile_sdk"
+  "$sdkmanager" --sdk_root="$sdk" "platforms;android-$compile_sdk"
+fi
 if [ ! -d "$sdk/platforms/android-$compile_sdk" ]; then
   echo "error: Android SDK platform $compile_sdk not found in $sdk." >&2
-  echo "  Install it: \"$sdk/cmdline-tools/latest/bin/sdkmanager\" \"platforms;android-$compile_sdk\" (or via Android Studio)." >&2
+  echo "  Install it: \"$sdkmanager\" \"platforms;android-$compile_sdk\" (or via Android Studio)." >&2
   exit 1
 fi
 export ANDROID_HOME="$sdk"
@@ -120,7 +127,10 @@ if ! $debug; then
   fi
   if [ -z "${ANDROID_KEYSTORE_PASSWORD:-}" ]; then read -r -s -p 'Keystore password: ' ANDROID_KEYSTORE_PASSWORD; echo; fi
   # Without a terminal, an unset key password means "same as the keystore", as it does when you press Enter.
-  if [ -z "${ANDROID_KEY_PASSWORD:-}" ] && [ -t 0 ]; then read -r -s -p 'Key password (Enter = same as keystore): ' ANDROID_KEY_PASSWORD; echo; fi
+  if [ -z "${ANDROID_KEY_PASSWORD:-}" ] && [ -t 0 ]; then
+    read -r -s -p 'Key password (Enter = same as keystore): ' ANDROID_KEY_PASSWORD
+    echo
+  fi
   export ANDROID_KEYSTORE_FILE ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS
   export ANDROID_KEY_PASSWORD="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
   signed=true
@@ -181,7 +191,8 @@ if $notes; then
   case "$version" in *-*) ;; *) require=(--require android) ;; esac
   echo
   if ! node tools/release-notes.js "$tag" --only android --out out ${require[@]+"${require[@]}"}; then
-    echo "warning: no valid Play release notes, so no whatsnew file was written (CI would stop here for a final tag)." >&2
+    echo "warning: no valid Play release notes, so no whatsnew file was written" \
+      "(CI would stop here for a final tag)." >&2
     echo "  Create release-notes/$version/android.txt (500 characters at most; see release-notes/README.md)." >&2
   fi
 fi
