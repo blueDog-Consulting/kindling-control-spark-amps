@@ -111,7 +111,8 @@ $('#connect').addEventListener('click', async () => {
   } catch (err) {
     console.error(err);
     reportError('connect', err);
-    setStatus('idle', err.name === 'NotFoundError' ? 'Not connected' : "Couldn't connect");
+    if (err.name === 'NotFoundError') setStatus('idle', 'Not connected');
+    else setStatus('error', "Couldn't connect");
     logLine('err', `connect failed: ${err.message}`);
     if (err.name !== 'NotFoundError') {
       toast(`Couldn't connect: ${err.message}`, 'warn', { label: 'Troubleshooting', run: () => openHelp('troubleshooting') });
@@ -170,10 +171,12 @@ function wireClient(c) {
 }
 
 function setStatus(st, text) {
+  // st: idle | busy | connected | error. Phones show only the coloured Bluetooth icon;
+  // the text stays for screen readers and as the tooltip.
   const el = $('#status');
   el.dataset.state = st;
-  el.textContent = text;
-  el.title = text; // full text when the pill is truncated on narrow screens
+  $('.status-text', el).textContent = text;
+  el.title = text;
 }
 
 function setConnectedUi(on) {

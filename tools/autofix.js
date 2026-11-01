@@ -26,7 +26,17 @@ export const DEFAULT_MODEL = '@cf/zai-org/glm-5.3';
 /** Files the agent may change. Not src/app/telemetry.js (privacy-critical) or src/version.js. */
 export const ALLOWED_PATH = /^src\/(?:app\/(?!telemetry\.js$)|spark\/)[\w.-]+\.js$/;
 const MAX_FILES = 4;
-const MAX_CHARS = 120_000;
+
+/**
+ * How much source fits in the prompt, and how long the answer may be, per model. Context
+ * windows are input + output together; JS is roughly 3.5 characters per token.
+ * Models not listed get the default (sized for 128k+ context windows).
+ */
+export const MODEL_LIMITS = {
+  default: { maxChars: 120_000, maxTokens: 16_384 },
+  '@cf/qwen/qwen2.5-coder-32b-instruct': { maxChars: 60_000, maxTokens: 4_096 }, // 32,768-token context
+};
+export const limitsFor = (model) => MODEL_LIMITS[model] ?? MODEL_LIMITS.default;
 
 /** The JSON block the Worker puts in the issue (telemetry/worker.js issueBody). */
 export function parseIssueReport(body) {
@@ -56,7 +66,7 @@ export function isAllowedPath(path) {
  * serve src/ at the root, so "/spark/client.js" is src/spark/client.js), the file
  * that reports this `where`, and files containing a literal piece of the message.
  */
-export function candidateFiles(report, sources) {
+export function candidateFiles(report, sources, { maxChars = MODEL_LIMITS.default.maxChars } = {}) {
   const picked = [];
   const add = (p) => {
     if (sources[p] != null && !picked.includes(p)) picked.push(p);
@@ -76,7 +86,7 @@ export function candidateFiles(report, sources) {
   const out = [];
   let total = 0;
   for (const p of picked) {
-    if (out.length >= MAX_FILES || total + sources[p].length > MAX_CHARS) continue;
+    if (out.length >= MAX_FILES || total + sources[p].length > maxChars) continue;
     out.push(p);
     total += sources[p].length;
   }
@@ -170,7 +180,7 @@ export async function askModel(messages, { accountId, token, model = DEFAULT_MOD
   const res = await fetchImpl(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/chat/completions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 16384 }),
+    body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: limitsFor(model).maxTokens }),
     signal: AbortSignal.timeout(10 * 60_000),
   });
   if (!res.ok) throw new Error(`Workers AI request failed: ${res.status} ${(await res.text()).slice(0, 300)}`);
@@ -197,8 +207,8 @@ export async function propose(eventPath, outDir, root = process.cwd()) {
     return;
   }
   const sources = listSources(root);
-  const picked = candidateFiles(report, sources);
   const model = process.env.AUTOFIX_MODEL || DEFAULT_MODEL;
+  const picked = candidateFiles(report, sources, limitsFor(model));
   const reply = await askModel(buildMessages(report, picked.map((p) => [p, sources[p]])), {
     accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
     token: process.env.CLOUDFLARE_API_TOKEN,

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseIssueReport, candidateFiles, buildMessages, parseModelReply, applyEdits, isAllowedPath, patchPaths, askModel, DEFAULT_MODEL,
+  parseIssueReport, candidateFiles, buildMessages, parseModelReply, applyEdits, isAllowedPath, patchPaths, askModel, DEFAULT_MODEL, limitsFor,
 } from '../tools/autofix.js';
 import { issueBody } from '../telemetry/worker.js';
 
@@ -91,4 +91,18 @@ test('calls the Workers AI OpenAI-compatible endpoint', async () => {
   assert.equal(seen.init.headers.Authorization, 'Bearer tok');
   assert.equal(seen.body.model, DEFAULT_MODEL);
   await assert.rejects(askModel([], { accountId: 'a', token: 't', fetchImpl: async () => new Response('busy', { status: 429 }) }), /429/);
+});
+
+test('smaller-context models get a smaller prompt and answer budget', async () => {
+  const qwen = '@cf/qwen/qwen2.5-coder-32b-instruct';
+  assert.ok(limitsFor(qwen).maxChars < limitsFor(DEFAULT_MODEL).maxChars);
+  assert.deepEqual(limitsFor('@cf/some/new-model'), limitsFor(DEFAULT_MODEL));
+  // two 40k-char files: both fit the default budget, only one fits Qwen's
+  const sources = { 'src/app/app.js': `reportError('connect', e);${'x'.repeat(40_000)}`, 'src/spark/client.js': 'y'.repeat(40_000) };
+  const r = { name: 'Error', message: 'm', where: 'connect', stack: 'at f (/spark/client.js:1:1)' };
+  assert.equal(candidateFiles(r, sources).length, 2);
+  assert.equal(candidateFiles(r, sources, limitsFor(qwen)).length, 1);
+  let body;
+  await askModel([], { accountId: 'a', token: 't', model: qwen, fetchImpl: async (u, init) => ((body = JSON.parse(init.body)), new Response('{"choices":[]}')) });
+  assert.equal(body.max_tokens, 4096);
 });
