@@ -4,6 +4,15 @@
 
 *The kindling that controls your Spark:* an open controller for Positive Grid Spark amps.
 
+[![CI](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/ci.yml)
+[![Release build](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/release.yml/badge.svg)](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/bluedog-consulting/kindling-control-spark-amps?include_prereleases&sort=semver)](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases)
+[![Downloads](https://img.shields.io/github/downloads/bluedog-consulting/kindling-control-spark-amps/total)](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
+[![Open issues](https://img.shields.io/github/issues/bluedog-consulting/kindling-control-spark-amps)](https://github.com/bluedog-consulting/kindling-control-spark-amps/issues)
+[![Last commit](https://img.shields.io/github/last-commit/bluedog-consulting/kindling-control-spark-amps/main)](https://github.com/bluedog-consulting/kindling-control-spark-amps/commits/main)
+![Platforms: web, Windows, macOS, Linux, Android](https://img.shields.io/badge/platforms-web%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-informational)
+
 <a href="https://www.buymeacoffee.com/jerdog"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="60" width="217"></a>
 
 An open replacement for the Positive Grid Spark app. It's a JavaScript implementation of the amp's Bluetooth protocol, with one UI that runs in the browser (over **Web Bluetooth**), as a desktop app, and as an Android or iPad app. There's no account, and it doesn't phone home.
