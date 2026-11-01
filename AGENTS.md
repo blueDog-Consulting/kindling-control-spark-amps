@@ -50,6 +50,8 @@ src/                     everything that ships; served as-is, no bundler, no bui
   app/rig.js             the rig view: chain strip (incl. reorder), amp head, pedalboard; param sync registry
   app/controls.js        reusable controls: rotary knob (native range + SVG dial), footswitch, toggle, selector
   app/library.js         "My presets" on-device library (localStorage, falls back to memory)
+  app/telemetry.js       anonymous error reports: scrub(), sanitizeReport() (shared with the Worker), createReporter()
+  version.js             VERSION: 'dev' in git, stamped by the release workflow (tools/stamp-version.js)
   guide/                 user guide (index.html + guide.css), shown in the in-app Help panel; also /guide/ on the website
   app/styles.css         dark "stage" theme; colour tokens on :root, per-slot pedal colours
   spark/                 protocol library: no DOM, no dependencies, runs in Node 20+ too
@@ -68,7 +70,9 @@ assets/logo/concepts/    logo source SVGs (kindling, knob, monogram, necks, amp,
 build/                   generated desktop icons for electron-builder (committed)
 .github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release)
 test/                    node:test suites; test/fixtures holds real captures
-docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md
+docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md,
+                         TELEMETRY.md (anonymous error reports)
+telemetry/               Cloudflare Worker (worker.js + wrangler.jsonc) that receives error reports; deployed by hand
 ```
 
 ## Commands
@@ -137,6 +141,14 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 - The desktop app opens "Open in a new window" for `kindling://app/guide/` in a separate sandboxed window with no preload. Link and navigation rules apply to every window via `app.on('web-contents-created')`. The native apps hide that link, because their web views can't open windows.
 - **Console pop-out:** **Pop out** opens `console.html` (same origin; on desktop an allowed sandboxed window with no preload) and *moves* the live `#console-body` nodes into it with `adoptNode`, so their listeners keep working and the Bluetooth connection stays in the main window. Closing the pop-out (its `pagehide`) or **Bring it back** moves them home; closing the main window closes the pop-out. Console code must therefore use the cached `consoleEls` references, never `$('#log')` and friends, which only search the main document. Capacitor hides the button.
 
+## Error reports (telemetry)
+
+- Released apps send anonymous error reports to the Cloudflare Worker in `telemetry/` (`https://errors.kindlingspark.app/v1/report`, `ENDPOINT` in `src/app/telemetry.js`), which writes one structured line per report to Workers Logs. Full details: `docs/TELEMETRY.md`.
+- **Only non-identifying data:** app (`desktop`/`android`/`ios`/`web`), desktop OS, app version, kind, `where` (a short action tag), error name, scrubbed message and stack. Never add ids (user, device, install, session), amp serials or names, Bluetooth ids, preset names, timestamps, IPs, user agents or locations. New fields need an entry in `sanitizeReport()`'s allow-list, `docs/TELEMETRY.md` and the guide's `#privacy` section.
+- The Worker never reads the IP, headers or `request.cf`, and re-scrubs with the same `sanitizeReport()`. `wrangler.jsonc` keeps **invocation logs and traces off** for it (traces would record user agent, location and ASN); keep it that way.
+- Reports are sent only when `src/version.js` is stamped (the committed value `'dev'` sends nothing; `?errors=on` overrides for testing), never with `?mock`, at most 20 per session and each error once. Users opt out in the Help panel (`#error-reports`, localStorage key `kindling-control.error-reports`).
+- In `app.js`, report failures with `reportError('<where>', err)` next to the `logLine('err', …)`. Don't report errors whose messages are about the user's own files (import, capture). `src/app/telemetry.js` must stay DOM-free at import: the Worker bundles it.
+
 ## Website
 
 - kindlingspark.app (landing page, user guide, presets hub) lives in **https://github.com/bluedog-consulting/kindling-control-website**. It was split out so this repo stays a clean, forkable app. Don't add website code back here.
@@ -158,7 +170,7 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 
 - Pushing a `v*` tag runs `.github/workflows/release.yml`. `tools/release-plan.js` diffs against the previous `v*` tag and builds only the apps whose paths changed (`APP_PATHS`: Android and desktop; `src/` is shared by both). It then publishes one GitHub Release. The website deploys from its own repo. Full details are in `docs/RELEASING.md`.
 - If you add a file or folder that affects an app's build, add its path to `APP_PATHS`, and update `docs/RELEASING.md`.
-- Versions come from the tag; don't hand-edit versions in `package.json` or `android/app/build.gradle`. The Android `versionCode` scheme is `versionFromTag()`, and it must stay strictly increasing (tested).
+- Versions come from the tag; don't hand-edit versions in `package.json`, `android/app/build.gradle` or `src/version.js` (the workflow runs `tools/stamp-version.js` before each app build). The Android `versionCode` scheme is `versionFromTag()`, and it must stay strictly increasing (tested).
 - Secrets are optional: without them, CI ships a debug APK and unsigned desktop builds. In workflows, never interpolate `${{ }}` values derived from repo content (e.g. file names) into `run:` scripts; pass them through `env:`.
 - iOS and macOS aren't built in CI yet. macOS was removed from the desktop matrix because any failed build blocks the whole release; add it back to `release.yml` (and `docs/RELEASING.md`) once it builds.
 

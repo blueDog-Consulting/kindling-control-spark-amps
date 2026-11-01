@@ -78,6 +78,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Stamp the app version (used in anonymous error reports)
+        run: node tools/stamp-version.js "$VERSION"
       - name: Copy web app into the Android project
         run: npx cap sync android
       - uses: actions/setup-java@v6
@@ -142,6 +144,8 @@ jobs:
       - run: npm ci
       - name: Set app version from tag
         run: npm version "$VERSION" --no-git-tag-version --allow-same-version
+      - name: Stamp the app version (used in anonymous error reports)
+        run: node tools/stamp-version.js "$VERSION"
       - name: Build installers
         run: npx electron-builder ${{ matrix.target }} --publish never
       - uses: actions/upload-artifact@v7

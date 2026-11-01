@@ -112,7 +112,8 @@ The protocol itself is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `tools/` | capture decoder CLI, dev server, docs check, release plan, icons, screenshots |
 | `test/` | `node:test` suites and real-capture fixtures |
 | `src/guide/` | the user guide, shown in the app's Help panel (the website also serves a copy at `/guide/`) |
-| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md) |
+| `telemetry/` | Cloudflare Worker that receives the apps' anonymous error reports ([TELEMETRY.md](docs/TELEMETRY.md)) |
+| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md), [TELEMETRY.md](docs/TELEMETRY.md) |
 | `.github/workflows/` | CI (tests + docs check) and the tag-driven app releases |
 
 ## Development
@@ -129,6 +130,10 @@ The tests include a real Spark 40 preset dump. The decoder has to reproduce its 
 ## Releases
 
 Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions then rebuilds whichever of the web app, the Android app and the desktop apps changed since the last release, and publishes them on the [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases) page. See [docs/RELEASING.md](docs/RELEASING.md) for details and the optional signing and deploy secrets.
+
+## Error reports and privacy
+
+Released apps send anonymous error reports to a Cloudflare Worker so we can see which errors happen in which build: only the app (desktop/Android/iOS), the desktop OS, the app version and the scrubbed error. No ids, IP addresses, device or amp names, serial numbers or preset names. Users can turn it off in the Help panel. Details, the Worker and how to query the reports: [docs/TELEMETRY.md](docs/TELEMETRY.md).
 
 ## Contributing
 

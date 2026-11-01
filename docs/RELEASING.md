@@ -19,6 +19,7 @@ Watch it under **Actions → Release**. To rebuild an existing tag, for example 
 
 - Tags must be semantic versions: `vMAJOR.MINOR.PATCH`, optionally `-alpha.N`, `-beta.N` or `-rc.N`. Minor and patch go up to 99; pre-release numbers up to 32.
 - The version comes from the tag. You don't need to bump `package.json` by hand; CI sets it at build time.
+- Both app builds also run `node tools/stamp-version.js "$VERSION"`, which writes the version into `src/version.js` (committed as `'dev'`). The anonymous error reports use it, and only stamped builds send them ([TELEMETRY.md](TELEMETRY.md)).
 - Android needs an increasing integer `versionCode`, derived as `major·1 000 000 + minor·10 000 + patch·100 + suffix`. The suffix is alpha 0–32, beta 33–65, rc 66–98, and 99 for a final release. So `1.2.3-beta.1` (1020334) < `1.2.3-rc.1` (1020367) < `1.2.3` (1020399), and phones accept every upgrade.
 - A tag with a `-` suffix is published as a GitHub **pre-release**.
 
@@ -29,7 +30,7 @@ Watch it under **Actions → Release**. To rebuild an existing tag, for example 
 | Android | `src/`, `android/`, `capacitor.config.json`, `package.json`, `package-lock.json` | `…-android.apk` + `.aab` (signed), or `…-android-debug.apk` |
 | Desktop | `src/`, `desktop/`, `build/` (icons), `package.json`, `package-lock.json` | Windows `.exe` (NSIS), Linux `.AppImage` + `.deb` |
 
-- Changes that only touch docs, tests, tools or `ios/` build nothing.
+- Changes that only touch docs, tests, tools, `telemetry/` or `ios/` build nothing. The error-report Worker in `telemetry/` is deployed by hand with wrangler ([TELEMETRY.md](TELEMETRY.md)).
 - An app that is skipped keeps its downloads on the earlier release, and the release notes say so.
 - The first tag (no earlier `v*` tag) builds everything.
 

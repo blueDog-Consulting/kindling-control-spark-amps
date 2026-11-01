@@ -1,0 +1,24 @@
+// Anonymous error reports from the KindlingControl apps. Deploy from this folder:
+//   npx wrangler@4.151.1 deploy
+// See docs/TELEMETRY.md.
+{
+  "name": "kindling-errors",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  // The apps post to https://errors.kindlingspark.app/v1/report (ENDPOINT in src/app/telemetry.js).
+  "routes": [{ "pattern": "errors.kindlingspark.app", "custom_domain": true }],
+  "workers_dev": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      // Invocation logs record the request (URL, metadata Cloudflare adds); we only want our own scrubbed log line.
+      "invocation_logs": false
+    },
+    "traces": {
+      // Automatic traces record user agent, country/city and ASN on the fetch span. Keep them off for this Worker.
+      "enabled": false
+    }
+  }
+}
