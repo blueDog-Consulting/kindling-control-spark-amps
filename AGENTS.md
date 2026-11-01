@@ -67,6 +67,7 @@ assets/logo/concepts/    logo source SVGs (kindling, knob, monogram, necks, amp,
 build/                   generated desktop icons for electron-builder (committed)
 .github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release)
 test/                    node:test suites; test/fixtures holds real captures
+presets/                 starter presets (preset JSON) to share on the hub; test/presets.test.js validates each file
 docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md
 ```
 
@@ -143,6 +144,12 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
   - `src/icon.svg` and `src/icons/apple-touch-icon.png`.
 - The app links to the hub (Presets tab note; guide section `#sharing`). Hub links open in the system browser on desktop.
 - `npm run screenshots` (`tools/screenshots.js --out <dir>`) captures the website's marketing images; the website runs it via `sync:app --screenshots`. Re-run it after visible UI changes.
+
+## Starter presets
+
+- `presets/*.json` are maintainer-made presets for the community, in the app's export format (the same JSON the hub stores). They are data only: the app doesn't bundle them, and they reach players via **Import JSON…** or the hub.
+- Each must use 7 known effects in `SLOT_ORDER`, values 0–1, ASCII strings, `PresetNumber` 127 and a unique UUID; `test/presets.test.js` enforces this and that it encodes with a valid checksum. List each one in `presets/README.md`.
+- Tones "in the style of" a song are tuned by ear and only tested against the simulator unless stated; say so, and never claim affiliation with the artist.
 
 ## Branding and icons
 

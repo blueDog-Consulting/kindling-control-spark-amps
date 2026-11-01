@@ -26,7 +26,7 @@ Works with Spark 40, Spark GO, Spark MINI, Spark 2 and Spark NEO. All of them us
 | Windows / macOS / Linux | the desktop app (`desktop/`, Electron) |
 | Chrome / Edge | for development only: `npm run serve` runs the same UI over Web Bluetooth. The web app isn't published. |
 
-Download the apps from [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases). The website, [kindlingspark.app](https://kindlingspark.app), has the landing page, the user guide and the **presets hub**, where players share presets. It has [its own repository](https://github.com/bluedog-consulting/kindling-control-website).
+Download the apps from [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases). The website, [kindlingspark.app](https://kindlingspark.app), has the landing page, the user guide and the **presets hub**, where players share presets. It has [its own repository](https://github.com/bluedog-consulting/kindling-control-website). Starter presets to import are in [`presets/`](presets/).
 
 Build instructions for each are in [docs/APPS.md](docs/APPS.md).
 
