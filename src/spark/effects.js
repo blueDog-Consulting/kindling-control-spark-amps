@@ -1,0 +1,157 @@
+// Catalog of known Spark effect / amp models.
+//
+// The "id" is the technical name the amp uses on the wire; "name" is what the
+// official app shows. Parameter order matters: index N in the list is
+// parameter N in 01 04 / 03 37 messages and in presets. Values are floats in
+// 0.0 .. 1.0 (the app shows them as 0 .. 10).
+//
+// Sources: Ignitron reference/EffectReference.csv (BSD-3-Clause, stangreg) and
+// Paul Hamshere's "Spark Protocol Description" (Apache-2.0). Models not in the
+// list (newer firmware, Spark 2 / NEO additions) still work — the UI falls
+// back to generic "Param N" labels.
+
+export const SLOTS = [
+  { key: 'gate', label: 'Noise Gate' },
+  { key: 'comp', label: 'Comp / Wah' },
+  { key: 'drive', label: 'Drive' },
+  { key: 'amp', label: 'Amp' },
+  { key: 'mod', label: 'Modulation / EQ' },
+  { key: 'delay', label: 'Delay' },
+  { key: 'reverb', label: 'Reverb' },
+];
+
+export const DELAY_MODES = [
+  { label: '50 ms', value: 0.3 },
+  { label: '200 ms', value: 0.4 },
+  { label: '500 ms', value: 0.6 },
+  { label: '1 s', value: 0.72 },
+];
+
+export const MULTIHEAD_MODES = [
+  { label: 'Heads 1+3', value: 0.0 },
+  { label: 'Heads 1+2', value: 0.35 },
+  { label: 'Heads 2+3', value: 0.65 },
+  { label: 'Heads 1+2+3', value: 0.95 },
+];
+
+export const REVERB_TYPES = [
+  'Room Studio A',
+  'Room Studio B',
+  'Chamber',
+  'Hall Natural',
+  'Hall Medium',
+  'Hall Ambient',
+  'Plate Short',
+  'Plate Rich',
+  'Plate Long',
+].map((label, i) => ({ label, value: i / 10 }));
+
+const sw = (name) => ({ name, kind: 'switch' });
+const sel = (name, options) => ({ name, kind: 'select', options });
+const fx = (slot, id, name, params) => ({
+  slot,
+  id,
+  name,
+  params: params.map((p) => (typeof p === 'string' ? { name: p, kind: 'knob' } : p)),
+});
+
+export const EFFECTS = [
+  fx("gate", "bias.noisegate", "Noise Gate", ["Threshold", "Decay"]),
+  fx("comp", "LA2AComp", "LA Comp", [sw("Limit/Compress"), "Gain", "Peak Reduction"]),
+  fx("comp", "BlueComp", "Sustain Comp", ["Level", "Tone", "Attack", "Sustain"]),
+  fx("comp", "Compressor", "Red Comp", ["Output", "Sensitivity"]),
+  fx("comp", "BassComp", "Bass Comp", ["Comp", "Gain"]),
+  fx("comp", "BBEOpticalComp", "Optical Comp", ["Volume", "Comp", sw("Pad")]),
+  fx("drive", "Booster", "Booster", ["Gain"]),
+  fx("drive", "KlonCentaurSilver", "Clone Drive", ["Output", "Treble", "Gain"]),
+  fx("drive", "DistortionTS9", "Tube Drive", ["Overdrive", "Tone", "Level"]),
+  fx("drive", "Overdrive", "Over Drive", ["Level", "Tone", "Drive"]),
+  fx("drive", "Fuzz", "Fuzz Face", ["Volume", "Fuzz"]),
+  fx("drive", "ProCoRat", "Black Op", ["Distortion", "Filter", "Volume"]),
+  fx("drive", "BassBigMuff", "Bass Muff", ["Volume", "Tone", "Sustain"]),
+  fx("drive", "GuitarMuff", "Guitar Muff", ["Volume", "Tone", "Sustain"]),
+  fx("drive", "MaestroBassmaster", "Bassmaster", ["Brass Volume", "Sensitivity", "Bass Volume"]),
+  fx("drive", "SABDriver", "SAB Driver", ["Volume", "Tone", "Drive", sw("LP/HP")]),
+  fx("amp", "RolandJC120", "Silver 120", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "Twin", "Black Duo", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "ADClean", "AD Clean", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "94MatchDCV2", "Match DC", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "ODS50CN", "ODS 50", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "BluesJrTweed", "Blues Boy", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "Bassman", "Tweed Bass", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "AC Boost", "AC Boost", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "Checkmate", "Checkmate", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "TwoStoneSP50", "Two Stone SP50", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "Deluxe65", "American Deluxe", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "Plexi", "Plexiglas", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "OverDrivenJM45", "JM45", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "OverDrivenLuxVerb", "Lux Verb", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "Bogner", "RB 101", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "OrangeAD30", "British 30", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "AmericanHighGain", "American High Gain", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "SLO100", "SLO 100", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "YJM100", "YJM100", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "Rectifier", "Treadplate", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "EVH", "Insane", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "6505Plus", "Insane 6508", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "SwitchAxeLead", "SwitchAxe", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "Invader", "Rocker V", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "BE101", "BE 101", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "Acoustic", "Pure Acoustic", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "AcousticAmpV2", "Fishboy", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "FatAcousticV2", "Jumbo", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "FlatAcoustic", "Flat Acoustic", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "GK800", "RB-800", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "Sunny3000", "Sunny 3000", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "W600", "W600", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "Hammer500", "Hammer 500", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("mod", "Tremolo", "Tremolo", ["Speed", "Depth", "Level"]),
+  fx("mod", "ChorusAnalog", "Chorus", ["E.Level", "Rate", "Depth", "Tone"]),
+  fx("mod", "Flanger", "Flanger", ["Rate", "Mix", "Depth"]),
+  fx("mod", "Phaser", "Phaser", ["Speed", "Intensity"]),
+  fx("mod", "Vibrato01", "Vibrato", ["Speed", "Depth"]),
+  fx("mod", "UniVibe", "UniVibe", ["Speed", sw("Vibrato/Chorus"), "Intensity"]),
+  fx("mod", "Cloner", "Cloner Chorus", ["Rate", sw("Depth")]),
+  fx("mod", "MiniVibe", "Classic Vibe", ["Speed", "Intensity"]),
+  fx("mod", "Tremolator", "Tremolator", ["Depth", "Speed", sw("BPM On/Off")]),
+  fx("mod", "TremoloSquare", "Tremolo Square", ["Speed", "Depth", "Level"]),
+  fx("mod", "GuitarEQ6", "Guitar EQ", ["Level", "100", "200", "400", "800", "1.6k", "3.2k"]),
+  fx("mod", "BassEQ6", "Bass EQ", ["Level", "50", "120", "400", "800", "4.5k", "10k"]),
+  fx("delay", "DelayMono", "Digital Delay", ["E.Level", "Feedback", "Delay Time", sel("Mode", DELAY_MODES), sw("BPM")]),
+  fx("delay", "DelayEchoFilt", "Echo Filt", ["Delay", "Feedback", "Level", "Tone", sw("BPM")]),
+  fx("delay", "VintageDelay", "Vintage Delay", ["Repeat Rate", "Intensity", "Echo", sw("BPM")]),
+  fx("delay", "DelayReverse", "Reverse Delay", ["Mix", "Decay", "Filter", "Time", sw("BPM")]),
+  fx("delay", "DelayMultiHead", "Multi Head", ["Repeat Rate", "Intensity", "Echo Volume", sel("Heads", MULTIHEAD_MODES), sw("BPM")]),
+  fx("delay", "DelayRe201", "Echo Tape", ["Sustain", "Volume", "Tone", "Short/Long"]),
+  fx("reverb", "bias.reverb", "Reverb", ["Level", "Damping", "Dwell", "Time", "Low Cut", "High Cut", sel("Type", REVERB_TYPES)]),
+  // Jimi Hendrix pack and other models known by name only
+  fx("comp", "JH.Vox846", "JH Legendary Wah", []),
+  fx("drive", "JH.AxisFuzz", "JH Axle Fuzz", []),
+  fx("drive", "JH.SupaFuzz", "JH Super Fuzz", []),
+  fx("drive", "JH.Octavia", "JH Octave Fuzz", []),
+  fx("drive", "JH.FuzzTone", "JH Fuzz Tone", []),
+  fx("amp", "JH.DualShowman", "JH D-Show Master", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "JH.Sunn100", "JH Sun 100S", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "JH.JTM45", "JH 45/100", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "JH.Bassman50Silver", "JH Bass Master", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "JH.SuperLead100", "JH Super 100", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("amp", "JH.SoundCity100", "JH Tone City 100", ["Gain", "Treble", "Middle", "Bass", "Volume"]),
+  fx("mod", "JH.VoodooVibeJr", "JH Legendary Vibe", []),
+];
+
+const byId = new Map(EFFECTS.map((e) => [e.id.toLowerCase(), e]));
+
+/** Look up an effect by wire id (case-insensitive). Returns undefined if unknown. */
+export function findEffect(id) {
+  return byId.get(String(id).toLowerCase());
+}
+
+export function effectsForSlot(slotKey) {
+  return EFFECTS.filter((e) => e.slot === slotKey);
+}
+
+/** Parameter descriptor with a generic fallback. */
+export function paramInfo(effectId, index) {
+  const e = findEffect(effectId);
+  return e?.params[index] ?? { name: `Param ${index + 1}`, kind: 'knob' };
+}

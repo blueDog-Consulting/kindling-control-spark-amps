@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#14161a">
+  <title>Spark Control</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app/styles.css">
+  <script type="module" src="app/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Spark Control</h1>
+    <span id="status" class="pill" data-state="idle">Not connected</span>
+    <button id="connect" class="primary" type="button">Connect</button>
+  </header>
+
+  <div id="unsupported" class="banner" hidden>
+    This browser has no Web Bluetooth. Use Chrome on Android or desktop Chrome/Edge,
+    or <a href="?mock">try the simulated amp</a>. The Capture tab works everywhere.
+  </div>
+
+  <section id="info" class="info" aria-label="Amp info" hidden>
+    <dl>
+      <div><dt>Amp</dt><dd id="i-name">–</dd></div>
+      <div><dt>Firmware</dt><dd id="i-fw">–</dd></div>
+      <div><dt>Serial</dt><dd id="i-serial">–</dd></div>
+      <div id="i-batt-wrap" hidden><dt>Power</dt><dd id="i-batt">–</dd></div>
+    </dl>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-tone" aria-controls="panel-tone" aria-selected="true">Tone</button>
+    <button role="tab" id="tab-tuner" aria-controls="panel-tuner" aria-selected="false" tabindex="-1">Tuner</button>
+    <button role="tab" id="tab-console" aria-controls="panel-console" aria-selected="false" tabindex="-1">Console</button>
+    <button role="tab" id="tab-capture" aria-controls="panel-capture" aria-selected="false" tabindex="-1">Capture</button>
+  </nav>
+
+  <main>
+    <section id="panel-tone" role="tabpanel" aria-labelledby="tab-tone">
+      <div class="presets">
+        <div class="preset-buttons" role="group" aria-label="Hardware presets">
+          <button type="button" data-slot="0">1</button>
+          <button type="button" data-slot="1">2</button>
+          <button type="button" data-slot="2">3</button>
+          <button type="button" data-slot="3">4</button>
+        </div>
+        <div class="preset-meta">
+          <strong id="preset-name">No preset loaded</strong>
+          <span id="preset-desc"></span>
+        </div>
+        <div class="preset-actions">
+          <button type="button" id="refresh" disabled>Refresh</button>
+          <button type="button" id="export" disabled>Export</button>
+          <label class="button" id="import-label">Import<input type="file" id="import" accept=".json,application/json" hidden></label>
+        </div>
+      </div>
+      <div id="chain" class="chain"></div>
+    </section>
+
+    <section id="panel-tuner" role="tabpanel" aria-labelledby="tab-tuner" hidden>
+      <label class="row">
+        <input type="checkbox" role="switch" id="tuner-on" class="switch" disabled>
+        Tuner mode <small>(Spark GO / MINI / 2 / NEO; the Spark 40 has no tuner messages)</small>
+      </label>
+      <div class="tuner" aria-live="polite">
+        <div id="tuner-note" class="note">–</div>
+        <div class="meter"><div id="tuner-needle" class="needle"></div></div>
+        <div id="tuner-cents" class="cents"></div>
+      </div>
+    </section>
+
+    <section id="panel-console" role="tabpanel" aria-labelledby="tab-console" hidden>
+      <form id="raw-form" class="raw">
+        <label for="raw-input">Send message <small>(<code>cmd sub [data hex]</code>, e.g. <code>02 11</code>, or a full block starting <code>01 fe</code>)</small></label>
+        <div class="row">
+          <input id="raw-input" autocomplete="off" spellcheck="false" placeholder="02 2f">
+          <button type="submit" disabled id="raw-send">Send</button>
+        </div>
+      </form>
+      <div class="row console-opts">
+        <label><input type="checkbox" id="hide-params"> Hide param / tuner spam</label>
+        <button type="button" id="clear-log">Clear</button>
+      </div>
+      <ol id="log" class="log"></ol>
+    </section>
+
+    <section id="panel-capture" role="tabpanel" aria-labelledby="tab-capture" hidden>
+      <p>
+        Load an Android <code>btsnoop_hci.log</code> recorded while the official app was talking to your amp.
+        Everything is decoded locally in your browser. See <code>docs/CAPTURE.md</code> in the <a href="https://github.com/jerdog/positive-grid-spark">repo</a>.
+      </p>
+      <label class="button">Open capture…<input type="file" id="capture-file" hidden></label>
+      <label><input type="checkbox" id="capture-unknown"> Only unknown messages</label>
+      <p id="capture-summary"></p>
+      <ol id="capture-log" class="log"></ol>
+    </section>
+  </main>
+
+  <template id="fx-card">
+    <article class="fx">
+      <header>
+        <span class="slot"></span>
+        <label class="onoff"><input type="checkbox" role="switch" class="switch"><span class="sr-only">Enabled</span></label>
+      </header>
+      <select class="model" aria-label="Model"></select>
+      <div class="params"></div>
+    </article>
+  </template>
+</body>
+</html>

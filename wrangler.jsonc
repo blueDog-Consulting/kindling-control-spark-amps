@@ -1,0 +1,10 @@
+// Cloudflare Workers static-assets deployment: `npx wrangler deploy`.
+// Everything is client-side (Web Bluetooth runs in the browser), so no Worker script is needed.
+{
+  "name": "spark-control",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./src",
+    "not_found_handling": "single-page-application"
+  }
+}
