@@ -4,6 +4,8 @@
 
 *The kindling that controls your Spark:* an open controller for Positive Grid Spark amps.
 
+> **Want to try the Android app early?** Join the [private Android testing group on Google Play](https://play.google.com/apps/internaltest/4700407217953087836).
+
 [![CI](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/ci.yml)
 [![Release build](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/release.yml/badge.svg)](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/release.yml)
 [![Latest release](https://img.shields.io/github/v/release/bluedog-consulting/kindling-control-spark-amps?include_prereleases&sort=semver)](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases)
@@ -144,6 +146,6 @@ The protocol knowledge comes from Paul Hamshere's [Spark](https://github.com/pau
 
 ## License
 
-Copyright © 2026 blueDog Consulting and Jeremy Meiss. KindlingControl is designed, built and maintained by blueDog Consulting, and free software under the [GNU General Public License v3.0 or later](LICENSE) (GPL-3.0-or-later). If you distribute a modified version, you must share its source under the same licence, so improvements come back to everyone. Third-party notices are in [NOTICE](NOTICE).
+Copyright © 2026 blueDog Consulting and Jeremy Meiss. KindlingControl is designed, built and maintained by blueDog Consulting, and free software under the [GNU General Public License v3.0 or later](LICENSE) (GPL-3.0-or-later). If you distribute a modified version, you must share its source under the same licence, so improvements come back to everyone. Third-party notices are in [NOTICE](NOTICE). The licence covers the code; the name, logo and official store listings are covered by [TRADEMARKS.md](TRADEMARKS.md), so if you publish a fork, give it your own name and icon.
 
 This is an independent interoperability project. It is not affiliated with or endorsed by Positive Grid. "Spark" and "Positive Grid" are their trademarks.
