@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Spark Control</string>
-    <string name="title_activity_main">Spark Control</string>
-    <string name="package_name">io.github.jerdog.sparkcontrol</string>
-    <string name="custom_url_scheme">io.github.jerdog.sparkcontrol</string>
+    <string name="app_name">KindlingControl</string>
+    <string name="title_activity_main">KindlingControl</string>
+    <string name="package_name">io.github.jerdog.kindlingcontrol</string>
+    <string name="custom_url_scheme">io.github.jerdog.kindlingcontrol</string>
 </resources>

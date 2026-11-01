@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>KindlingControl: K Spark</title>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="64%" r="70%">
+      <stop offset="0" stop-color="#40240c"/>
+      <stop offset="0.5" stop-color="#18191d"/>
+      <stop offset="1" stop-color="#0c0d0f"/>
+    </radialGradient>
+    <linearGradient id="flameOuter" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd166"/>
+      <stop offset="0.45" stop-color="#ff8a1f"/>
+      <stop offset="1" stop-color="#e0391c"/>
+    </linearGradient>
+    <linearGradient id="flameInner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff7da"/>
+      <stop offset="1" stop-color="#ffc23d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ff9a2e" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff9a2e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="stroke" gradientUnits="userSpaceOnUse" x1="372" y1="790" x2="680" y2="260">
+      <stop offset="0" stop-color="#e0391c"/>
+      <stop offset="0.6" stop-color="#ff8a1f"/>
+      <stop offset="1" stop-color="#ffd166"/>
+    </linearGradient>
+    <radialGradient id="spark" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fffbe8"/>
+      <stop offset="0.35" stop-color="#ffd166"/>
+      <stop offset="1" stop-color="#ff8a1f" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+    <ellipse cx="560" cy="520" rx="380" ry="360" fill="url(#glow)"/>
+    <g fill="none" stroke="url(#stroke)" stroke-width="104" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 372 268 L 372 768"/>
+      <path d="M 392 560 L 636 300"/>
+      <path d="M 470 488 L 676 768"/>
+    </g>
+    <circle cx="660" cy="270" r="120" fill="url(#spark)"/>
+    <path fill="#fffbe8" d="M660 180 L680 250 L750 270 L680 290 L660 360 L640 290 L570 270 L640 250 Z"/>
+</svg>

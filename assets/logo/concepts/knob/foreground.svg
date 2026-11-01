@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>KindlingControl: Flame Knob (foreground)</title>
+  <defs>
+    <linearGradient id="flameOuter" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd166"/>
+      <stop offset="0.45" stop-color="#ff8a1f"/>
+      <stop offset="1" stop-color="#e0391c"/>
+    </linearGradient>
+    <linearGradient id="flameInner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff7da"/>
+      <stop offset="1" stop-color="#ffc23d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ff9a2e" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff9a2e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="arc" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#e0391c"/>
+      <stop offset="1" stop-color="#ffc23d"/>
+    </linearGradient>
+    <radialGradient id="cap" cx="40%" cy="32%" r="75%">
+      <stop offset="0" stop-color="#454a52"/>
+      <stop offset="1" stop-color="#121417"/>
+    </radialGradient>
+  </defs>
+  <g transform="translate(512 512) scale(0.8) translate(-512 -512)">
+    <ellipse cx="512" cy="540" rx="360" ry="360" fill="url(#glow)"/>
+    <path d="M 275.1 748.9 A 335 335 0 1 1 748.9 748.9" fill="none" stroke="#2c3036" stroke-width="46" stroke-linecap="round"/>
+    <path d="M 275.1 748.9 A 335 335 0 1 1 826.8 397.4" fill="none" stroke="url(#arc)" stroke-width="46" stroke-linecap="round"/>
+    <circle cx="512" cy="512" r="262" fill="#0b0c0e"/>
+    <circle cx="512" cy="512" r="248" fill="url(#cap)" stroke="#000" stroke-width="6"/>
+    <circle cx="704.6" cy="441.9" r="20" fill="#ffd166"/>
+    <g transform="translate(500 520) scale(0.5) translate(-512 -490)">
+      <path fill="url(#flameOuter)" d="M512 180 C 600 300, 720 380, 720 560 C 720 700, 625 800, 512 800 C 399 800, 304 700, 304 560 C 304 470, 350 410, 400 360 C 400 440, 430 480, 470 500 C 460 400, 480 290, 512 180 Z"/>
+      <path fill="url(#flameInner)" d="M512 430 C 560 500, 620 540, 620 630 C 620 700, 570 745, 512 745 C 454 745, 404 700, 404 635 C 404 580, 440 545, 470 520 C 475 570, 495 590, 512 600 C 505 540, 500 480, 512 430 Z"/>
+    </g>
+  </g>
+</svg>

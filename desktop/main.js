@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join, normalize, sep } from 'node:path';
 
 const root = fileURLToPath(new URL('../src/', import.meta.url));
-const SCHEME = 'spark';
+const SCHEME = 'kindling';
 
 protocol.registerSchemesAsPrivileged([
   { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
@@ -24,7 +24,8 @@ function createWindow() {
     height: 880,
     minWidth: 380,
     minHeight: 500,
-    title: 'Spark Control',
+    title: 'KindlingControl',
+    icon: fileURLToPath(new URL('../src/icons/icon-512.png', import.meta.url)), // Windows/Linux window + taskbar
     backgroundColor: '#121417',
     autoHideMenuBar: true,
     webPreferences: {

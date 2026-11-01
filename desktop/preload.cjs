@@ -2,7 +2,7 @@
 // Electron is exposed to the page.
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('sparkDesktop', {
+contextBridge.exposeInMainWorld('kindlingDesktop', {
   platform: process.platform,
   onBluetoothDevices: (cb) => ipcRenderer.on('bt:devices', (_e, devices) => cb(devices)),
   selectBluetoothDevice: (id) => ipcRenderer.send('bt:select', id),

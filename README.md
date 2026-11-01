@@ -1,4 +1,8 @@
-# Spark Control
+<p align="center"><img src="src/icons/icon-192.png" width="112" height="112" alt="KindlingControl logo: an amp knob with a flame"></p>
+
+# KindlingControl
+
+*The kindling that controls your Spark:* an open controller for Positive Grid Spark amps.
 
 An open replacement for the Positive Grid Spark app. It's a JavaScript implementation of the amp's Bluetooth protocol, with one UI that runs in the browser (over **Web Bluetooth**), as a desktop app, and as an Android or iPad app. There's no account, and it doesn't phone home.
 
@@ -48,7 +52,7 @@ The whole app is static files in `src/`, deployed as Workers static assets:
 npx wrangler deploy    # uses wrangler.jsonc
 ```
 
-Open the resulting `https://spark-control.<you>.workers.dev` on your phone. Add it to your home screen and it runs like an app.
+Open the resulting `https://kindling-control.<you>.workers.dev` on your phone. Add it to your home screen and it runs like an app.
 
 ## Library
 

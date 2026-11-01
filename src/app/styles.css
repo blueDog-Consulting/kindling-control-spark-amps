@@ -1,4 +1,4 @@
-/* Spark Control: dark "stage" theme inspired by amp-sim plug-ins.
+/* KindlingControl: dark "stage" theme inspired by amp-sim plug-ins.
    Colour tokens live on :root; the rig (amp head, pedals, knobs) builds on them. */
 
 :root {
@@ -127,12 +127,14 @@ input.switch:disabled { opacity: 0.45; cursor: not-allowed; }
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
-.topbar h1 {
-  font-size: 1.05rem; margin: 0; margin-inline-end: auto;
-  letter-spacing: 0.14em; text-transform: uppercase; font-weight: 800; white-space: nowrap;
+.brand {
+  display: flex; align-items: center; gap: 0.55rem;
+  font-size: 1.15rem; margin: 0; margin-inline-end: auto; white-space: nowrap;
+  font-weight: 800; letter-spacing: 0.01em;
 }
-@media (width < 420px) { .topbar h1 { font-size: 0.9rem; letter-spacing: 0.06em; } }
-.topbar h1::first-letter { color: var(--accent); }
+.brand img { inline-size: 2rem; block-size: 2rem; border-radius: 0.5rem; box-shadow: 0 0 14px rgb(255 138 31 / 0.25); }
+.brand b { font-weight: 400; color: var(--accent); }
+@media (width < 420px) { .brand { font-size: 1rem; } .brand img { inline-size: 1.75rem; block-size: 1.75rem; } }
 
 .pill {
   font-size: 0.8rem; padding: 0.2rem 0.6rem; border-radius: 999px;

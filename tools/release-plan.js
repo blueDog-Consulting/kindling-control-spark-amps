@@ -15,7 +15,7 @@ import { pathToFileURL } from 'node:url';
 export const APP_PATHS = {
   web: [/^src\//, /^wrangler\.jsonc$/],
   android: [/^src\//, /^android\//, /^capacitor\.config\.json$/, /^package(-lock)?\.json$/],
-  desktop: [/^src\//, /^desktop\//, /^package(-lock)?\.json$/],
+  desktop: [/^src\//, /^desktop\//, /^build\//, /^package(-lock)?\.json$/], // build/ = desktop icons
 };
 
 /**

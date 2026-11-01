@@ -10,6 +10,7 @@ test('shared web code rebuilds every app', () => {
 
 test('app-specific changes only rebuild that app', () => {
   assert.deepEqual(builds(planRelease(['desktop/main.js'])), ['desktop']);
+  assert.deepEqual(builds(planRelease(['build/icon-mac.png'])), ['desktop']);
   assert.deepEqual(builds(planRelease(['android/app/build.gradle', 'capacitor.config.json'])), ['android']);
   assert.deepEqual(builds(planRelease(['wrangler.jsonc'])), ['web']);
   assert.deepEqual(builds(planRelease(['package-lock.json'])), ['android', 'desktop']);

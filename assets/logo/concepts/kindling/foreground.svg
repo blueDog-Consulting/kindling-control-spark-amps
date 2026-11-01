@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>KindlingControl: Kindling (foreground)</title>
+  <defs>
+    <linearGradient id="flameOuter" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd166"/>
+      <stop offset="0.45" stop-color="#ff8a1f"/>
+      <stop offset="1" stop-color="#e0391c"/>
+    </linearGradient>
+    <linearGradient id="flameInner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff7da"/>
+      <stop offset="1" stop-color="#ffc23d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ff9a2e" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff9a2e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a8754a"/>
+      <stop offset="1" stop-color="#5a3820"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(512 512) scale(0.8) translate(-512 -512)">
+    <ellipse cx="512" cy="640" rx="330" ry="250" fill="url(#glow)"/>
+    <g transform="translate(512 455) scale(0.78) translate(-512 -490)">
+      <path fill="url(#flameOuter)" d="M512 180 C 600 300, 720 380, 720 560 C 720 700, 625 800, 512 800 C 399 800, 304 700, 304 560 C 304 470, 350 410, 400 360 C 400 440, 430 480, 470 500 C 460 400, 480 290, 512 180 Z"/>
+      <path fill="url(#flameInner)" d="M512 430 C 560 500, 620 540, 620 630 C 620 700, 570 745, 512 745 C 454 745, 404 700, 404 635 C 404 580, 440 545, 470 520 C 475 570, 495 590, 512 600 C 505 540, 500 480, 512 430 Z"/>
+    </g>
+    <g transform="translate(512 742)">
+      <g transform="rotate(-21)">
+        <rect x="-225" y="-36" width="450" height="72" rx="36" fill="url(#wood)"/>
+        <ellipse cx="-189" cy="0" rx="24" ry="30" fill="#d9ab78"/>
+        <ellipse cx="189" cy="0" rx="24" ry="30" fill="#d9ab78"/>
+      </g>
+      <g transform="rotate(21)">
+        <rect x="-225" y="-36" width="450" height="72" rx="36" fill="url(#wood)"/>
+        <ellipse cx="-189" cy="0" rx="24" ry="30" fill="#d9ab78"/>
+        <ellipse cx="189" cy="0" rx="24" ry="30" fill="#d9ab78"/>
+      </g>
+    </g>
+  </g>
+</svg>

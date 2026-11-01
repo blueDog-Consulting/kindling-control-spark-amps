@@ -8,10 +8,10 @@ def keystoreFile = System.getenv('ANDROID_KEYSTORE_FILE')
 def hasSigning = keystoreFile && file(keystoreFile).exists()
 
 android {
-    namespace = "io.github.jerdog.sparkcontrol"
+    namespace = "io.github.jerdog.kindlingcontrol"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "io.github.jerdog.sparkcontrol"
+        applicationId "io.github.jerdog.kindlingcontrol"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode Integer.parseInt((project.findProperty('versionCode') ?: '1').toString())

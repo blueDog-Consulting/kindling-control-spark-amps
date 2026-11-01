@@ -7,7 +7,9 @@
 
 import { presetToJson, presetFromJson } from '../spark/messages.js';
 
-const KEY = 'spark-control.presets.v1';
+const KEY = 'kindling-control.presets.v1';
+// Earlier versions of the app (as "Spark Control") stored presets here; migrated on first load.
+const LEGACY_KEYS = ['spark-control.presets.v1'];
 
 export class PresetLibrary extends EventTarget {
   constructor(storage = safeStorage()) {
@@ -49,11 +51,23 @@ export class PresetLibrary extends EventTarget {
 
   _load() {
     try {
+      this._migrateLegacy();
       const raw = this.storage?.getItem(KEY);
       const arr = raw ? JSON.parse(raw) : [];
       return Array.isArray(arr) ? arr.filter((x) => x?.json?.UUID && Array.isArray(x.json.Pedals)) : [];
     } catch {
       return [];
+    }
+  }
+
+  _migrateLegacy() {
+    if (!this.storage || this.storage.getItem(KEY) !== null) return;
+    for (const old of LEGACY_KEYS) {
+      const raw = this.storage.getItem(old);
+      if (raw === null) continue;
+      this.storage.setItem(KEY, raw);
+      this.storage.removeItem(old);
+      return;
     }
   }
 

@@ -1,10 +1,15 @@
 {
-  "name": "Spark Control",
-  "short_name": "Spark",
-  "description": "Control a Positive Grid Spark amp over Bluetooth",
+  "name": "KindlingControl",
+  "short_name": "Kindling",
+  "description": "An open controller for Positive Grid Spark amps, over Bluetooth",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#121417",
-  "theme_color": "#14161a",
-  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+  "background_color": "#0d0e10",
+  "theme_color": "#0d0e10",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
 }

@@ -77,13 +77,25 @@ npx cap sync             # or npm run android / npm run ios, which sync first
 
 Electron and the web version read `src/` directly; just reload.
 
-## App icons
+## App icons and splash screens
 
-The native projects still have Capacitor's default icons. To generate proper ones from a 1024×1024 PNG:
+Every platform's icons are generated from the logo SVGs in `assets/logo/concepts/<concept>/`. Each concept has an `icon.svg` (full-bleed 1024 tile) and a `foreground.svg` (transparent, for Android adaptive icons). The current concept is `CONCEPT` in `tools/build-icons.js` ("knob", the flame knob).
 
 ```sh
-npx @capacitor/assets generate --iconBackgroundColor '#14161a' --assetPath assets
+npm run icons              # regenerate everything from the current concept
+npm run icons -- kindling  # try another concept: kindling, knob, monogram
 ```
+
+The script writes, and you commit:
+
+| Platform | Files |
+|---|---|
+| Web | `src/icon.svg` (favicon), `src/icons/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` |
+| Desktop | `build/icon.png` (Windows/Linux), `build/icon-mac.png` (macOS template with margin and shadow) |
+| Android | `mipmap-*/ic_launcher*.png` (legacy, round, adaptive foreground), the `ic_launcher_background` colour, `drawable*/splash.png` |
+| iOS | `AppIcon-512@2x.png` (opaque, 1024), `Splash.imageset/*.png` |
+
+Run `npx cap sync` afterwards so the native projects pick up the new web icons.
 
 ## Troubleshooting the connection
 

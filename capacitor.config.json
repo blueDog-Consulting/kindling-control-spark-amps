@@ -1,6 +1,6 @@
 {
-  "appId": "io.github.jerdog.sparkcontrol",
-  "appName": "Spark Control",
+  "appId": "io.github.jerdog.kindlingcontrol",
+  "appName": "KindlingControl",
   "webDir": "src",
   "android": {
     "backgroundColor": "#121417"

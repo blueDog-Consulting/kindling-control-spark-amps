@@ -4,23 +4,26 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#14161a">
-  <title>Spark Control</title>
+  <meta name="theme-color" content="#0d0e10">
+  <meta name="description" content="KindlingControl: an open controller for Positive Grid Spark amps.">
+  <title>KindlingControl</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="app/styles.css">
   <script type="module" src="app/app.js"></script>
 </head>
 <body>
   <header class="topbar">
-    <h1>Spark Control</h1>
+    <h1 class="brand"><img src="icon.svg" alt="" width="32" height="32"><span>Kindling<b>Control</b></span></h1>
     <span id="status" class="pill" data-state="idle">Not connected</span>
     <button id="connect" class="primary" type="button">Connect</button>
   </header>
 
   <div id="unsupported" class="banner" hidden>
     This browser has no Web Bluetooth. Use Chrome on Android or desktop Chrome/Edge,
-    or install the Spark Control app (iPhone / iPad need the app).
+    or install the KindlingControl app (iPhone / iPad need the app).
     You can also <a href="?mock">try the simulated amp</a>. The Capture tab works everywhere.
   </div>
 

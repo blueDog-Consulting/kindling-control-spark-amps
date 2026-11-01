@@ -1,4 +1,4 @@
-package io.github.jerdog.sparkcontrol;
+package io.github.jerdog.kindlingcontrol;
 
 import com.getcapacitor.BridgeActivity;
 

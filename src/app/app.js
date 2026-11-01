@@ -57,7 +57,7 @@ function makeTransport() {
 }
 
 if (!useMock && !CapacitorBleTransport.isAvailable() && !WebBluetoothTransport.isSupported()) $('#unsupported').hidden = false;
-if (window.sparkDesktop) setupDesktopDevicePicker(window.sparkDesktop);
+if (window.kindlingDesktop) setupDesktopDevicePicker(window.kindlingDesktop);
 
 $('#connect').addEventListener('click', async () => {
   if (state.connected) {

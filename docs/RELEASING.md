@@ -26,9 +26,9 @@ Watch it under **Actions → Release**. To rebuild an existing tag, for example 
 
 | App | Rebuilt when these change | Output |
 |---|---|---|
-| Web | `src/`, `wrangler.jsonc` | `spark-control-<v>-web.zip`; deployed to Cloudflare if the secret is set |
+| Web | `src/`, `wrangler.jsonc` | `kindling-control-<v>-web.zip`; deployed to Cloudflare if the secret is set |
 | Android | `src/`, `android/`, `capacitor.config.json`, `package.json`, `package-lock.json` | `…-android.apk` + `.aab` (signed), or `…-android-debug.apk` |
-| Desktop | `src/`, `desktop/`, `package.json`, `package-lock.json` | Windows `.exe` (NSIS), macOS `.dmg` (arm64 + x64), Linux `.AppImage` + `.deb` |
+| Desktop | `src/`, `desktop/`, `build/` (icons), `package.json`, `package-lock.json` | Windows `.exe` (NSIS), macOS `.dmg` (arm64 + x64), Linux `.AppImage` + `.deb` |
 
 - Changes that only touch docs, tests, tools or `ios/` build nothing.
 - An app that is skipped keeps its downloads on the earlier release, and the release notes say so.
@@ -54,9 +54,9 @@ Everything works without secrets: the web app is packaged but not deployed, Andr
 **Android keystore:** create it once and keep it safe. If you lose it, you can never ship an update to the same app on Google Play.
 
 ```sh
-keytool -genkeypair -v -keystore spark-control-release.keystore -alias spark-control \
+keytool -genkeypair -v -keystore kindling-control-release.keystore -alias kindling-control \
   -keyalg RSA -keysize 4096 -validity 10000
-base64 -w0 spark-control-release.keystore   # paste the output into ANDROID_KEYSTORE_BASE64
+base64 -w0 kindling-control-release.keystore   # paste the output into ANDROID_KEYSTORE_BASE64
 ```
 
 Without a keystore, CI builds `assembleDebug`. That APK installs by sideloading, but Google Play won't accept it, and you can't upgrade from it to a signed build without uninstalling first.

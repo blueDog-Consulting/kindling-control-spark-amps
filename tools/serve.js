@@ -23,4 +23,4 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404).end('not found');
   }
-}).listen(port, () => console.log(`Spark Control on http://localhost:${port}  (simulated amp: http://localhost:${port}/?mock)`));
+}).listen(port, () => console.log(`KindlingControl on http://localhost:${port}  (simulated amp: http://localhost:${port}/?mock)`));

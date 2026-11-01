@@ -78,7 +78,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p out
-          (cd src && zip -qr "../out/spark-control-${VERSION}-web.zip" .)
+          (cd src && zip -qr "../out/kindling-control-${VERSION}-web.zip" .)
       - uses: actions/upload-artifact@v7
         with:
           name: web
@@ -134,12 +134,12 @@ jobs:
           props=(-PversionName="$VERSION" -PversionCode="$VERSION_CODE")
           if [ -n "${ANDROID_KEYSTORE_FILE:-}" ]; then
             ./gradlew --no-daemon assembleRelease bundleRelease "${props[@]}"
-            cp app/build/outputs/apk/release/app-release.apk "../out/spark-control-${VERSION}-android.apk"
-            cp app/build/outputs/bundle/release/app-release.aab "../out/spark-control-${VERSION}-android.aab"
+            cp app/build/outputs/apk/release/app-release.apk "../out/kindling-control-${VERSION}-android.apk"
+            cp app/build/outputs/bundle/release/app-release.aab "../out/kindling-control-${VERSION}-android.aab"
           else
             echo "::warning::No Android signing secrets; publishing a debug-signed APK (installable by sideloading, not for Google Play)."
             ./gradlew --no-daemon assembleDebug "${props[@]}"
-            cp app/build/outputs/apk/debug/app-debug.apk "../out/spark-control-${VERSION}-android-debug.apk"
+            cp app/build/outputs/apk/debug/app-debug.apk "../out/kindling-control-${VERSION}-android-debug.apk"
           fi
       - uses: actions/upload-artifact@v7
         with:

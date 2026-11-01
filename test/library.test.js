@@ -31,7 +31,7 @@ test('library survives missing or corrupt storage', () => {
   assert.equal(lib.list().length, 1);
   assert.equal(lib.persistent, false);
   const bad = memoryStorage();
-  bad.setItem('spark-control.presets.v1', '{not json');
+  bad.setItem('kindling-control.presets.v1', '{not json');
   assert.deepEqual(new PresetLibrary(bad).list(), []);
 });
 
@@ -52,4 +52,17 @@ test('storePreset writes a new preset into a Spark 2 bank-2 slot and selects it'
   assert.equal(t.presets[6].name, 'Brand New');
   assert.equal((await c.getPreset('current')).name, 'Brand New');
   await assert.rejects(c.storePreset(blankPreset(), 0x7f), RangeError);
+});
+
+test('presets saved under the old "Spark Control" key are migrated', () => {
+  const storage = memoryStorage();
+  const old = new PresetLibrary(storage);
+  old.save({ ...blankPreset('From before the rename'), uuid: 'OLD-1' });
+  // simulate data written by the old app version
+  storage.setItem('spark-control.presets.v1', storage.getItem('kindling-control.presets.v1'));
+  storage.removeItem('kindling-control.presets.v1');
+  const lib = new PresetLibrary(storage);
+  assert.deepEqual(lib.list().map((p) => p.name), ['From before the rename']);
+  assert.equal(storage.getItem('spark-control.presets.v1'), null);
+  assert.ok(storage.getItem('kindling-control.presets.v1'));
 });
