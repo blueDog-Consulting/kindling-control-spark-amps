@@ -49,6 +49,8 @@ npm run android          # copies src/ into the project and opens Android Studio
 
 In Android Studio, press **Run** with your phone or tablet plugged in (USB debugging on). To share an APK: *Build → Build App Bundle(s) / APK(s) → Build APK(s)*.
 
+For a signed release (`.apk` and the `.aab` Google Play needs) from the command line, use `npm run release:android`; see [Building Android locally](RELEASING.md#building-android-locally). It needs JDK 21+ and your own keystore.
+
 Permissions: on Android 12+ the app asks only for *Nearby devices*. It declares `neverForLocation`, so there's no location prompt. Android 11 and older ask for location, because the OS requires it for BLE scans.
 
 ## iPad / iPhone (Capacitor)

@@ -39,9 +39,9 @@ jobs:
       android_reason: ${{ steps.plan.outputs.android_reason }}
       desktop_reason: ${{ steps.plan.outputs.desktop_reason }}
       version: ${{ steps.plan.outputs.version }}
-      version_code: ${{ steps.plan.outputs.version_code }}
       prerelease: ${{ steps.plan.outputs.prerelease }}
       previous: ${{ steps.plan.outputs.previous }}
+      notes_stores: ${{ steps.notes.outputs.stores }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -57,14 +57,31 @@ jobs:
         env:
           FORCE_ALL: ${{ github.event.inputs.force || 'false' }}
         run: node tools/release-plan.js "$TAG"
+      - name: Check store release notes
+        # Store notes belong to the apps this release builds; the release job publishes exactly this set
+        # (outputs.stores). Today that's Android when it's built: macOS isn't built in CI, so its notes are
+        # neither checked nor attached here (add "macos" with the desktop build once macOS is in the matrix).
+        # A final Android build needs release-notes/<version>/android.txt; fail here, before anything is built.
+        id: notes
+        env:
+          ANDROID_BUILT: ${{ steps.plan.outputs.android }}
+          PRERELEASE: ${{ steps.plan.outputs.prerelease }}
+        run: |
+          stores=''
+          require=()
+          if [ "$ANDROID_BUILT" = "true" ]; then
+            stores=android
+            if [ "$PRERELEASE" != "true" ]; then require=(--require android); fi
+          fi
+          echo "stores=$stores" >> "$GITHUB_OUTPUT"
+          if [ -z "$stores" ]; then echo "This release builds no store app: no store notes to check."; exit 0; fi
+          node tools/release-notes.js "$TAG" --only "$stores" "${require[@]}"
 
   android:
     needs: plan
     if: needs.plan.outputs.android == 'true'
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ needs.plan.outputs.version }}
-      VERSION_CODE: ${{ needs.plan.outputs.version_code }}
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -78,35 +95,28 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Stamp the app version (used in anonymous error reports)
-        run: node tools/stamp-version.js "$VERSION"
-      - name: Copy web app into the Android project
-        run: npx cap sync android
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
           cache: gradle
-      - uses: android-actions/setup-android@v4
+      - uses: android-actions/setup-android@v4 # release-android.sh installs the SDK platform it needs (CI only)
       - name: Decode signing keystore
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
           echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
       - name: Build
-        working-directory: android
+        # The same script maintainers run locally (npm run release:android): cap sync, Gradle, and for a
+        # signed build the checks that the .aab is signed by the keystore's key. The release job writes the
+        # Play notes, so --no-notes.
         run: |
-          mkdir -p ../out
-          props=(-PversionName="$VERSION" -PversionCode="$VERSION_CODE")
-          if [ -n "${ANDROID_KEYSTORE_FILE:-}" ]; then
-            ./gradlew --no-daemon assembleRelease bundleRelease "${props[@]}"
-            cp app/build/outputs/apk/release/app-release.apk "../out/kindling-control-${VERSION}-android.apk"
-            cp app/build/outputs/bundle/release/app-release.aab "../out/kindling-control-${VERSION}-android.aab"
-          else
+          flags=(--skip-install --no-notes)
+          if [ -z "${ANDROID_KEYSTORE_FILE:-}" ]; then
             echo "::warning::No Android signing secrets; publishing a debug-signed APK (installable by sideloading, not for Google Play)."
-            ./gradlew --no-daemon assembleDebug "${props[@]}"
-            cp app/build/outputs/apk/debug/app-debug.apk "../out/kindling-control-${VERSION}-android-debug.apk"
+            flags+=(--debug)
           fi
+          bash tools/release-android.sh "$TAG" "${flags[@]}"
       - uses: actions/upload-artifact@v7
         with:
           name: android
@@ -175,13 +185,22 @@ jobs:
       ANDROID_REASON: ${{ needs.plan.outputs.android_reason }}
       DESKTOP_BUILT: ${{ needs.plan.outputs.desktop }}
       DESKTOP_REASON: ${{ needs.plan.outputs.desktop_reason }}
+      NOTES_STORES: ${{ needs.plan.outputs.notes_stores }}
     steps:
+      - uses: actions/checkout@v7 # for release-notes/<version>/
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
       - uses: actions/download-artifact@v8
         continue-on-error: true # nothing to download when no app changed
         with:
           path: assets
           merge-multiple: true
       - name: Write release notes
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
           row() { if [ "$2" = "true" ]; then echo "| $1 | ✅ built | $3 |"; else echo "| $1 | – skipped | $3 |"; fi; }
           {
@@ -197,6 +216,11 @@ jobs:
             echo "Desktop builds are not code-signed yet: on Windows choose \"More info → Run anyway\"."
             echo
           } > notes.md
+          # Versioned store notes, for the store apps this release built (the plan job checked the same set):
+          # shown in the release body and attached as <app>-whatsnew.txt, ready to paste into Play Console.
+          if [ -n "$NOTES_STORES" ]; then
+            node tools/release-notes.js "$TAG" --only "$NOTES_STORES" --out assets --markdown notes.md
+          fi
           args=(-f tag_name="$TAG")
           [ -n "$PREVIOUS" ] && args+=(-f previous_tag_name="$PREVIOUS")
           gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" "${args[@]}" --jq .body >> notes.md || true

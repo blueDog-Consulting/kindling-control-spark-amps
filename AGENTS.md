@@ -64,13 +64,16 @@ src/                     everything that ships; served as-is, no bundler, no bui
     effects.js           effect/amp catalog, param labels, AMP_KNOB_ORDER, blankPreset(), BASED_ON, SLOT_ORDER
 desktop/                 Electron main + preload (serves src/ over the secure kindling:// scheme)
 android/, ios/           Capacitor native projects (generated; web assets are synced in, not committed)
-tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release-plan, build-icons, stamp-version, autofix,
+tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release-plan, release-notes, release-android.sh
+                         (the Android build, run locally and by CI), build-icons, stamp-version, autofix,
                          screenshots (marketing images via Playwright; the website repo runs it)
 assets/logo/concepts/    logo source SVGs (kindling, knob, monogram, necks, amp, pick); `npm run icons` renders all platform icons
 build/                   generated desktop icons for electron-builder (committed)
 .github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release),
                          autofix.yml (error-report issue -> Workers AI fix -> draft PR)
 test/                    node:test suites; test/fixtures holds real captures
+release-notes/           versioned store "What's new" text: <version>/android.txt, macos.txt
+TRADEMARKS.md            what forks may do with the name, logo, app ID and store presence (the GPL covers the code only)
 docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md,
                          TELEMETRY.md (anonymous error reports)
 telemetry/               Cloudflare Worker (worker.js, wrangler.jsonc, schema.sql for D1) that receives error reports and opens issues; deployed by hand
@@ -92,6 +95,8 @@ npm run android | npm run ios    # sync + open Android Studio / Xcode
 node tools/btsnoop-decode.js btsnoop_hci.log [--raw|--json|--unknown]
 npm run screenshots              # marketing screenshots from the app + simulated Spark 2 -> screenshots/ (or --out <dir>)
 npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
+npm run release:notes -- v0.3.0 --require android   # validate the store notes for a tag
+npm run release:android -- v0.3.0       # signed apk + aab in out/, built locally (tools/release-android.sh; --debug = debug APK, --version-code N = new code for a Play re-upload)
 ```
 
 ## How it works (things that are easy to get wrong)
@@ -170,11 +175,20 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 - Logo SVGs keep their artwork inside the central circle (radius ≈ 38% of the size), so Android and maskable-icon crops never cut it. Gradients on purely vertical or horizontal strokes need `gradientUnits="userSpaceOnUse"`: an `objectBoundingBox` gradient on a zero-width box doesn't paint.
 - Saved presets live under the localStorage key `kindling-control.presets.v1`. `library.js` migrates the pre-rename key `spark-control.presets.v1` on first load.
 
+## Private resources and branding
+
+- The **official** store listing (descriptions, graphics, screenshots), the Play Console answers, key-custody and Play-upload notes, and the versionCode ledger live in a separate **private** repository (`blueDog-Consulting/kindling-control-app-private`), not here. **Don't add store listing text, store graphics, screenshots for stores, keystores, passwords or `.env` files to this repo.** `.gitignore` covers `/play-store/`, `/store/` and `/assets/store/`, plus keystores. Release binaries aren't archived in git; they're attached to the GitHub Release. Don't add a root `build/` ignore rule: `build/` holds the committed desktop icons.
+- Everything needed to **build** the app stays public (GPL "Corresponding Source"): `src/`, `android/`, `ios/`, `desktop/`, `tools/`, build scripts and workflows. Official builds must come from a public tag with secrets used only for signing; never rely on private source files or private build config. Details: the private repo's `docs/GPL-BOUNDARY.md`.
+- `TRADEMARKS.md` says what forks may and may not do with the name, logo, app ID and store presence. If you add a new brand asset or rename anything, keep it consistent with that file.
+- `npm run release:android -- vX.Y.Z [--version-code N] [--debug]` (`tools/release-android.sh`) builds the signed `.apk`/`.aab` locally (see `docs/RELEASING.md`). `--version-code` re-uploads an already-seen version to Google Play with a new code.
+
 ## Releases
 
 - Pushing a `v*` tag runs `.github/workflows/release.yml`. `tools/release-plan.js` diffs against the previous `v*` tag and builds only the apps whose paths changed (`APP_PATHS`: Android and desktop; `src/` is shared by both). It then publishes one GitHub Release. The website deploys from its own repo. Full details are in `docs/RELEASING.md`.
 - If you add a file or folder that affects an app's build, add its path to `APP_PATHS`, and update `docs/RELEASING.md`.
-- Versions come from the tag; don't hand-edit versions in `package.json`, `android/app/build.gradle` or `src/version.js` (the workflow runs `tools/stamp-version.js` before each app build). The Android `versionCode` scheme is `versionFromTag()`, and it must stay strictly increasing (tested).
+- **Store release notes** are versioned in `release-notes/<version>/{android,macos}.txt` (version = tag without `v`; limits 500 / 4000 characters, enforced by `tools/release-notes.js`). Notes belong to the apps a release builds: the `plan` job computes that set (`outputs.notes_stores`; today `android` when Android is built, since macOS isn't built in CI) and checks it with `release-notes.js --only`, failing a final tag that builds Android without `android.txt`. The `release` job publishes exactly that set in the Release body and as `…-<store>-whatsnew.txt` files. When macOS joins the matrix, add `macos` to the set with the desktop build. Notes changes must not rebuild apps, so `release-notes/` is deliberately not in `APP_PATHS`. Don't auto-upload to stores without adding the credentials docs to `docs/RELEASING.md`.
+- **Android build script:** `tools/release-android.sh` is the one Android build path: the CI `android` job runs it (`--skip-install --no-notes`, `--debug` without secrets), and maintainers run it locally. A missing SDK platform is installed with `sdkmanager` only on CI (`CI=true`); locally the script prints the command instead. Change the build there, not in `release.yml`. It picks a JDK 21+ itself, finds the SDK via `ANDROID_HOME`, `android/local.properties` or the macOS/Linux defaults, reads `ANDROID_KEYSTORE_FILE`/`ANDROID_KEY_ALIAS` and the passwords from the environment or a git-ignored `.env`, prompts for missing passwords (without a terminal it requires `ANDROID_KEYSTORE_PASSWORD` instead), refuses to ship an unsigned build and checks the `.aab` is signed by the keystore's own key, and writes `out/`. Pass passwords to `keytool`/`jarsigner` with `-storepass:env`, never as plain arguments, which other processes can read with `ps`. Google Play refuses a `versionCode` it has already seen, so a re-upload of the same version uses `--version-code N` (N above the tag's code); CI never passes it.
+- Versions come from the tag; don't hand-edit versions in `package.json`, `android/app/build.gradle` or `src/version.js` (`release-android.sh` stamps it with `tools/stamp-version.js` before `cap sync` and restores it afterwards; the desktop job stamps it before electron-builder). The Android `versionCode` scheme is `versionFromTag()`, and it must stay strictly increasing (tested).
 - Secrets are optional: without them, CI ships a debug APK and unsigned desktop builds. In workflows, never interpolate `${{ }}` values derived from repo content (e.g. file names) into `run:` scripts; pass them through `env:`.
 - iOS and macOS aren't built in CI yet. macOS was removed from the desktop matrix because any failed build blocks the whole release; add it back to `release.yml` (and `docs/RELEASING.md`) once it builds.
 

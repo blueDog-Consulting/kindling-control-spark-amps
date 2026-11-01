@@ -1,0 +1,8 @@
+First release of KindlingControl, an open controller for Positive Grid Spark amps (Spark 40, MINI, GO, 2 and NEO).
+
+• Tone: shape your sound on an amp head and a board of stompboxes. Knob moves on the amp show up live.
+• Presets: switch presets (both banks on the Spark 2), create new ones, and save them on your phone or to the amp.
+• Tuner on amps that have one.
+• Help built in, with a guide to every screen.
+
+No account needed. Free and open source.
