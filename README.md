@@ -4,6 +4,8 @@
 
 *The kindling that controls your Spark:* an open controller for Positive Grid Spark amps.
 
+> **Want to try the Android app early?** Join the [private Android testing group on Google Play](https://play.google.com/apps/internaltest/4700407217953087836).
+
 [![CI](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/ci.yml)
 [![Release build](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/release.yml/badge.svg)](https://github.com/bluedog-consulting/kindling-control-spark-amps/actions/workflows/release.yml)
 [![Latest release](https://img.shields.io/github/v/release/bluedog-consulting/kindling-control-spark-amps?include_prereleases&sort=semver)](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases)
