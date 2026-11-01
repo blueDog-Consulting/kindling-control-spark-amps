@@ -6,7 +6,8 @@
   "main": "worker.js",
   "compatibility_date": "2026-10-01",
   // The apps post to https://errors.kindlingspark.app/v1/report (ENDPOINT in src/app/telemetry.js).
-  "routes": [{ "pattern": "errors.kindlingspark.app", "custom_domain": true }],
+  // zone_name is required: wrangler can't always infer the zone for a custom domain (error 10082).
+  "routes": [{ "pattern": "errors.kindlingspark.app", "custom_domain": true, "zone_name": "kindlingspark.app" }],
   "workers_dev": false,
   // Counts each distinct error, to open a GitHub issue once ISSUE_THRESHOLD installs hit it.
   // Create once: npx wrangler@4.151.1 d1 create kindling-errors, paste its id below, then apply schema.sql.
