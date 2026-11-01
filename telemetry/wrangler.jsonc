@@ -5,7 +5,7 @@
   "name": "kindling-errors",
   "main": "worker.js",
   "compatibility_date": "2026-10-01",
-  // The apps post to https://errors.kindlingspark.app/v1/report (ENDPOINT in src/app/telemetry.js).
+  // The apps post to https://errors.kindlingcontrol.app/v1/report (ENDPOINT in src/app/telemetry.js).
   // zone_name is required: wrangler can't always infer the zone for a custom domain (error 10082).
   "routes": [{ "pattern": "errors.kindlingcontrol.app", "custom_domain": true, "zone_name": "kindlingcontrol.app" }],
   "workers_dev": false,

@@ -18,7 +18,7 @@
 // See docs/TELEMETRY.md.
 
 /** Where reports go. Forks: point this at your own Worker, or set it to '' to send nothing. */
-export const ENDPOINT = 'https://errors.kindlingspark.app/v1/report';
+export const ENDPOINT = 'https://errors.kindlingcontrol.app/v1/report';
 
 /** localStorage key for the user's answer: 'on' or 'off' (missing = not asked yet, send nothing). */
 export const PREF_KEY = 'kindling-control.error-reports';
