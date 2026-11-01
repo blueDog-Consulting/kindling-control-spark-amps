@@ -1,0 +1,36 @@
+// Anonymous error reports from the KindlingControl apps. Deploy from this folder:
+//   npx wrangler deploy
+// See docs/TELEMETRY.md.
+{
+  "name": "kindling-errors",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  // The apps post to https://errors.kindlingcontrol.app/v1/report (ENDPOINT in src/app/telemetry.js).
+  // zone_name is required: wrangler can't always infer the zone for a custom domain (error 10082).
+  "routes": [{ "pattern": "errors.kindlingcontrol.app", "custom_domain": true, "zone_name": "kindlingcontrol.app" }],
+  "workers_dev": false,
+  // Counts each distinct error, to open a GitHub issue once ISSUE_THRESHOLD installs hit it.
+  // Create once: npx wrangler d1 create kindling-errors, paste its id below, then apply schema.sql.
+  // Remove this block to only log reports (no counting, no issues).
+  "d1_databases": [{ "binding": "DB", "database_name": "kindling-errors", "database_id": "0cf98a32-fcea-4a47-9cf8-ac2360da98d0" }],
+  "vars": {
+    "GITHUB_REPO": "bluedog-consulting/kindling-control-spark-amps",
+    "ISSUE_THRESHOLD": "2",
+    "MAX_ISSUES_PER_DAY": "5"
+  },
+  // Secret (not in this file): npx wrangler secret put GITHUB_TOKEN
+  //   a fine-grained token for this repository only, with "Issues: read and write". Without it, no issues are opened.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      // Invocation logs record the request (URL, metadata Cloudflare adds); we only want our own scrubbed log line.
+      "invocation_logs": false
+    },
+    "traces": {
+      // Automatic traces record user agent, country/city and ASN on the fetch span. Keep them off for this Worker.
+      "enabled": false
+    }
+  }
+}

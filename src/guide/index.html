@@ -49,6 +49,8 @@
         <li><a href="#console">Console</a></li>
         <li><a href="#capture">Capture</a></li>
         <li><a href="#troubleshooting">Troubleshooting</a></li>
+        <li><a href="#settings">Settings and About</a></li>
+        <li><a href="#privacy">Privacy and error reports</a></li>
         <li><a href="#help">Getting help</a></li>
       </ol>
     </nav>
@@ -80,6 +82,7 @@
             <li>Switch the amp on.</li>
             <li>Press <strong>Connect</strong> in the top bar, choose your amp from the list (for example "Spark 40 BLE" or "Spark 2"), and confirm.</li>
             <li>KindlingControl reads the amp's name, firmware, serial number and battery status, then shows the tone the amp is playing right now.</li>
+            <li>The Bluetooth symbol next to the logo shows the connection: grey when not connected, flashing amber while connecting, green when connected, red if connecting failed. On wider screens it also shows the amp's name; on a phone, touch and hold (or hover) it to see the text.</li>
           </ol>
           <p class="note">Seeing <em>"Paired"</em> next to the amp in the list is normal: it just means your computer already knows the amp, for example from Bluetooth audio.</p>
           <p>Press <strong>Disconnect</strong> when you're done, or simply close the app.</p>
@@ -195,7 +198,7 @@
       <section id="sharing">
         <h2>Sharing presets online</h2>
         <p>
-          The <a href="https://kindlingspark.app/presets/" target="_blank" rel="noopener">presets hub</a> on kindlingspark.app is where players swap tones.
+          The <a href="https://kindlingcontrol.app/presets/" target="_blank" rel="noopener">presets hub</a> on kindlingcontrol.app is where players swap tones.
           Browsing and downloading needs no account.
         </p>
         <h3>Get a preset</h3>
@@ -302,13 +305,46 @@
       </section>
 
       <!-- ------------------------------------------------------------------ -->
+      <section id="settings">
+        <h2>Settings and About</h2>
+        <p>
+          The gear button in the top bar opens <strong>Settings</strong>. In released apps it holds the <strong>Send anonymous error reports</strong> switch (see <a href="#privacy">Privacy and error reports</a>).
+          The <strong>About</strong> part shows which version and which app you're using (include both when you report a problem), with links to the source code, the issue tracker and this guide.
+        </p>
+      </section>
+
+      <!-- ------------------------------------------------------------------ -->
+      <section id="privacy">
+        <h2>Privacy and error reports</h2>
+        <p>
+          KindlingControl has no accounts and keeps your presets on your device. The desktop and mobile apps can send a short, anonymous error report when something goes wrong, so the problem can be found and fixed. They only do this if you agree.
+        </p>
+        <p>
+          The first time you open the app, it asks <strong>Help improve KindlingControl?</strong> Choose <strong>Send error reports</strong> or <strong>No thanks</strong>. Nothing is sent before you answer, and if you close the question without choosing, it asks again next time.
+          To change your answer later, open <strong>Settings</strong> (the gear in the top bar) and tick or untick <strong>Send anonymous error reports</strong>. The setting is kept on this device.
+        </p>
+        <p>
+          <strong>What a report contains:</strong> which app it is (desktop, Android, iPhone/iPad), the desktop operating system, the app version, the error message and the place in the code where it happened, and whether this is the first time your app has reported that particular error.
+          Before anything is sent, names in quotes, IDs, serial numbers, addresses and file paths are removed from the message.
+        </p>
+        <p>
+          <strong>What is never sent:</strong> any ID for you, your device or your amp, your IP address or location, preset or amp names, or anything you play.
+          To tell whether an error is new for your app, the app remembers which errors it has already reported, on your device only.
+          Development builds and the simulated amp never send reports.
+        </p>
+        <p>
+          When the same error is reported by more than one app, it is posted as a public issue on the project's GitHub page so it can be fixed. That issue contains only the report contents above.
+        </p>
+      </section>
+
+      <!-- ------------------------------------------------------------------ -->
       <section id="help">
         <h2>Getting help</h2>
         <p>
           Found a bug, or something doesn't work with your amp? Please <a href="https://github.com/bluedog-consulting/kindling-control-spark-amps/issues" target="_blank" rel="noopener">open an issue on GitHub</a>.
         </p>
         <p>
-          Include your amp model, your device and browser, and any red lines from the Console.
+          Include your amp model, your device, the app version (in <strong>Settings → About</strong>), and any red lines from the Console.
         </p>
         <p>
           If KindlingControl is useful to you, you can support it with the yellow <strong>Buy me a coffee</strong> button in the top bar of the web and desktop apps.

@@ -42,3 +42,6 @@ yarn-error.*
 /play-store/
 /store/
 /assets/store/
+
+# wrangler local state
+.wrangler/

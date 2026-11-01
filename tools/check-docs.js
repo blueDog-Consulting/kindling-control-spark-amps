@@ -27,6 +27,8 @@ export const MATERIAL = [
   /^ios\/App\/App\/Info\.plist$/,
   /^package\.json$/, // scripts, entry points, build config, dependencies
   /^\.github\/workflows\//,
+  /^src\/version\.js$/,
+  /^telemetry\//, // the error-report Worker
 ];
 
 /** Paths that count as user/developer documentation. */

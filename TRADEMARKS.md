@@ -9,7 +9,7 @@ The licence covers the code. It does **not** give anyone the right to use our na
 - The name **KindlingControl** (and "the kindling that controls your Spark"), and **blueDog Consulting**.
 - The **logo**: the "Pick Flame" guitar pick holding a flame over crossed kindling, and the app icons made from it. The logo files are in `assets/logo/` so the project builds. They are there for building and using *this* project, and using them as the brand of a different app isn't permitted.
 - The official **store listings**: their text, graphics and screenshots. These aren't in this repository.
-- The official **app identifier** `dev.bluedog.kindlingcontrol` and the websites we run (kindlingspark.app).
+- The official **app identifier** `dev.bluedog.kindlingcontrol` and the websites we run (kindlingcontrol.app).
 
 ## What you can do
 

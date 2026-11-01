@@ -137,7 +137,13 @@ if ! $debug; then
 fi
 
 if $install; then npm ci; fi
+# Stamp the version into the web app (src/version.js; used by the anonymous error reports) for the synced copy
+# only, then put the committed file back so a local build leaves the working tree clean.
+cp src/version.js "${TMPDIR:-/tmp}/kindling-version.js.bak"
+trap 'cp "${TMPDIR:-/tmp}/kindling-version.js.bak" src/version.js' EXIT
+node tools/stamp-version.js "$version"
 npx cap sync android
+cp "${TMPDIR:-/tmp}/kindling-version.js.bak" src/version.js
 
 mkdir -p out
 props=(-PversionName="$version" -PversionCode="$code")

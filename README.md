@@ -28,7 +28,7 @@ Works with Spark 40, Spark GO, Spark MINI, Spark 2 and Spark NEO. All of them us
 | Windows / macOS / Linux | the desktop app (`desktop/`, Electron) |
 | Chrome / Edge | for development only: `npm run serve` runs the same UI over Web Bluetooth. The web app isn't published. |
 
-Download the apps from [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases). The website, [kindlingspark.app](https://kindlingspark.app), has the landing page, the user guide and the **presets hub**, where players share presets. It has [its own repository](https://github.com/bluedog-consulting/kindling-control-website).
+Download the apps from [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases). The website, [kindlingcontrol.app](https://kindlingcontrol.app), has the landing page, the user guide and the **presets hub**, where players share presets. It has [its own repository](https://github.com/bluedog-consulting/kindling-control-website).
 
 Build instructions for each are in [docs/APPS.md](docs/APPS.md).
 
@@ -48,7 +48,7 @@ Build instructions for each are in [docs/APPS.md](docs/APPS.md).
 
 ## Use it
 
-**New here? Read the [user guide](src/guide/index.html).** It's built into the app (the **Help** button, plus **?** links next to each feature), and on the website at [kindlingspark.app/guide/](https://kindlingspark.app/guide/).
+**New here? Read the [user guide](src/guide/index.html).** It's built into the app (the **Help** button, plus **?** links next to each feature), and on the website at [kindlingcontrol.app/guide/](https://kindlingcontrol.app/guide/).
 
 To run the app from source in a browser, use **Chrome or Edge** (Web Bluetooth) on Android, Windows, macOS, Linux or ChromeOS. iOS browsers don't support it. The page has to be served over HTTPS or `localhost`.
 
@@ -108,8 +108,9 @@ The protocol itself is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `tools/` | capture decoder CLI, dev server, docs check, release plan, icons, screenshots |
 | `test/` | `node:test` suites and real-capture fixtures |
 | `src/guide/` | the user guide, shown in the app's Help panel (the website also serves a copy at `/guide/`) |
-| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md) |
-| `.github/workflows/` | CI (tests + docs check) and the tag-driven app releases |
+| `telemetry/` | Cloudflare Worker (+ D1 schema) that receives the apps' anonymous error reports and opens issues ([TELEMETRY.md](docs/TELEMETRY.md)) |
+| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md), [TELEMETRY.md](docs/TELEMETRY.md) |
+| `.github/workflows/` | CI (tests + docs check), the tag-driven app releases, and the error-report auto-fix agent |
 
 ## Development
 
@@ -125,6 +126,10 @@ The tests include a real Spark 40 preset dump. The decoder has to reproduce its 
 ## Releases
 
 Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions then rebuilds whichever of the web app, the Android app and the desktop apps changed since the last release, and publishes them on the [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases) page. See [docs/RELEASING.md](docs/RELEASING.md) for details and the optional signing and deploy secrets.
+
+## Error reports and privacy
+
+If the user agrees (the apps ask on first run; the switch is in **Settings**, the gear in the top bar, next to **About**), released apps send anonymous error reports to a Cloudflare Worker so we can see which errors happen in which build: only the app (desktop/Android/iOS), the desktop OS, the app version and the scrubbed error. No ids, IP addresses, device or amp names, serial numbers or preset names. When the same error comes from 2+ installs, the Worker opens a GitHub issue, and an optional auto-fix workflow asks a Workers AI model for a fix and opens a **draft** PR if the tests pass. Details, setup and how to query the reports: [docs/TELEMETRY.md](docs/TELEMETRY.md).
 
 ## Contributing
 

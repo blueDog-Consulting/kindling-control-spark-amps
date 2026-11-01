@@ -38,18 +38,20 @@ It's an independent interoperability project. Never add Positive Grid's code, as
 
 `src/app/app.js` picks the transport at runtime: the native plugin if present, then Web Bluetooth. `?mock` swaps in the simulated amp.
 
-The website **kindlingspark.app** (landing page, the user guide at `/guide/`, and the **presets hub** at `/presets/`) is a **separate repository**, https://github.com/bluedog-consulting/kindling-control-website, so the app can be forked without it. See "Website" below for the files it copies from here.
+The website **kindlingcontrol.app** (the project's only domain; the old kindlingspark.app is retired, never use it) (landing page, the user guide at `/guide/`, and the **presets hub** at `/presets/`) is a **separate repository**, https://github.com/bluedog-consulting/kindling-control-website, so the app can be forked without it. See "Website" below for the files it copies from here.
 
 ## Layout
 
 ```
 src/                     everything that ships; served as-is, no bundler, no build step
-  index.html             the app shell (tabs: Tone, Presets, Tuner, Console, Capture)
+  index.html             the app shell (tabs: Tone, Presets, Tuner, Console, Capture; Settings/About and first-run dialogs)
   console.html           empty host page for the popped-out Console (app.js moves the live Console into it)
   app/app.js             app logic: connection, presets/banks, New/Save, library tab, console, capture, tabs
   app/rig.js             the rig view: chain strip (incl. reorder), amp head, pedalboard; param sync registry
   app/controls.js        reusable controls: rotary knob (native range + SVG dial), footswitch, toggle, selector
   app/library.js         "My presets" on-device library (localStorage, falls back to memory)
+  app/telemetry.js       anonymous error reports: scrub(), sanitizeReport() (shared with the Worker), createReporter()
+  version.js             VERSION: 'dev' in git, stamped by the release workflow (tools/stamp-version.js)
   guide/                 user guide (index.html + guide.css), shown in the in-app Help panel; also /guide/ on the website
   app/styles.css         dark "stage" theme; colour tokens on :root, per-slot pedal colours
   spark/                 protocol library: no DOM, no dependencies, runs in Node 20+ too
@@ -63,15 +65,18 @@ src/                     everything that ships; served as-is, no bundler, no bui
 desktop/                 Electron main + preload (serves src/ over the secure kindling:// scheme)
 android/, ios/           Capacitor native projects (generated; web assets are synced in, not committed)
 tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release-plan, release-notes, release-android.sh
-                         (the Android build, run locally and by CI), build-icons,
+                         (the Android build, run locally and by CI), build-icons, stamp-version, autofix,
                          screenshots (marketing images via Playwright; the website repo runs it)
 assets/logo/concepts/    logo source SVGs (kindling, knob, monogram, necks, amp, pick); `npm run icons` renders all platform icons
 build/                   generated desktop icons for electron-builder (committed)
-.github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release)
+.github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release),
+                         autofix.yml (error-report issue -> Workers AI fix -> draft PR)
 test/                    node:test suites; test/fixtures holds real captures
 release-notes/           versioned store "What's new" text: <version>/android.txt, macos.txt
 TRADEMARKS.md            what forks may do with the name, logo, app ID and store presence (the GPL covers the code only)
-docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md
+docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md,
+                         TELEMETRY.md (anonymous error reports)
+telemetry/               Cloudflare Worker (worker.js, wrangler.jsonc, schema.sql for D1) that receives error reports and opens issues; deployed by hand
 ```
 
 ## Commands
@@ -120,7 +125,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 - `MockSparkTransport` normalises uploads to canonical order by default (`fixedChain: true`); `fixedChain: false` (`?mock&reorder=1`) keeps them.
 
 **UI (rig):**
-- `rig.js` renders from `state.preset.pedals`: a chain strip (IN → blocks → OUT), the amp as an amp head (chicken-head knobs in `AMP_KNOB_ORDER`), and the other blocks as stompboxes on a pedalboard in two rows: "Into the amp" (the blocks before the amp) and "After the amp". An amp-link badge sits between them, showing the amp's chain position and jumping to the amp head. Each pedal shows its chain position number (1–7). The top bar shows the logo only below 480px so its buttons fit on phones. Rows are 3 columns wide (1 below 720px), and pedals in a row stretch so their footswitches line up.
+- `rig.js` renders from `state.preset.pedals`: a chain strip (IN → blocks → OUT), the amp as an amp head (chicken-head knobs in `AMP_KNOB_ORDER`), and the other blocks as stompboxes on a pedalboard in two rows: "Into the amp" (the blocks before the amp) and "After the amp". An amp-link badge sits between them, showing the amp's chain position and jumping to the amp head. Each pedal shows its chain position number (1–7). The top bar shows the logo only below 480px so its buttons fit on phones. The connection status (`#status`, `setStatus(state, text)` with state `idle`/`busy`/`connected`/`error`) is a Bluetooth icon coloured by state plus text; below 560px only the icon shows, and the text stays for screen readers (`role="status"`) and as the tooltip. Rows are 3 columns wide (1 below 720px), and pedals in a row stretch so their footswitches line up.
 - Every parameter control registers a setter under `"fxIndex:param"`. The amp head, the pedals and knob moves reported by the amp (`rig.updateParam`) all sync through that registry; add new controls the same way instead of querying the DOM. Parameter sends are throttled per parameter (40 ms).
 - The knob (`controls.js`) is a real `<input type="range">`, kept focusable but invisible, with an SVG dial on top. Keyboard and screen readers use the native slider. Pointer: drag up or right to turn, Shift for fine control, double-click to reset to 5.
 - The theme is dark only (`color-scheme: dark`). Pedal colours come from `--pedal-<slot>` tokens. Check phone width (390px) for horizontal overflow after layout changes.
@@ -137,14 +142,25 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 - `src/guide/index.html` is the user documentation. It ships with every app, so it works offline in the browser, desktop and native apps. When it's shown inside the Help panel (an iframe) it hides its own header; the inline script adds the `embedded` class.
 - The app opens it with `openHelp(section)` in a `<dialog>`, never by navigating away: leaving the page would drop the Bluetooth connection. Anything with `data-help="<section id>"` opens Help at that section (one delegated click handler). `data-help=""` opens the top.
 - **Buy me a coffee** (`#coffee`, https://www.buymeacoffee.com/jerdog) sits in the top bar of the web and desktop apps, the landing page header and the README. It's a plain styled link, not Buy Me a Coffee's embed script: `src/` loads no third-party code and must work offline. `app.js` hides it in the Capacitor apps, because store payment rules restrict donation links; keep it that way.
-- Contextual help links: the top-bar Help button; **?** buttons on the Tone screen, Presets tab, Console, the New/Save dialogs and next to Reorder chain (`rig.js`); text links on the Tuner and Capture tabs and in the unsupported-browser banner; a **Troubleshooting** action on the connection-failed toast (`toast(text, kind, { label, run })`).
+- Contextual help links: the top-bar Help button; **?** buttons in the Settings and first-run error-report dialogs; **?** buttons on the Tone screen, Presets tab, Console, the New/Save dialogs and next to Reorder chain (`rig.js`); text links on the Tuner and Capture tabs and in the unsupported-browser banner; a **Troubleshooting** action on the connection-failed toast (`toast(text, kind, { label, run })`).
 - **Any change to what users see or do must update the guide in the same change.** Keep section ids stable, because the app links to them. `test/help-links.test.js` fails if a help link points at a missing section, or if the guide's contents list has a broken anchor. `check-docs` accepts the guide as documentation.
 - The desktop app opens "Open in a new window" for `kindling://app/guide/` in a separate sandboxed window with no preload. Link and navigation rules apply to every window via `app.on('web-contents-created')`. The native apps hide that link, because their web views can't open windows.
 - **Console pop-out:** **Pop out** opens `console.html` (same origin; on desktop an allowed sandboxed window with no preload) and *moves* the live `#console-body` nodes into it with `adoptNode`, so their listeners keep working and the Bluetooth connection stays in the main window. Closing the pop-out (its `pagehide`) or **Bring it back** moves them home; closing the main window closes the pop-out. Console code must therefore use the cached `consoleEls` references, never `$('#log')` and friends, which only search the main document. Capacitor hides the button.
 
+## Error reports (telemetry)
+
+- Released apps send anonymous error reports **only if the user opts in** to the Cloudflare Worker in `telemetry/` (`https://errors.kindlingcontrol.app/v1/report`, `ENDPOINT` in `src/app/telemetry.js`). The project's domain is **kindlingcontrol.app** (website, presets hub, error reports); the old kindlingspark.app is retired, never use it. Keep `ENDPOINT` and the `routes` entry in `telemetry/wrangler.jsonc` on the same host, which writes one structured line per report to Workers Logs. Full details: `docs/TELEMETRY.md`.
+- **Consent:** first run shows `#consent-dialog`; nothing is sent until the user answers (up to 5 errors wait in memory, dropped on "no"). Afterwards the switch lives in **Settings** (`#settings-dialog`, gear button `#settings-open` in the top bar), which also holds **About** (version, which app, licence, links). localStorage key `kindling-control.error-reports` = `on`/`off`; missing = not asked yet. The "what is sent" text is one `<template id="reports-explainer">` used by both dialogs; keep it, the guide's `#privacy` and `docs/TELEMETRY.md` in agreement.
+- **Only non-identifying data:** app (`desktop`/`android`/`ios`/`web`), desktop OS, app version, kind, `where` (a short action tag), error name, scrubbed message and stack, and `first` (whether this install reports this error for the first time; the device remembers reported fingerprints locally in `kindling-control.error-reports.seen`). That's how installs are counted with no install id. Never add ids (user, device, install, session), amp serials or names, Bluetooth ids, preset names, timestamps, IPs, user agents or locations. New fields need an entry in `sanitizeReport()`'s allow-list, `docs/TELEMETRY.md` and the guide's `#privacy` section.
+- The Worker never reads the IP, headers or `request.cf`, and re-scrubs with the same `sanitizeReport()`. `wrangler.jsonc` keeps **invocation logs and traces off** for it (traces would record user agent, location and ASN); keep it that way, and keep it a separate Worker. Its custom-domain route must keep `zone_name` (wrangler can't always infer the zone: error 10082).
+- With D1 (`DB`, `telemetry/schema.sql`) it counts installs per fingerprint and, at `ISSUE_THRESHOLD` (2), opens one public GitHub issue labelled `error-report` (secret `GITHUB_TOKEN`, capped by `MAX_ISSUES_PER_DAY`). The issue's `<!-- error-report -->` JSON block is the contract with the auto-fix agent; change `issueBody()` and `parseIssueReport()` together.
+- **Auto-fix:** `.github/workflows/autofix.yml` + `tools/autofix.js` (off unless the repo variable `AUTOFIX_ENABLED` is `true`). A Workers AI model (`AUTOFIX_MODEL`, default `@cf/openai/gpt-oss-120b`; models with smaller context windows, such as `@cf/qwen/qwen2.5-coder-32b-instruct` at 32k, need an entry in `MODEL_LIMITS`) proposes search/replace edits; they're tested in a read-only job and become a **draft** PR, or an issue comment. Issue content is untrusted: only the report block is used, edits are limited to `ALLOWED_PATH` (`src/app/*.js` except `telemetry.js`, and `src/spark/*.js`), the writing job never runs the patched code, and nothing is merged automatically. Don't widen any of that without thinking through prompt injection from forged reports.
+- Reports are sent only when `src/version.js` is stamped (the committed value `'dev'` sends nothing; `?errors=on` overrides for testing), never with `?mock`, at most 20 per session and each error once per session.
+- In `app.js`, report failures with `reportError('<where>', err)` next to the `logLine('err', …)`. Don't report errors whose messages are about the user's own files (import, capture). `src/app/telemetry.js` must stay DOM-free at import: the Worker bundles it.
+
 ## Website
 
-- kindlingspark.app (landing page, user guide, presets hub) lives in **https://github.com/bluedog-consulting/kindling-control-website**. It was split out so this repo stays a clean, forkable app. Don't add website code back here.
+- kindlingcontrol.app (landing page, user guide, presets hub) lives in **https://github.com/bluedog-consulting/kindling-control-website**. It was split out so this repo stays a clean, forkable app. Don't add website code back here.
 - The website **copies** some files from this repo into its `vendor/app/` (list: `FILES` in its `tools/app-source.js`). It only picks up changes when someone runs its `npm run sync:app`, and it warns weekly when this repo has moved on. The copied files are:
   - `src/spark/messages.js`, `codec.js`, `constants.js`, `effects.js`: the hub validates uploads with `presetToJson` and the effects catalog. Keep them DOM-free, and keep the preset JSON format backwards compatible, because shared presets are stored in it and imported by the app's **Import JSON…**.
   - `src/guide/index.html` and `guide.css`, served at `/guide/`. The website's build rewrites the header link `<a class="back" href="../">Open the app →</a>`; if you change it, the website build fails until its `tools/build.js` is updated.
@@ -172,7 +188,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 - If you add a file or folder that affects an app's build, add its path to `APP_PATHS`, and update `docs/RELEASING.md`.
 - **Store release notes** are versioned in `release-notes/<version>/{android,macos}.txt` (version = tag without `v`; limits 500 / 4000 characters, enforced by `tools/release-notes.js`). Notes belong to the apps a release builds: the `plan` job computes that set (`outputs.notes_stores`; today `android` when Android is built, since macOS isn't built in CI) and checks it with `release-notes.js --only`, failing a final tag that builds Android without `android.txt`. The `release` job publishes exactly that set in the Release body and as `…-<store>-whatsnew.txt` files. When macOS joins the matrix, add `macos` to the set with the desktop build. Notes changes must not rebuild apps, so `release-notes/` is deliberately not in `APP_PATHS`. Don't auto-upload to stores without adding the credentials docs to `docs/RELEASING.md`.
 - **Android build script:** `tools/release-android.sh` is the one Android build path: the CI `android` job runs it (`--skip-install --no-notes`, `--debug` without secrets), and maintainers run it locally. A missing SDK platform is installed with `sdkmanager` only on CI (`CI=true`); locally the script prints the command instead. Change the build there, not in `release.yml`. It picks a JDK 21+ itself, finds the SDK via `ANDROID_HOME`, `android/local.properties` or the macOS/Linux defaults, reads `ANDROID_KEYSTORE_FILE`/`ANDROID_KEY_ALIAS` and the passwords from the environment or a git-ignored `.env`, prompts for missing passwords (without a terminal it requires `ANDROID_KEYSTORE_PASSWORD` instead), refuses to ship an unsigned build and checks the `.aab` is signed by the keystore's own key, and writes `out/`. Pass passwords to `keytool`/`jarsigner` with `-storepass:env`, never as plain arguments, which other processes can read with `ps`. Google Play refuses a `versionCode` it has already seen, so a re-upload of the same version uses `--version-code N` (N above the tag's code); CI never passes it.
-- Versions come from the tag; don't hand-edit versions in `package.json` or `android/app/build.gradle`. The Android `versionCode` scheme is `versionFromTag()`, and it must stay strictly increasing (tested).
+- Versions come from the tag; don't hand-edit versions in `package.json`, `android/app/build.gradle` or `src/version.js` (`release-android.sh` stamps it with `tools/stamp-version.js` before `cap sync` and restores it afterwards; the desktop job stamps it before electron-builder). The Android `versionCode` scheme is `versionFromTag()`, and it must stay strictly increasing (tested).
 - Secrets are optional: without them, CI ships a debug APK and unsigned desktop builds. In workflows, never interpolate `${{ }}` values derived from repo content (e.g. file names) into `run:` scripts; pass them through `env:`.
 - iOS and macOS aren't built in CI yet. macOS was removed from the desktop matrix because any failed build blocks the whole release; add it back to `release.yml` (and `docs/RELEASING.md`) once it builds.
 
@@ -186,7 +202,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 
 - **Dependencies:**
   - `src/` has zero runtime dependencies and no build step. Keep it that way: ES modules, plain DOM, no frameworks.
-  - All npm packages are devDependencies (Capacitor's CLI also scans devDependencies), pinned to **exact** versions that are at least two weeks old. The one exception is a security fix for something that ships, e.g. Electron.
+  - All npm packages are devDependencies (Capacitor's CLI also scans devDependencies), pinned to **exact** versions that are at least two weeks old. Exceptions: a security fix for something that ships, e.g. Electron; and `wrangler`, which the maintainer deliberately keeps at `"latest"` (it only deploys the error-report Worker and ships in no app). Don't pin it. `package-lock.json` still fixes the version `npm ci` installs, so moving to a newer wrangler takes `npm install wrangler@latest` and committing the lockfile.
   - `npm audit --omit=dev` must stay at 0. Moderate findings inside electron-builder or `@capacitor/cli` are build-only (see `docs/APPS.md`). Never run `npm audit fix --force`.
 - **Formatting:** 2-space indent, single quotes, semicolons, trailing commas, lines up to about 120 characters.
 - **Git:**

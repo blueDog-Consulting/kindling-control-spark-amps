@@ -18,6 +18,8 @@ import {
 } from '../spark/index.js';
 import { PresetLibrary } from './library.js';
 import { createRig } from './rig.js';
+import { createReporter, detectApp } from './telemetry.js';
+import { VERSION } from '../version.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -34,6 +36,21 @@ const consoleEls = {
 
 const params = new URLSearchParams(location.search);
 const useMock = params.has('mock');
+
+// Anonymous error reports (see telemetry.js and docs/TELEMETRY.md): released builds only,
+// never with the simulated amp, and only after the user opts in (first-run question below,
+// then Settings). ?errors=on sends from a dev build, to test the Worker.
+const errors = createReporter({
+  version: VERSION,
+  ...detectApp(window),
+  storage: safeLocalStorage(),
+  force: params.get('errors') === 'on',
+});
+if (!useMock) errors.install(window);
+/** Report an error anonymously (the caller logs it to the Console). */
+function reportError(where, err) {
+  if (!useMock) errors.report(err, { where });
+}
 
 const state = {
   client: null,
@@ -93,7 +110,9 @@ $('#connect').addEventListener('click', async () => {
     await refreshPreset();
   } catch (err) {
     console.error(err);
-    setStatus('idle', err.name === 'NotFoundError' ? 'Not connected' : "Couldn't connect");
+    reportError('connect', err);
+    if (err.name === 'NotFoundError') setStatus('idle', 'Not connected');
+    else setStatus('error', "Couldn't connect");
     logLine('err', `connect failed: ${err.message}`);
     if (err.name !== 'NotFoundError') {
       toast(`Couldn't connect: ${err.message}`, 'warn', { label: 'Troubleshooting', run: () => openHelp('troubleshooting') });
@@ -113,7 +132,10 @@ function wireClient(c) {
   c.addEventListener('message', (e) => logMessage('rx', e.detail));
   c.addEventListener('sent', (e) => logMessage('tx', { ...decode(e.detail), seq: e.detail.seq, raw: e.detail.blocks }));
   c.addEventListener('sentRaw', (e) => logLine('tx', `raw ${toHex(e.detail.bytes)}`));
-  c.addEventListener('error', (e) => logLine('err', e.detail.error.message));
+  c.addEventListener('error', (e) => {
+    logLine('err', e.detail.error.message);
+    reportError('client', e.detail.error);
+  });
   c.addEventListener('log', (e) => logLine('info', `bluetooth: ${e.detail.text}`));
 
   // amp-side events (knobs and buttons on the amp)
@@ -149,10 +171,12 @@ function wireClient(c) {
 }
 
 function setStatus(st, text) {
+  // st: idle | busy | connected | error. Phones show only the coloured Bluetooth icon;
+  // the text stays for screen readers and as the tooltip.
   const el = $('#status');
   el.dataset.state = st;
-  el.textContent = text;
-  el.title = text; // full text when the pill is truncated on narrow screens
+  $('.status-text', el).textContent = text;
+  el.title = text;
 }
 
 function setConnectedUi(on) {
@@ -187,6 +211,7 @@ async function refreshPreset() {
     renderPreset();
   } catch (err) {
     logLine('err', `could not read current preset: ${err.message}`);
+    reportError('read-preset', err);
   }
 }
 
@@ -224,6 +249,7 @@ async function selectSlot(slot) {
     await refreshPreset();
   } catch (err) {
     logLine('err', err.message);
+    reportError('select-preset', err);
   }
 }
 
@@ -296,6 +322,7 @@ $('#new-dialog').addEventListener('close', async () => {
     renderPresetHeader();
   } catch (err) {
     logLine('err', `could not create preset: ${err.message}`);
+    reportError('new-preset', err);
     alert(`Could not create preset: ${err.message}`);
   }
 });
@@ -361,6 +388,7 @@ $('#save-dialog').addEventListener('close', async () => {
     }
   } catch (err) {
     logLine('err', `save failed: ${err.message}`);
+    reportError('save-preset', err);
     alert(`Save failed: ${err.message}`);
   }
 });
@@ -399,6 +427,7 @@ function renderLibrary() {
           selectTab($('#tab-tone'));
         } catch (err) {
           logLine('err', `load failed: ${err.message}`);
+          reportError('load-preset', err);
         }
       }, 'primary');
       btn('Export', () => download(p.name, presetToJson(state.library.get(p.uuid))));
@@ -444,8 +473,8 @@ const rig = createRig({
   root: $('#rig'),
   state,
   actions: {
-    setParam: (effect, p, v) => state.client?.setParam(effect, p, v).catch((e) => logLine('err', e.message)),
-    setOnOff: (effect, on) => state.client?.setEffectOnOff(effect, on).catch((e) => logLine('err', e.message)),
+    setParam: (effect, p, v) => state.client?.setParam(effect, p, v).catch((e) => (logLine('err', e.message), reportError('set-param', e))),
+    setOnOff: (effect, on) => state.client?.setEffectOnOff(effect, on).catch((e) => (logLine('err', e.message), reportError('set-on-off', e))),
     async changeEffect(from, to) {
       if (!state.connected) {
         const fx = state.preset.pedals.find((f) => f.name === from);
@@ -459,6 +488,7 @@ const rig = createRig({
         return true;
       } catch (err) {
         logLine('err', err.message);
+        reportError('change-effect', err);
         return false;
       }
     },
@@ -488,6 +518,7 @@ const rig = createRig({
         );
       } catch (err) {
         logLine('err', `reorder failed: ${err.message}`);
+        reportError('reorder', err);
         toast(`Reorder failed: ${err.message}`, 'warn');
       }
     },
@@ -568,6 +599,48 @@ $('#help-close').addEventListener('click', () => $('#help-dialog').close());
 if (CapacitorBleTransport.isAvailable()) $('#help-newtab').hidden = true;
 // No donation link inside the store apps (app store payment rules); web and desktop only.
 if (CapacitorBleTransport.isAvailable()) $('#coffee').hidden = true;
+
+// ---------------------------------------------------------------------------
+// settings + about, and the first-run question about error reports
+// ---------------------------------------------------------------------------
+
+const APP_LABEL = { desktop: 'Desktop', android: 'Android', ios: 'iPhone/iPad', web: 'Web' };
+
+function explainReports(host) {
+  host.replaceChildren($('#reports-explainer').content.cloneNode(true));
+}
+
+function openSettings() {
+  const { app } = detectApp(window);
+  $('#about-version').textContent = `${VERSION === 'dev' ? 'development build' : `version ${VERSION}`} · ${APP_LABEL[app] ?? app}`;
+  const reports = errors.available && !useMock;
+  $('#settings-reports').hidden = !reports;
+  if (reports) {
+    $('#error-reports-on').checked = errors.enabled;
+    explainReports($('.settings-reports-body'));
+  }
+  $('#settings-dialog').showModal();
+}
+$('#settings-open').addEventListener('click', openSettings);
+$('#error-reports-on').addEventListener('change', (e) => (errors.enabled = e.target.checked));
+// Help links inside these dialogs open the guide on top of them.
+$('#settings-dialog').addEventListener('click', (e) => {
+  if (e.target.closest('[data-help]')) $('#settings-dialog').close();
+});
+
+// First run: ask before sending anything. Until they answer, nothing is sent.
+if (errors.needsConsent && !useMock) {
+  const dialog = $('#consent-dialog');
+  explainReports($('.consent-body', dialog));
+  dialog.addEventListener('close', () => {
+    // Escape / closing without choosing counts as "not now": ask again next launch.
+    if (dialog.returnValue === 'on' || dialog.returnValue === 'off') errors.enabled = dialog.returnValue === 'on';
+  });
+  dialog.addEventListener('click', (e) => {
+    if (e.target.closest('[data-help]')) dialog.close();
+  });
+  dialog.showModal();
+}
 
 // ---------------------------------------------------------------------------
 // tuner
@@ -799,3 +872,11 @@ function setupDesktopDevicePicker(desktop) {
 if (useMock) setStatus('idle', 'Simulated amp');
 // expose for poking around in devtools
 window.spark = { state, EFFECTS };
+
+function safeLocalStorage() {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
