@@ -19,6 +19,8 @@ First, once:
 npm install
 ```
 
+`npm install` prints deprecation warnings and around 18 *moderate* audit findings. They all come from inside the build tools (electron-builder and the Capacitor CLI) and aren't fixable from this project. None of that code ships in any app, and none of them can be triggered by building your own project. `npm audit --omit=dev` covers what actually ships and reports 0. Don't run `npm audit fix --force`: it downgrades both tools several major versions and breaks the builds. **High** or **critical** findings are a different matter, especially in `electron`, because Electron ships inside the desktop app. Bump it when one appears.
+
 ## Desktop (Electron)
 
 ```sh

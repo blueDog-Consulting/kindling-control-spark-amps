@@ -62,7 +62,7 @@
     "@capacitor/cli": "8.5.3",
     "@capacitor/core": "8.5.3",
     "@capacitor/ios": "8.5.3",
-    "electron": "44.9.0",
+    "electron": "44.9.3",
     "electron-builder": "26.17.0"
   }
 }
