@@ -114,6 +114,11 @@
     </section>
 
     <section id="panel-console" role="tabpanel" aria-labelledby="tab-console" hidden>
+      <p id="console-away" class="console-away" hidden>
+        The Console is open in a separate window.
+        <button type="button" id="console-return">Bring it back</button>
+      </p>
+      <div id="console-body">
       <form id="raw-form" class="raw">
         <label for="raw-input">Send message <small>(<code>cmd sub [data hex]</code>, e.g. <code>02 11</code>, or a full block starting <code>01 fe</code>)</small></label>
         <div class="row">
@@ -125,10 +130,12 @@
         <label><input type="checkbox" id="hide-params"> Hide param / tuner spam</label>
         <span class="row">
           <button type="button" id="clear-log">Clear</button>
+          <button type="button" id="console-popout" title="Open the Console in its own window">Pop out</button>
           <button type="button" class="help-link" data-help="console" aria-label="Help: the Console">?</button>
         </span>
       </div>
       <ol id="log" class="log"></ol>
+      </div>
     </section>
 
     <section id="panel-capture" role="tabpanel" aria-labelledby="tab-capture" hidden>

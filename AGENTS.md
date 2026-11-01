@@ -45,6 +45,7 @@ The website **kindlingspark.app** (landing page, the user guide at `/guide/`, an
 ```
 src/                     everything that ships; served as-is, no bundler, no build step
   index.html             the app shell (tabs: Tone, Presets, Tuner, Console, Capture)
+  console.html           empty host page for the popped-out Console (app.js moves the live Console into it)
   app/app.js             app logic: connection, presets/banks, New/Save, library tab, console, capture, tabs
   app/rig.js             the rig view: chain strip (incl. reorder), amp head, pedalboard; param sync registry
   app/controls.js        reusable controls: rotary knob (native range + SVG dial), footswitch, toggle, selector
@@ -134,6 +135,7 @@ npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 - Contextual help links: the top-bar Help button; **?** buttons on the Tone screen, Presets tab, Console, the New/Save dialogs and next to Reorder chain (`rig.js`); text links on the Tuner and Capture tabs and in the unsupported-browser banner; a **Troubleshooting** action on the connection-failed toast (`toast(text, kind, { label, run })`).
 - **Any change to what users see or do must update the guide in the same change.** Keep section ids stable, because the app links to them. `test/help-links.test.js` fails if a help link points at a missing section, or if the guide's contents list has a broken anchor. `check-docs` accepts the guide as documentation.
 - The desktop app opens "Open in a new window" for `kindling://app/guide/` in a separate sandboxed window with no preload. Link and navigation rules apply to every window via `app.on('web-contents-created')`. The native apps hide that link, because their web views can't open windows.
+- **Console pop-out:** **Pop out** opens `console.html` (same origin; on desktop an allowed sandboxed window with no preload) and *moves* the live `#console-body` nodes into it with `adoptNode`, so their listeners keep working and the Bluetooth connection stays in the main window. Closing the pop-out (its `pagehide`) or **Bring it back** moves them home; closing the main window closes the pop-out. Console code must therefore use the cached `consoleEls` references, never `$('#log')` and friends, which only search the main document. Capacitor hides the button.
 
 ## Website
 

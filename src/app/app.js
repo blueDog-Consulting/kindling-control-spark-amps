@@ -22,6 +22,16 @@ import { createRig } from './rig.js';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
+// The Console can be popped out into another window (another document), so its
+// elements are looked up once here rather than with $() later.
+const consoleEls = {
+  body: $('#console-body'),
+  log: $('#log'),
+  hideParams: $('#hide-params'),
+  rawInput: $('#raw-input'),
+  rawSend: $('#raw-send'),
+};
+
 const params = new URLSearchParams(location.search);
 const useMock = params.has('mock');
 
@@ -148,7 +158,7 @@ function setStatus(st, text) {
 function setConnectedUi(on) {
   $('#connect').textContent = on ? 'Disconnect' : 'Connect';
   $('#connect').classList.toggle('primary', !on);
-  for (const id of ['#refresh', '#raw-send', '#tuner-on']) $(id).disabled = !on;
+  for (const el of [$('#refresh'), consoleEls.rawSend, $('#tuner-on')]) el.disabled = !on;
   $('#info').hidden = !on;
 }
 
@@ -545,12 +555,14 @@ function openHelp(section = '') {
   target.scrollIntoView({ block: 'start' });
   frame.contentWindow.history.replaceState(null, '', url.split('/').pop());
 }
-document.addEventListener('click', (e) => {
+function onHelpClick(e) {
   const b = e.target.closest('[data-help]');
   if (!b) return;
   e.preventDefault();
+  window.focus(); // when clicked in the popped-out Console, Help opens here
   openHelp(b.dataset.help);
-});
+}
+document.addEventListener('click', onHelpClick);
 $('#help-close').addEventListener('click', () => $('#help-dialog').close());
 // The native apps' web views can't open extra windows; keep the guide in the panel there.
 if (CapacitorBleTransport.isAvailable()) $('#help-newtab').hidden = true;
@@ -589,11 +601,11 @@ function showTuner(t) {
 const NOISY = new Set(['param', 'tuner']);
 
 function logMessage(dir, m) {
-  if ($('#hide-params').checked && NOISY.has(m.type)) return;
+  if (consoleEls.hideParams.checked && NOISY.has(m.type)) return;
   const li = document.createElement('li');
   li.className = `${dir}${m.type === 'unknown' || m.type === 'unparsed' ? ' unknown' : ''}`;
   li.append(formatMessage(dir, m));
-  appendLog($('#log'), li);
+  appendLog(consoleEls.log, li);
 }
 
 function formatMessage(dir, m) {
@@ -628,7 +640,7 @@ function logLine(cls, text) {
   const li = document.createElement('li');
   li.className = cls;
   li.textContent = text;
-  appendLog($('#log'), li);
+  appendLog(consoleEls.log, li);
 }
 
 function appendLog(list, li) {
@@ -636,12 +648,12 @@ function appendLog(list, li) {
   while (list.children.length > 500) list.lastElementChild.remove();
 }
 
-$('#clear-log').addEventListener('click', () => $('#log').replaceChildren());
+$('#clear-log').addEventListener('click', () => consoleEls.log.replaceChildren());
 
 $('#raw-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!state.connected) return;
-  const text = $('#raw-input').value.trim();
+  const text = consoleEls.rawInput.value.trim();
   try {
     const bytes = fromHex(text);
     if (bytes[0] === 0x01 && bytes[1] === 0xfe) await state.client.sendRaw(bytes);
@@ -651,6 +663,39 @@ $('#raw-form').addEventListener('submit', async (e) => {
     logLine('err', err.message);
   }
 });
+
+// Pop-out: the live Console nodes move into console.html and back, keeping their
+// listeners. The connection stays in this window, so closing it closes the pop-out.
+let consoleWindow = null;
+
+function popOutConsole() {
+  if (consoleWindow && !consoleWindow.closed) return consoleWindow.focus();
+  const win = window.open('console.html', 'kindling-console', 'popup,width=760,height=680');
+  if (!win) return logLine('err', 'the browser blocked the Console window');
+  consoleWindow = win;
+  win.addEventListener('load', () => {
+    win.document.getElementById('console-host').append(win.document.adoptNode(consoleEls.body));
+    win.document.addEventListener('click', onHelpClick);
+    $('#console-popout', win.document).hidden = true;
+    $('#console-away').hidden = false;
+    win.addEventListener('pagehide', returnConsole);
+  });
+}
+
+function returnConsole() {
+  if (consoleEls.body.ownerDocument !== document) $('#panel-console').append(document.adoptNode(consoleEls.body));
+  $('#console-popout').hidden = false;
+  $('#console-away').hidden = true;
+  const win = consoleWindow;
+  consoleWindow = null;
+  if (win && !win.closed) win.close();
+}
+
+$('#console-popout').addEventListener('click', popOutConsole);
+$('#console-return').addEventListener('click', returnConsole);
+window.addEventListener('pagehide', () => consoleWindow?.close());
+// The native apps' web views can't open extra windows.
+if (CapacitorBleTransport.isAvailable()) $('#console-popout').hidden = true;
 
 // ---------------------------------------------------------------------------
 // capture decoder

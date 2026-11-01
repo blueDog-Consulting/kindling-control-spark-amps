@@ -51,7 +51,7 @@ function createWindow() {
   return win;
 }
 
-// Every window (the app and any guide window) gets the same link rules:
+// Every window (the app, the guide and the Console windows) gets the same link rules:
 // external https links open in the real browser; only our own scheme loads inside the app.
 app.on('web-contents-created', (_e, contents) => {
   contents.setWindowOpenHandler(({ url }) => {
@@ -64,6 +64,20 @@ app.on('web-contents-created', (_e, contents) => {
           height: 820,
           title: 'KindlingControl user guide',
           backgroundColor: '#0d0e10',
+          autoHideMenuBar: true,
+          webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false }, // no preload
+        },
+      };
+    }
+    // The popped-out Console: same origin, so the app window can move its live Console into it.
+    if (url === `${SCHEME}://app/console.html`) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 760,
+          height: 680,
+          title: 'KindlingControl console',
+          backgroundColor: '#121417',
           autoHideMenuBar: true,
           webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false }, // no preload
         },

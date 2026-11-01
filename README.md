@@ -41,7 +41,7 @@ Build instructions for each are in [docs/APPS.md](docs/APPS.md).
   * **Reorder chain** (experimental) lets you drag effects into a new order and try it on the amp. The Spark firmware is believed to use a fixed order, so the app reads the result back and tells you whether your amp kept it.
 * **Presets:** **New** creates a preset, either from the current sound or blank, and puts it on the amp to shape. **Save…** keeps it in *My presets* on this device, stores it in one of the amp's preset slots, or both. The Presets tab lists saved presets to load, export or delete, and imports JSON files. The format is compatible with [Ignitron](https://github.com/stangreg/Ignitron)'s preset files.
 * **Tuner** on models that support it.
-* **Console:** every message in both directions, decoded, with the raw hex. You can also send arbitrary commands.
+* **Console:** every message in both directions, decoded, with the raw hex. You can also send arbitrary commands. On the web and desktop, **Pop out** moves it into its own window, so you can watch the traffic while you use the Tone screen.
 * **Capture decoder:** load an Android `btsnoop_hci.log` and see exactly what the official app sends. This is how you reverse engineer the features that aren't covered yet. See [docs/CAPTURE.md](docs/CAPTURE.md).
 
 ## Use it
