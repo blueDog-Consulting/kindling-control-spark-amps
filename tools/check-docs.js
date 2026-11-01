@@ -23,6 +23,7 @@ export const MATERIAL = [
   /^capacitor\.config\.json$/,
   /^android\/app\/src\/main\/AndroidManifest\.xml$/,
   /^android\/variables\.gradle$/,
+  /^android\/(app\/)?build\.gradle$/, // versioning, signing
   /^ios\/App\/App\/Info\.plist$/,
   /^package\.json$/, // scripts, entry points, build config, dependencies
   /^wrangler\.jsonc$/,

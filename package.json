@@ -16,7 +16,8 @@
     "mobile:sync": "cap sync",
     "android": "cap sync android && cap open android",
     "ios": "cap sync ios && cap open ios",
-    "check:docs": "node tools/check-docs.js"
+    "check:docs": "node tools/check-docs.js",
+    "release:plan": "node tools/release-plan.js"
   },
   "engines": {
     "node": ">=20"
@@ -38,7 +39,13 @@
     "mac": {
       "category": "public.app-category.music",
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ],
       "extendInfo": {
         "NSBluetoothAlwaysUsageDescription": "Spark Control uses Bluetooth to talk to your Spark amp."
@@ -46,15 +53,38 @@
     },
     "win": {
       "target": [
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "linux": {
       "target": [
-        "AppImage",
-        "deb"
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
-      "category": "Audio"
+      "category": "Audio",
+      "maintainer": "jerdog <jerdog@users.noreply.github.com>",
+      "syncDesktopName": true
+    },
+    "artifactName": "spark-control-${version}-${os}-${arch}.${ext}",
+    "publish": null,
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   },
   "devDependencies": {
@@ -65,5 +95,6 @@
     "@capacitor/ios": "8.5.3",
     "electron": "44.9.3",
     "electron-builder": "26.17.0"
-  }
+  },
+  "desktopName": "spark-control.desktop"
 }

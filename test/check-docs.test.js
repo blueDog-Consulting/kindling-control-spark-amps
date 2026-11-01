@@ -16,7 +16,7 @@ test('material change needs both AGENTS.md and a doc', () => {
 });
 
 test('native config, scripts and CI count as material', () => {
-  for (const f of ['ios/App/App/Info.plist', 'android/app/src/main/AndroidManifest.xml', 'package.json', '.github/workflows/ci.yml', 'tools/serve.js', 'src/index.html']) {
+  for (const f of ['ios/App/App/Info.plist', 'android/app/src/main/AndroidManifest.xml', 'android/app/build.gradle', 'package.json', '.github/workflows/ci.yml', 'tools/serve.js', 'src/index.html']) {
     assert.equal(checkDocs([f]).ok, false, f);
   }
 });

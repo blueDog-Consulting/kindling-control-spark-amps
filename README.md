@@ -95,7 +95,8 @@ The protocol itself is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `android/`, `ios/` | Capacitor projects for Android and iPad/iPhone |
 | `tools/` | capture decoder CLI, dev server, docs check |
 | `test/` | `node:test` suites and real-capture fixtures |
-| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md) |
+| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md) |
+| `.github/workflows/` | CI (tests + docs check) and the tag-driven release pipeline |
 
 ## Development
 
@@ -107,6 +108,10 @@ npm run check:docs                              # docs rule (also runs in CI)
 ```
 
 The tests include a real Spark 40 preset dump. The decoder has to reproduce its checksums, and re-encoding has to give back the original bytes exactly.
+
+## Releases
+
+Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions then rebuilds whichever of the web app, the Android app and the desktop apps changed since the last release, and publishes them on the [Releases](https://github.com/jerdog/positive-grid-spark/releases) page. See [docs/RELEASING.md](docs/RELEASING.md) for details and the optional signing and deploy secrets.
 
 ## Contributing
 

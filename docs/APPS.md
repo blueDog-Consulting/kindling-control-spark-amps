@@ -13,6 +13,8 @@ The app picks the transport at runtime: native plugin if present, otherwise Web 
 
 iPad is the reason the native apps exist. Every browser on iOS/iPadOS uses WebKit, which has no Web Bluetooth, so a web page can't reach the amp there.
 
+Tagged releases are built by CI (web, Android, desktop). See [RELEASING.md](RELEASING.md). The steps below are for building on your own machine.
+
 First, once:
 
 ```sh

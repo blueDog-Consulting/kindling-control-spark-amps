@@ -56,9 +56,10 @@ src/                     everything that ships; served as-is, no bundler, no bui
     effects.js           effect/amp catalog, param labels, AMP_KNOB_ORDER, blankPreset(), BASED_ON, SLOT_ORDER
 desktop/                 Electron main + preload (serves src/ over the secure spark:// scheme)
 android/, ios/           Capacitor native projects (generated; web assets are synced in, not committed)
-tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs
+tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release-plan
+.github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release)
 test/                    node:test suites; test/fixtures holds real captures
-docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app)
+docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md
 ```
 
 ## Commands
@@ -76,6 +77,7 @@ npx cap sync                     # copy src/ into android/ and ios/ after web ch
 npm run android | npm run ios    # sync + open Android Studio / Xcode
 node tools/btsnoop-decode.js btsnoop_hci.log [--raw|--json|--unknown]
 npx wrangler deploy              # web app to Cloudflare (wrangler.jsonc, static assets from src/)
+npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 ```
 
 ## How it works (things that are easy to get wrong)
@@ -114,6 +116,14 @@ npx wrangler deploy              # web app to Cloudflare (wrangler.jsonc, static
 - Keep `contextIsolation: true`, `sandbox: true` and `nodeIntegration: false`.
 - The preload only exposes the Bluetooth picker bridge (`window.sparkDesktop`).
 - External links open in the system browser.
+
+## Releases
+
+- Pushing a `v*` tag runs `.github/workflows/release.yml`. `tools/release-plan.js` diffs against the previous `v*` tag and builds only the apps whose paths changed (`APP_PATHS`: `src/` is shared by all of them). It then publishes one GitHub Release. Full details are in `docs/RELEASING.md`.
+- If you add a file or folder that affects an app's build, add its path to `APP_PATHS`, and update `docs/RELEASING.md`.
+- Versions come from the tag; don't hand-edit versions in `package.json` or `android/app/build.gradle`. The Android `versionCode` scheme is `versionFromTag()`, and it must stay strictly increasing (tested).
+- Secrets are optional: without them, CI ships a debug APK, unsigned desktop builds and no Cloudflare deploy. In workflows, never interpolate `${{ }}` values derived from repo content (e.g. file names) into `run:` scripts; pass them through `env:`.
+- iOS isn't built in CI yet (it needs macOS signing).
 
 ## Verifying changes
 

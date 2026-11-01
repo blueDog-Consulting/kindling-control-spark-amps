@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+// Release builds get their version from the git tag (see tools/release-plan.js):
+//   ./gradlew assembleRelease -PversionName=1.2.3 -PversionCode=1020399
+// Signing is configured only when the keystore env vars are set (CI secrets);
+// otherwise release builds are unsigned and CI ships a debug APK instead.
+def keystoreFile = System.getenv('ANDROID_KEYSTORE_FILE')
+def hasSigning = keystoreFile && file(keystoreFile).exists()
+
 android {
     namespace = "io.github.jerdog.sparkcontrol"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +14,8 @@ android {
         applicationId "io.github.jerdog.sparkcontrol"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode Integer.parseInt((project.findProperty('versionCode') ?: '1').toString())
+        versionName((project.findProperty('versionName') ?: '0.0.0-dev').toString())
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +23,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasSigning) {
+                storeFile file(keystoreFile)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
