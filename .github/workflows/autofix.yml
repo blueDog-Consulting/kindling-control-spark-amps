@@ -88,6 +88,9 @@ jobs:
       issues: write
     env:
       GH_TOKEN: ${{ secrets.AUTOFIX_PR_TOKEN || github.token }}
+      # Comments use Actions' own token (this job has issues: write): AUTOFIX_PR_TOKEN only needs
+      # Contents + Pull requests, and a comment doesn't need to trigger any workflow.
+      COMMENT_TOKEN: ${{ github.token }}
       ISSUE: ${{ github.event.issue.number }}
       TESTS: ${{ needs.test.result }}
       BASE: ${{ github.event.repository.default_branch }}
@@ -118,5 +121,5 @@ jobs:
             gh pr create --draft --base "$BASE" --head "$branch" \
               --title "$(cat autofix-out/title.txt)" --body-file autofix-out/pr.md
           else
-            gh issue comment "$ISSUE" --body-file autofix-out/comment.md
+            GH_TOKEN="$COMMENT_TOKEN" gh issue comment "$ISSUE" --body-file autofix-out/comment.md
           fi
