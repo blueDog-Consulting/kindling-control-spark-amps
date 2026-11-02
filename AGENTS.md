@@ -86,6 +86,7 @@ npm test                         # all tests; needs no npm install
 npm run serve                    # http://localhost:8787 (Web Bluetooth works on localhost)
                                  #   ?mock  ?mock=Spark%20GO  ?mock=Spark%202  -> simulated amps
                                  #   add &reorder=1 for a simulated amp that accepts reordered chains
+                                 #   add &swap=ignore or &swap=silent for one that won't take a model swap (01 06)
 npm run check:docs               # the documentation rule, against origin/main
 npm install                      # only needed for the desktop/mobile shells
 npm run desktop:mock             # Electron against the simulated Spark GO
@@ -118,6 +119,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 **Presets and banks:**
 - Hardware slots are 0–3. The Spark 2 has 8 (two banks of four: slots 4–7 are bank 2), using the same `01 38` / `03 38` / `02 01` messages. `0x7F` is the temporary slot.
 - Switching bank in the UI selects the same position in the new bank.
+- **Changing a model** (amp head or pedal nameplate) goes through `client.swapEffect(old, new)`: it sends `01 06` (ack timeout 1.5 s), reads the live preset back, and if the amp didn't ack or kept the old model, loads the edited preset into the temporary slot (new model gets `defaultParams()` from `effects.js`, keeps the slot's on/off), then reads back again. It resolves `{ method: 'swap' | 'preset', preset }`; the app toasts when it used the temporary slot and toasts the error when both fail (issue #5; which amps ignore `01 06` is unverified). `MockSparkTransport({ swap: 'ignore' | 'silent' })` (`?mock&swap=ignore`) simulates such an amp.
 - **New** loads a preset into the temporary slot, so nothing stored changes. **Save…** may overwrite a hardware slot (`client.storePreset`) and must keep its overwrite warning. Never write to a hardware slot without explicit user action.
 
 **Signal chain order:**

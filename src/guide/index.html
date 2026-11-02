@@ -142,7 +142,8 @@
           <p>On each pedal:</p>
           <ul>
             <li>The <strong>footswitch</strong> at the bottom turns it on or off. The red light at the top shows its state, and a switched-off pedal is dimmed.</li>
-            <li>The <strong>nameplate</strong> is a menu: pick a different model of the same type, say a Tube Drive instead of a Booster. It also shows the real gear the model is based on.</li>
+            <li>The <strong>nameplate</strong> is a menu: pick a different model of the same type, say a Tube Drive instead of a Booster. It also shows the real gear the model is based on.
+              If your amp won't take the quick model change, the app loads your tone with the new model into the amp's temporary slot instead and tells you so; nothing stored changes until you press <strong>Save…</strong>.</li>
             <li>Some settings are <strong>switches</strong> (like a delay's BPM sync) or <strong>selectors</strong> (like the delay mode or the reverb type) instead of knobs.</li>
           </ul>
         </section>
@@ -295,6 +296,12 @@
 
           <dt>"GATT operation failed for unknown reason"</dt>
           <dd>Usually seen on macOS. The app already retries with a different write mode by itself. If it still fails, power-cycle the amp and reconnect. If you report it, include the Console lines.</dd>
+
+          <dt>I can't change an effect or amp model</dt>
+          <dd>
+            After you pick a model, the app checks what the amp is actually playing. If the amp ignored the change, the app tries again by loading the edited tone into the temporary slot.
+            If that fails too, a message says why and the menu goes back to the old model. Please report it with your amp model and the red lines from the <strong>Console</strong>.
+          </dd>
 
           <dt>The screen doesn't match the amp</dt>
           <dd>Press <strong>Refresh</strong> to read the current tone from the amp again.</dd>
