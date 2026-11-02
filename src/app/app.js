@@ -204,15 +204,32 @@ function showBattery(s) {
 // presets
 // ---------------------------------------------------------------------------
 
-async function refreshPreset() {
-  if (!state.client) return;
-  try {
-    state.preset = await state.client.getPreset('current');
-    renderPreset();
-  } catch (err) {
-    logLine('err', `could not read current preset: ${err.message}`);
-    reportError('read-preset', err);
+// Amp events (preset button, effect change) can ask for a refresh while one is still
+// running. Instead of queueing one read per event, a refresh requested meanwhile makes the
+// running one read once more when it finishes; every caller awaits that same, latest read.
+let refreshing = null;
+let refreshAgain = false;
+
+function refreshPreset() {
+  if (!state.client) return Promise.resolve();
+  if (refreshing) {
+    refreshAgain = true;
+    return refreshing;
   }
+  refreshing = (async () => {
+    do {
+      refreshAgain = false;
+      if (!state.client) break;
+      try {
+        state.preset = await state.client.getPreset('current');
+        renderPreset();
+      } catch (err) {
+        logLine('err', `could not read current preset: ${err.message}`);
+        reportError('read-preset', err);
+      }
+    } while (refreshAgain);
+  })().finally(() => (refreshing = null));
+  return refreshing;
 }
 
 $('#refresh').addEventListener('click', refreshPreset);
