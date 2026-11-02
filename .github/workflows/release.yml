@@ -196,7 +196,7 @@ jobs:
       - uses: actions/download-artifact@v8
         continue-on-error: true # nothing to download when no app changed
         with:
-          path: assets
+          path: release-files # not "assets": the checkout already has an assets/ folder (logo sources)
           merge-multiple: true
       - name: Write release notes
         env:
@@ -219,7 +219,7 @@ jobs:
           # Versioned store notes, for the store apps this release built (the plan job checked the same set):
           # shown in the release body and attached as <app>-whatsnew.txt, ready to paste into Play Console.
           if [ -n "$NOTES_STORES" ]; then
-            node tools/release-notes.js "$TAG" --only "$NOTES_STORES" --out assets --markdown notes.md
+            node tools/release-notes.js "$TAG" --only "$NOTES_STORES" --out release-files --markdown notes.md
           fi
           args=(-f tag_name="$TAG")
           [ -n "$PREVIOUS" ] && args+=(-f previous_tag_name="$PREVIOUS")
@@ -228,7 +228,7 @@ jobs:
       - name: Publish GitHub release
         run: |
           shopt -s nullglob
-          files=(assets/*)
+          files=(release-files/*)
           flags=()
           [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
           if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
