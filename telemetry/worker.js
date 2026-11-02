@@ -82,15 +82,22 @@ export async function track(env, fp, report, log = console, today = new Date().t
     .run();
   if (claim.meta?.changes !== 1) return { row, issue: null };
 
+  let issue;
   try {
-    const issue = await createIssue(env, fp, report, row);
+    issue = await createIssue(env, fp, report, row);
     await env.DB.prepare("UPDATE errors SET issue_number = ?2, issue_state = 'open' WHERE fingerprint = ?1").bind(fp, issue.number).run();
     log.log({ event: 'issue_created', fingerprint: fp, issue: issue.number });
-    return { row, issue };
   } catch (err) {
     await env.DB.prepare('UPDATE errors SET issue_state = NULL, issue_created = NULL WHERE fingerprint = ?1').bind(fp).run();
     throw err;
   }
+  // The issue exists now, so a labelling failure must not release the claim (that would open a duplicate).
+  try {
+    await ensureLabel(env, issue);
+  } catch (err) {
+    log.warn({ event: 'issue_label_failed', fingerprint: fp, issue: issue.number, error: String(err.message).slice(0, 200) });
+  }
+  return { row, issue };
 }
 
 /** The issue: only the sanitised report and counts. The JSON block is what the auto-fix workflow reads. */
@@ -116,9 +123,8 @@ export function issueBody(fp, report, row) {
   ].join('\n');
 }
 
-async function createIssue(env, fp, report, row) {
-  const title = `[error] ${report.name}: ${report.message}`.slice(0, 120);
-  const res = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/issues`, {
+function github(env, path, payload) {
+  return fetch(`https://api.github.com/repos/${env.GITHUB_REPO}${path}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env.GITHUB_TOKEN}`,
@@ -127,10 +133,27 @@ async function createIssue(env, fp, report, row) {
       'X-GitHub-Api-Version': '2022-11-28',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ title, body: issueBody(fp, report, row), labels: [ISSUE_LABEL] }),
+    body: JSON.stringify(payload),
   });
+}
+
+async function createIssue(env, fp, report, row) {
+  const title = `[error] ${report.name}: ${report.message}`.slice(0, 120);
+  const res = await github(env, '/issues', { title, body: issueBody(fp, report, row), labels: [ISSUE_LABEL] });
   if (!res.ok) throw new Error(`GitHub issue creation failed: ${res.status} ${(await res.text()).slice(0, 200)}`);
   return res.json();
+}
+
+/**
+ * GitHub silently drops `labels` on a new issue unless the token has push access, and the
+ * recommended token only has Issues: read and write. Adding the label in a second call needs
+ * only that permission, and it is what starts the auto-fix workflow.
+ */
+async function ensureLabel(env, issue) {
+  const names = (issue.labels ?? []).map((l) => (typeof l === 'string' ? l : l.name));
+  if (names.includes(ISSUE_LABEL)) return;
+  const res = await github(env, `/issues/${issue.number}/labels`, { labels: [ISSUE_LABEL] });
+  if (!res.ok) throw new Error(`GitHub labelling failed: ${res.status} ${(await res.text()).slice(0, 200)}`);
 }
 
 async function readLimited(request, max) {

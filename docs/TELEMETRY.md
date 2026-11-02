@@ -73,7 +73,7 @@ npx wrangler deploy
 ```
 
 - It deploys as `kindling-errors` on the custom domain `errors.kindlingcontrol.app`. The route names its zone (`"zone_name": "kindlingcontrol.app"`), because wrangler can't always infer it and fails with *Can't infer zone from route* (code 10082). The zone must be in the same Cloudflare account you deploy to (`npx wrangler whoami` shows which account that is). Remove any existing DNS record for `errors.kindlingcontrol.app` first: a custom domain creates its own. To use another host, change `routes` in `wrangler.jsonc` **and** `ENDPOINT` in `src/app/telemetry.js`.
-- `GITHUB_TOKEN`: a fine-grained personal access token (or GitHub App token) for **this repository only**, with **Issues: read and write**. Issues opened with a personal token trigger the auto-fix workflow; ones opened with Actions' own token wouldn't.
+- `GITHUB_TOKEN`: a fine-grained personal access token (or GitHub App token) for **this repository only**, with **Issues: read and write**. Issues opened with a personal token trigger the auto-fix workflow; ones opened with Actions' own token wouldn't. That permission is enough: GitHub silently drops labels on a new issue unless the token has push access, so the Worker adds the `error-report` label in a second request when the created issue doesn't have it. If that request fails, Workers Logs shows `issue_label_failed`; add the label by hand to start the auto-fix workflow.
 - Vars in `wrangler.jsonc`: `GITHUB_REPO`, `ISSUE_THRESHOLD` (installs before an issue opens, default 2), `MAX_ISSUES_PER_DAY` (default 5; the endpoint is public, so this stops a flood of forged reports from flooding the tracker).
 - Without the D1 binding the Worker only logs; without the token it counts but opens no issues.
 - Forks: set `ENDPOINT` to your own Worker, or to `''` to send nothing (the Settings switch and first-run question then disappear).
@@ -81,7 +81,7 @@ npx wrangler deploy
 
 ## Issues
 
-An issue is titled `[error] <name>: <message>`, labelled `error-report`, and contains a table (installs, reports, apps, versions, where, fingerprint) and a machine-readable block (`<!-- error-report -->` + JSON) that the auto-fix agent reads. **The repository is public, so issues are public**; they only contain the sanitised report. The Worker opens one issue per fingerprint, ever: after you close it, a regression of the same error is visible in the logs (and in D1's `last_version`) but doesn't reopen it. To get a fresh issue, set the row's `issue_state` and `issue_number` to NULL in D1.
+An issue is titled `[error] <name>: <message>`, labelled `error-report` (added in a separate request if GitHub drops it on creation), and contains a table (installs, reports, apps, versions, where, fingerprint) and a machine-readable block (`<!-- error-report -->` + JSON) that the auto-fix agent reads. **The repository is public, so issues are public**; they only contain the sanitised report. The Worker opens one issue per fingerprint, ever: after you close it, a regression of the same error is visible in the logs (and in D1's `last_version`) but doesn't reopen it. To get a fresh issue, set the row's `issue_state` and `issue_number` to NULL in D1.
 
 ## Auto-fix agent
 
