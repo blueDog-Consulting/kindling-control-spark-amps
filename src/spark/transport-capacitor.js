@@ -44,7 +44,15 @@ export class CapacitorBleTransport {
       else throw new Error('Bluetooth is turned off. Turn it on in Control Center and try again.');
     }
 
-    const device = await ble.requestDevice({ services: [SERVICE], optionalServices: [SERVICE] });
+    let device;
+    try {
+      device = await ble.requestDevice({ services: [SERVICE], optionalServices: [SERVICE] });
+    } catch (err) {
+      // Closing the native chooser rejects with "requestDevice cancelled." Mark it like Web Bluetooth's
+      // NotFoundError so the app treats it as the user backing out, not a failure to report.
+      if (/cancel/i.test(err?.message || '')) throw Object.assign(new Error(err.message), { name: 'NotFoundError' });
+      throw err;
+    }
     const id = device.deviceId;
     this.deviceId = id;
 
