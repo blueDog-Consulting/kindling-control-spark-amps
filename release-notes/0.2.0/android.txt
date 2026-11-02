@@ -1,0 +1,10 @@
+- devops: update android release workflow
+- Move every website link to kindlingcontrol.app
+- Keep wrangler at "latest" and use the repo's wrangler in the docs
+- Note that the error-report Worker lives on kindlingcontrol.app
+- Point the apps at errors.kindlingcontrol.app
+- fix: wrong domain
+- chore: updates to wrangler + deps
+- Name the zone for the error-report Worker's custom domain
+- Remove website section from README
+- chore: update release notes v0.1.1
