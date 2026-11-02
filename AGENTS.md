@@ -64,7 +64,7 @@ src/                     everything that ships; served as-is, no bundler, no bui
     effects.js           effect/amp catalog, param labels, AMP_KNOB_ORDER, blankPreset(), BASED_ON, SLOT_ORDER
 desktop/                 Electron main + preload (serves src/ over the secure kindling:// scheme)
 android/, ios/           Capacitor native projects (generated; web assets are synced in, not committed)
-tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release-plan, release-notes, release-android.sh
+tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release (the one-command release), release-plan, release-notes, release-android.sh
                          (the Android build, run locally and by CI), build-icons, stamp-version, autofix,
                          screenshots (marketing images via Playwright; the website repo runs it)
 assets/logo/concepts/    logo source SVGs (kindling, knob, monogram, necks, amp, pick); `npm run icons` renders all platform icons
@@ -94,6 +94,7 @@ npx cap sync                     # copy src/ into android/ and ios/ after web ch
 npm run android | npm run ios    # sync + open Android Studio / Xcode
 node tools/btsnoop-decode.js btsnoop_hci.log [--raw|--json|--unknown]
 npm run screenshots              # marketing screenshots from the app + simulated Spark 2 -> screenshots/ (or --out <dir>)
+npm run release -- v0.3.0 [--dry-run]   # cut a release: checks, store notes, commit, push main, tag, push tag
 npm run release:plan -- v0.3.0 v0.2.0   # which apps a tag would rebuild
 npm run release:notes -- v0.3.0 --require android   # validate the store notes for a tag
 npm run release:android -- v0.3.0       # signed apk + aab in out/, built locally (tools/release-android.sh; --debug = debug APK, --version-code N = new code for a Play re-upload)
@@ -184,6 +185,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 
 ## Releases
 
+- **Cut a release with `npm run release -- vX.Y.Z`** (`tools/release.js`), not by tagging by hand. It checks the tag is new and you're on a clean, up-to-date `main` with passing tests, drafts `release-notes/<version>/android.txt` from the commit log and opens `$EDITOR` when a final release builds Android and the notes are missing or invalid, then commits the notes, pushes `main`, tags and pushes the tag, in that order, because the workflow checks out the tag and fails early without the notes. `--dry-run` changes nothing; `--yes` skips the prompt and opens no editor. It decides "needs notes" with the same rule as the `plan` job (`planRelease` + final tag), so keep them in step. Never run it yourself without the user asking: it pushes to `main` and publishes a tag.
 - Pushing a `v*` tag runs `.github/workflows/release.yml`. `tools/release-plan.js` diffs against the previous `v*` tag and builds only the apps whose paths changed (`APP_PATHS`: Android and desktop; `src/` is shared by both). It then publishes one GitHub Release. The website deploys from its own repo. Full details are in `docs/RELEASING.md`.
 - If you add a file or folder that affects an app's build, add its path to `APP_PATHS`, and update `docs/RELEASING.md`.
 - **Store release notes** are versioned in `release-notes/<version>/{android,macos}.txt` (version = tag without `v`; limits 500 / 4000 characters, enforced by `tools/release-notes.js`). Notes belong to the apps a release builds: the `plan` job computes that set (`outputs.notes_stores`; today `android` when Android is built, since macOS isn't built in CI) and checks it with `release-notes.js --only`, failing a final tag that builds Android without `android.txt`. The `release` job publishes exactly that set in the Release body and as `…-<store>-whatsnew.txt` files. When macOS joins the matrix, add `macos` to the set with the desktop build. Notes changes must not rebuild apps, so `release-notes/` is deliberately not in `APP_PATHS`. Don't auto-upload to stores without adding the credentials docs to `docs/RELEASING.md`.
