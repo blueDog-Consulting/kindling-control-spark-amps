@@ -56,7 +56,9 @@ export function demoPresets(count = 4) {
 }
 
 export class MockSparkTransport {
-  constructor({ name = 'Spark 40', latencyMs = 15, battery = true, fixedChain = true, busyPresets = false } = {}) {
+  constructor({ name = 'Spark 40', latencyMs = 15, battery = true, fixedChain = true, busyPresets = false, dropFirstRequests = 0 } = {}) {
+    // Simulates an amp that isn't listening yet: the first N requests get no reply.
+    this.dropRequests = dropFirstRequests;
     this.ampName = name;
     // With busyPresets the mock ignores a preset request that arrives while it is still
     // answering the previous one: one model of an amp that can't overlap multi-chunk
@@ -116,7 +118,13 @@ export class MockSparkTransport {
 
   _handle(m) {
     const { cmd, sub, seq } = m;
-    if (cmd === CMD.REQUEST) return this._request(sub, m, seq);
+    if (cmd === CMD.REQUEST) {
+      if (this.dropRequests > 0) {
+        this.dropRequests--;
+        return;
+      }
+      return this._request(sub, m, seq);
+    }
     if (cmd === CMD.WRITE) return this._write(sub, m, seq);
   }
 

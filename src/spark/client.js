@@ -57,7 +57,9 @@ export class SparkClient extends EventTarget {
 
   /** Standard startup handshake, like the official app (minus the license key). */
   async handshake() {
-    const name = await this.ampName();
+    // The very first request after connecting can go unanswered (the amp may not be listening yet,
+    // issue #26: "timeout waiting for 3:17"), so ask for the name once more before giving up.
+    const name = await this.ampName().catch(() => this.ampName());
     const model = modelSettings(name);
     this.transport.configure?.(model);
     this.info = { name, model };

@@ -136,3 +136,14 @@ test('different reply keys still run concurrently', async () => {
   assert.equal(name, 'Spark GO');
   assert.equal(preset.current, true);
 });
+
+test('handshake retries the amp name once when the first request is ignored (issue #26)', async () => {
+  const { c } = await connected({ dropFirstRequests: 1 });
+  const info = await c.handshake();
+  assert.equal(info.name, 'Spark 40');
+});
+
+test('handshake still fails when the amp never answers the name request', async () => {
+  const { c } = await connected({ dropFirstRequests: 2 });
+  await assert.rejects(c.handshake(), /timeout waiting for 3:17/);
+});
