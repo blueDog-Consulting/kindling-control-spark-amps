@@ -18,9 +18,9 @@ const issue = (over = {}) => ({
 });
 const run = (login = 'jerdog') => ({ user: { login }, body: `Plan posted. ${RUN_MARKER}` });
 
-test('the committed config is off until a maintainer turns it on', () => {
-  assert.equal(repoConfig.enabled, false);
-  assert.equal(nextStep(issue(), repoConfig).action, 'skip');
+test('the switch turns every issue off', () => {
+  assert.equal(typeof repoConfig.enabled, 'boolean');
+  assert.equal(nextStep(issue(), { ...config, enabled: false }).action, 'skip');
 });
 
 test('feature type or enhancement label starts planning', () => {

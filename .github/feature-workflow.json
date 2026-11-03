@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": true,
   "maintainers": ["jerdog"],
   "trigger": {
     "types": ["Feature"],

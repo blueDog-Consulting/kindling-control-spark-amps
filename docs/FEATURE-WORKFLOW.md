@@ -54,7 +54,7 @@ Branches are named `claude/feature-<n>-<slug>`.
 
 | | |
 |---|---|
-| On/off | `enabled` in `.github/feature-workflow.json` (committed as `false`), plus pausing the scheduled task |
+| On/off | `enabled` in `.github/feature-workflow.json` (`true` since 2026-11-03; set it to `false` to stop every run), plus pausing the scheduled task |
 | Runs per issue | `maxRunsPerIssue` (5). Every run posts an issue comment with `<!-- feature-sweep:run -->`; at 5 the issue gets `superpowers:blocked` |
 | Paths it may not change | `deniedPaths`: `LICENSE`, `.github/workflows/`, `telemetry/`, `.claude/`, and the workflow's own config, selector and the docs check |
 | Who it acts for | `maintainers`, or issues carrying `superpowers:go` |
@@ -78,7 +78,7 @@ Branches are named `claude/feature-<n>-<slug>`.
    which will offer to install it. The cloud environment needs network access to `github.com`.
    If the plugin doesn't load in a cloud session, the skill falls back to reading the Superpowers
    skill files from a clone.
-2. Set `"enabled": true` in `.github/feature-workflow.json`.
+2. Set `"enabled": true` in `.github/feature-workflow.json` (done).
 3. Enable the scheduled task **Feature-request sweep** on claude.ai (Claude Code → scheduled tasks).
    Its prompt:
 
