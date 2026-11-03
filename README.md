@@ -133,7 +133,7 @@ If the user agrees (the apps ask on first run; the switch is in **Settings**, th
 
 ## Feature requests
 
-Open feature requests (type **Feature** or label `enhancement`) from maintainers are planned by a scheduled Claude Code cloud session with the [Superpowers](https://github.com/obra/superpowers) skills: it posts the design and plan as a **draft** PR, and builds it in that PR once a maintainer adds `superpowers:approved`. It's off until `enabled` is set in `.github/feature-workflow.json`. Details: [docs/FEATURE-WORKFLOW.md](docs/FEATURE-WORKFLOW.md).
+Open feature requests (type **Feature** or label `enhancement`) from maintainers are planned by a scheduled Claude Code cloud session with the [Superpowers](https://github.com/obra/superpowers) skills: it posts the design and plan as a **draft** PR, and builds it in that PR once a maintainer adds `superpowers:approved`. Switch it off with `enabled` in `.github/feature-workflow.json`. Details: [docs/FEATURE-WORKFLOW.md](docs/FEATURE-WORKFLOW.md).
 
 ## Contributing
 
