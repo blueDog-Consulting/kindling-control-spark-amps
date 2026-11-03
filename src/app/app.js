@@ -738,6 +738,30 @@ function appendLog(list, li) {
   while (list.children.length > 500) list.lastElementChild.remove();
 }
 
+// Console as plain text, oldest first (the list is newest first), with each message's raw bytes.
+function consoleText() {
+  return [...consoleEls.log.children]
+    .reverse()
+    .map((li) => {
+      const summary = li.querySelector('summary');
+      if (!summary) return li.textContent;
+      const hex = li.querySelector('.hex')?.textContent.trim().split('\n').join(' ');
+      return `${summary.textContent}${hex ? `\n    ${hex}` : ''}`;
+    })
+    .join('\n');
+}
+
+$('#copy-log').addEventListener('click', async () => {
+  const text = consoleText();
+  if (!text) return toast('The Console is empty.');
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(`Copied ${consoleEls.log.children.length} Console lines.`, 'ok');
+  } catch {
+    toast('Couldn\'t copy automatically. Select the lines in the Console and copy them by hand.', 'warn');
+  }
+});
+
 $('#clear-log').addEventListener('click', () => consoleEls.log.replaceChildren());
 
 $('#raw-form').addEventListener('submit', async (e) => {
