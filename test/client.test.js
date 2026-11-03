@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SparkClient } from '../src/spark/client.js';
 import { MockSparkTransport, demoPresets } from '../src/spark/transport-mock.js';
+import { requestPreset } from '../src/spark/messages.js';
 
 async function connected(opts) {
   const t = new MockSparkTransport({ latencyMs: 1, ...opts });
@@ -104,4 +105,34 @@ test('tryChainOrder: fixed-chain amp normalises the order, flexible amp keeps it
     assert.equal(r.accepted, !fixedChain);
     assert.equal(r.preset.pedals[1].name, fixedChain ? p.pedals[1].name : p.pedals[2].name);
   }
+});
+
+// Issue #9: "timeout waiting for 3:1" when preset reads overlap (e.g. the amp's preset
+// button pressed twice quickly, each press triggering a refresh).
+test('overlapping preset reads are sent one at a time, so none times out (#9)', async () => {
+  const { t, c } = await connected({ busyPresets: true });
+  const sent = [];
+  c.addEventListener('sent', (e) => e.detail.sub === 0x01 && sent.push(performance.now()));
+  const [a, b, d] = await Promise.all([c.getPreset('current'), c.getPreset(1), c.getPreset(2)]);
+  assert.equal(a.current, true);
+  assert.equal(a.name, t.current.name);
+  assert.equal(b.name, demoPresets()[1].name);
+  assert.equal(d.name, demoPresets()[2].name);
+  assert.equal(sent.length, 3);
+});
+
+test('a failed request does not block the next one with the same reply key', async () => {
+  const { t, c } = await connected();
+  t.presets[3] = null; // the mock stays silent for an empty slot
+  const missing = c.request(requestPreset(3), { timeoutMs: 50 });
+  const next = c.getPreset(1);
+  await assert.rejects(missing, /timeout waiting for 3:1/);
+  assert.equal((await next).name, demoPresets()[1].name);
+});
+
+test('different reply keys still run concurrently', async () => {
+  const { c } = await connected({ name: 'Spark GO' });
+  const [name, preset] = await Promise.all([c.ampName(), c.getPreset('current')]);
+  assert.equal(name, 'Spark GO');
+  assert.equal(preset.current, true);
 });

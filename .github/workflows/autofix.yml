@@ -1,7 +1,7 @@
-name: Auto-fix error reports
+name: Auto-fix error reports and bugs
 
 # When the error-report Worker opens an issue labelled `error-report` (see
-# docs/TELEMETRY.md), ask a Workers AI model for a fix. If its change passes the
+# docs/TELEMETRY.md), or someone labels an issue `bug`, ask a Workers AI model for a fix. If its change passes the
 # tests, open a DRAFT pull request for a person to review; otherwise comment on
 # the issue with the model's analysis. Nothing is ever merged automatically.
 #
@@ -11,7 +11,8 @@ name: Auto-fix error reports
 # AUTOFIX_PR_TOKEN (so CI runs on the PR; PRs opened with the default token don't
 # trigger workflows). Re-run for an issue by removing and re-adding the label.
 #
-# The issue content is untrusted (anyone can post an error report), so the jobs are
+# The issue content is untrusted (anyone can post an error report or open an issue;
+# only people with triage access can apply the labels), so the jobs are
 # split: the model call and the tests run with read-only permissions, and the job
 # that can write only applies a patch whose paths it has checked; it never runs it.
 
@@ -27,7 +28,11 @@ concurrency:
 
 jobs:
   propose:
-    if: github.event.label.name == 'error-report' && vars.AUTOFIX_ENABLED == 'true'
+    # Error reports always; bugs only if Claude's scheduled triage hasn't handled the issue
+    # already (it adds `triaged` before the type label and opens its own draft PR).
+    if: >-
+      vars.AUTOFIX_ENABLED == 'true' && (github.event.label.name == 'error-report' ||
+      (github.event.label.name == 'bug' && !contains(github.event.issue.labels.*.name, 'triaged')))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -114,7 +119,7 @@ jobs:
             git commit -a -F - <<EOF
           $(cat autofix-out/title.txt)
 
-          Proposed by the auto-fix agent from anonymous error reports (issue #$ISSUE).
+          Proposed by the auto-fix agent for issue #$ISSUE.
           Docs-Not-Needed: automated bug fix proposal; a reviewer adds docs if behaviour changes
           EOF
             git push --force origin "$branch"
