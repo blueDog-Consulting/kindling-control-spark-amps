@@ -107,6 +107,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 - Presets (`01 01` / `03 01`) are multi-chunk with a `[total, index, length]` sub-header. Amp→app chunks carry at most 0x19 data bytes; app→amp chunks at most 0x80.
 - Floats are float32 and must round-trip **bit-exactly**: presets are checksummed. Don't round values in the codec; format them for display in the UI only.
 - `seq` runs 1..0x7F. `01 04` (set parameter) gets **no ack**; other `01 xx` writes get `04 xx`, and `02 xx` requests get `03 xx`.
+- Replies are matched only by `cmd:sub`, so `SparkClient` keeps **at most one request per reply key** outstanding (`_oneAtATime`); the next is sent, and its timeout started, once the previous one settles. Overlapping preset reads caused `timeout waiting for 3:1` (issue #9). In the app, `refreshPreset()` merges refreshes requested while one runs into one more read. `MockSparkTransport({ busyPresets: true })` drops preset requests that arrive mid-transfer, to test this.
 - Effect names in `01 04`/`01 06`/`01 15` are "prefixed strings" (length byte + fixstr).
 - `01 04` ends with an input byte (`00` = Input 1). The Spark 2 silently ignores knob changes without it, the same way `01 15` needs its trailing `00`. Don't drop trailing bytes the official app sends.
 
