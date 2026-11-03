@@ -85,9 +85,9 @@ An issue is titled `[error] <name>: <message>`, labelled `error-report` (added i
 
 ## Auto-fix agent
 
-`.github/workflows/autofix.yml` runs when an issue gets the `error-report` label, using `tools/autofix.js`:
+`.github/workflows/autofix.yml` runs when an issue gets the `error-report` label, or the `bug` label, using `tools/autofix.js`. A `bug` is skipped if the issue already has the `triaged` label: Claude's scheduled issue triage adds `triaged` before it adds the type label, and opens its own draft PR.
 
-1. **propose** (read-only): reads only the issue's report block; picks up to 4 source files (from the stack frames, the file that reports that `where`, and files containing the message text); asks a Workers AI model via the OpenAI-compatible endpoint for a JSON answer with an analysis and exact search/replace edits; applies them.
+1. **propose** (read-only): for an error report, reads only the issue's report block and picks up to 4 source files (from the stack frames, the file that reports that `where`, and files containing the message text). For a bug (no report block), reads the issue's title and description, with HTML comments removed and capped at 200 / 4,000 characters, and picks up to 4 files: those the issue names (e.g. `app/rig.js`), then those sharing the most words with its title and description. It then asks a Workers AI model via the OpenAI-compatible endpoint for a JSON answer with an analysis and exact search/replace edits; applies them.
 2. **test** (read-only, no secrets): checks the patch paths and runs `npm test` with the patch applied.
 3. **publish**: if the tests pass, pushes `autofix/issue-<n>` and opens a **draft** PR (`Fixes #n`, with the model's analysis); otherwise comments on the issue with the analysis and why there's no PR. It never runs the patched code and never merges.
 
@@ -103,13 +103,13 @@ Setup (repository Settings → Secrets and variables → Actions):
 
 **Model choice.** The default is `@cf/openai/gpt-oss-120b`: 128k context, about $0.35 / $0.75 per million input/output tokens, and usable within the 10,000 free neurons a day on Workers AI (a typical issue here is roughly 30k tokens in and a few thousand out, about $0.01–0.02, or a few issues a day within the free allowance). `@cf/zai-org/glm-5.3` is the strongest coding model on Workers AI (1M context) if the fixes aren't good enough, but it needs Workers Paid and costs about $1.40 / $4.40: roughly $0.10–0.15 per issue. `@cf/qwen/qwen2.5-coder-32b-instruct` (a code-specialised model, about $0.66 / $1.00, also within the free allowance) works too, but its context window is only 32,768 tokens for prompt and answer together, so the agent sends it less source (about 60,000 characters, usually `app.js` plus one smaller file) and caps its answer at 4,096 tokens (`MODEL_LIMITS` in `tools/autofix.js`). It's a 2024 model: fine for small, local fixes like a missing null check, weaker at bugs that span files. Prices as listed by Cloudflare in October 2026. Set the model with the `AUTOFIX_MODEL` variable; add an entry to `MODEL_LIMITS` for any other model with a context window under 128k.
 
-**Safety.** Anyone can post a report, so treat every auto-fix PR as untrusted code:
+**Safety.** Anyone can post a report or open an issue, so treat every auto-fix PR as untrusted code:
 
-- Only the sanitised report block reaches the model, as data, and its text is scrubbed and length-capped.
+- Only the sanitised report block reaches the model, as data, and its text is scrubbed and length-capped. For a bug, only the title and description reach it, as data, length-capped and without HTML comments (text GitHub hides from reviewers). Only people with triage access can apply either label, so a stranger's issue only reaches the model once someone has read it and labelled it.
 - The agent may only change `src/app/*.js` and `src/spark/*.js`, never `src/app/telemetry.js`, `src/version.js`, tests, tools, workflows or package files (`ALLOWED_PATH`, checked when applying and again before pushing).
 - The model call and the tests run with read-only permissions; the job that can write never executes the patched code.
 - PRs are drafts. Review them like any outside contribution, and test on a real amp: CI has none. Commits carry `Docs-Not-Needed`; add docs in review if the fix changes behaviour.
-- To re-run for an issue, remove and re-add the `error-report` label (only people with triage access can).
+- To re-run for an issue, remove and re-add the `error-report` or `bug` label (only people with triage access can).
 
 ## Reading the reports
 
