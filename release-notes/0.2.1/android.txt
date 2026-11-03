@@ -1,0 +1,5 @@
+Fix a few bugs, add a few features
+
+- Fix error-report pipeline
+- Stop "timeout waiting for 3:1" when preset reads overlap
+- Add a Copy button to the Console
