@@ -88,6 +88,7 @@ npm test                         # all tests; needs no npm install
 npm run serve                    # http://localhost:8787 (Web Bluetooth works on localhost)
                                  #   ?mock  ?mock=Spark%20GO  ?mock=Spark%202  -> simulated amps
                                  #   add &reorder=1 for a simulated amp that accepts reordered chains
+                                 #   add &drop=1 for one that ignores the first request after connecting
 npm run check:docs               # the documentation rule, against origin/main
 npm install                      # only needed for the desktop/mobile shells
 npm run desktop:mock             # Electron against the simulated Spark GO
@@ -112,6 +113,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 - Floats are float32 and must round-trip **bit-exactly**: presets are checksummed. Don't round values in the codec; format them for display in the UI only.
 - `seq` runs 1..0x7F. `01 04` (set parameter) gets **no ack**; other `01 xx` writes get `04 xx`, and `02 xx` requests get `03 xx`.
 - Replies are matched only by `cmd:sub`, so `SparkClient` keeps **at most one request per reply key** outstanding (`_oneAtATime`); the next is sent, and its timeout started, once the previous one settles. Overlapping preset reads caused `timeout waiting for 3:1` (issue #9). In the app, `refreshPreset()` merges refreshes requested while one runs into one more read. `MockSparkTransport({ busyPresets: true })` drops preset requests that arrive mid-transfer, to test this.
+- `request(msg, { retries, retryDelayMs })` can resend a request (`02 xx`, a read) that **timed out**; any other error (disconnect, failed write) is thrown unchanged, and a disconnect during the 250 ms pause rejects with `disconnected`. Before a retry the client resets `StreamDecoder` (only if nothing else is waiting: a reply cut off halfway would swallow the next one), and treats one unrequested reply of that key, for about one timeout, as the late answer to the first attempt, so it isn't emitted as an amp-side event. `handshake()` uses `retries: 1` for name, serial, firmware and selected preset (a request right after connecting is sometimes unanswered, issue #26, cause unverified), not for `ampStatus` (the Spark 40 never answers it). An amp that never answers now fails the connect after about 6 s. `MockSparkTransport({ dropFirstRequests: n })` (`?mock&drop=n` in the app) ignores the first n requests after each connect.
 - Effect names in `01 04`/`01 06`/`01 15` are "prefixed strings" (length byte + fixstr).
 - `01 04` ends with an input byte (`00` = Input 1). The Spark 2 silently ignores knob changes without it, the same way `01 15` needs its trailing `00`. Don't drop trailing bytes the official app sends.
 

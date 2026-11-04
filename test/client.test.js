@@ -136,3 +136,69 @@ test('different reply keys still run concurrently', async () => {
   assert.equal(name, 'Spark GO');
   assert.equal(preset.current, true);
 });
+
+test('handshake retries the amp name once when the first request is ignored (issue #26)', async () => {
+  const { c } = await connected({ dropFirstRequests: 1 });
+  const info = await c.handshake();
+  assert.equal(info.name, 'Spark 40');
+});
+
+test('handshake still fails when the amp never answers the name request', async () => {
+  const { c } = await connected({ dropFirstRequests: 2 });
+  await assert.rejects(c.handshake(), /timeout waiting for 3:17/);
+});
+
+test('a request is only retried after a timeout, not after a disconnect', async () => {
+  const { t, c } = await connected({ dropFirstRequests: 1 });
+  const sent = [];
+  c.addEventListener('sent', (e) => sent.push(e.detail.sub));
+  const p = c.ampName({ retries: 1 });
+  setTimeout(() => t.disconnect(), 20);
+  await assert.rejects(p, /^Error: disconnected$/);
+  assert.equal(sent.length, 1);
+});
+
+test('a disconnect during the retry pause is reported as disconnected', async () => {
+  const { t, c } = await connected({ dropFirstRequests: 1 });
+  const p = c.ampName({ retries: 1, retryDelayMs: 200 });
+  setTimeout(() => t.disconnect(), 550); // after the 500 ms timeout, before the retry
+  await assert.rejects(p, /^Error: disconnected$/);
+});
+
+test('handshake retries the other reads too', async () => {
+  const { t, c } = await connected();
+  const realRequest = t._request.bind(t);
+  let serialAsks = 0;
+  t._request = (sub, m, seq) => (sub === 0x23 && serialAsks++ === 0 ? undefined : realRequest(sub, m, seq));
+  const info = await c.handshake();
+  assert.equal(serialAsks, 2);
+  assert.equal(info.serial, 'S40SIM0000001');
+});
+
+test('the retry resets a decoder stuck inside a reply that was cut off', async () => {
+  const { t, c } = await connected();
+  const realRequest = t._request.bind(t);
+  let first = true;
+  t._request = (sub, m, seq) => {
+    if (!first) return realRequest(sub, m, seq);
+    first = false;
+    t.onData(Uint8Array.from([0x01, 0xfe, 0, 0, 0x41, 0xff, 0x17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xf0, 0x01, seq, 0]));
+  };
+  assert.equal(await c.ampName({ retries: 1 }), 'Spark 40');
+});
+
+test('a late reply to a retried request is not reported as an amp-side event', async () => {
+  const { t, c } = await connected();
+  const realRequest = t._request.bind(t);
+  let first = true;
+  t._request = (sub, m, seq) => {
+    if (!first) return realRequest(sub, m, seq);
+    first = false;
+    setTimeout(() => realRequest(sub, m, seq), 600); // answers after the 500 ms timeout, during the retry
+  };
+  const events = [];
+  c.addEventListener('ampName', (e) => events.push(e.detail.solicited));
+  assert.equal(await c.ampName({ retries: 1, retryDelayMs: 50 }), 'Spark 40');
+  await new Promise((r) => setTimeout(r, 100));
+  assert.deepEqual(events, [true]);
+});
