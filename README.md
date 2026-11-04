@@ -58,6 +58,7 @@ npm run serve          # http://localhost:8787  (no dependencies)
                        # http://localhost:8787/?mock=Spark%20GO  simulated GO (battery, tuner)
                        # http://localhost:8787/?mock=Spark%202   simulated Spark 2 (two banks, 8 presets)
                        # …&reorder=1                              simulated amp that accepts reordered chains
+                       # …&drop=1                                 simulated amp that ignores the first request after connecting
 ```
 
 Close the official Spark app first; it may hold the BLE connection. Then tap **Connect** and pick your amp.

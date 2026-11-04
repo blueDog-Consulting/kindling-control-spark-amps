@@ -154,7 +154,7 @@ The Spark 2 stores 8 presets in two banks of four. The bank button on the amp ju
 
 `02 11` amp name → `02 2A` checksums → `02 23` serial → `01 70` licence → `02 01` × 4 (stored presets) → `02 10` selected preset → `02 2F` firmware → `02 01 01 00` live state.
 
-`SparkClient.handshake()` runs a reduced version of this: name, serial, firmware, selected preset and power status. It asks for the name a second time if the first request gets no reply: desktop (Windows) and Android reports of `timeout waiting for 3:17` on connect (issue #26) suggest the amp sometimes ignores the first request after connecting **(unverified; cause not confirmed on real hardware)**.
+`SparkClient.handshake()` runs a reduced version of this: name, serial, firmware, selected preset and power status. Each of the first four reads is asked a second time (after a 250 ms pause) if it gets no reply; the status request isn't, because the Spark 40 never answers it: desktop (Windows) and Android reports of `timeout waiting for 3:17` on connect (issue #26) suggest the amp sometimes ignores the first request after connecting **(unverified; cause not confirmed on real hardware)**.
 
 ## Open questions (good targets for your captures)
 

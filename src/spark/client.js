@@ -30,6 +30,9 @@ export class SparkClient extends EventTarget {
     this.queue = Promise.resolve();
     this.inFlight = new Map(); // reply key -> promise of the request currently waiting for it
     this.info = {};
+    this.closed = false;
+    // reply key -> time until which one unrequested reply is treated as the late answer to a retried request
+    this.lateReplies = new Map();
     this.decoder = new StreamDecoder((m) => this._onMessage(m), {
       onError: (e) => this._emit('error', { error: e }),
     });
@@ -39,6 +42,7 @@ export class SparkClient extends EventTarget {
     };
     transport.onLog = (text) => this._emit('log', { text });
     transport.onDisconnect = () => {
+      this.closed = true;
       this._failAll(new Error('disconnected'));
       this._emit('disconnected', {});
     };
@@ -46,6 +50,8 @@ export class SparkClient extends EventTarget {
 
   async connect() {
     const r = await this.transport.connect();
+    this.closed = false;
+    this.lateReplies.clear();
     this.decoder.reset();
     this._emit('connected', r || {});
     return r;
@@ -57,32 +63,34 @@ export class SparkClient extends EventTarget {
 
   /** Standard startup handshake, like the official app (minus the license key). */
   async handshake() {
-    // The very first request after connecting can go unanswered (the amp may not be listening yet,
-    // issue #26: "timeout waiting for 3:17"), so ask for the name once more before giving up.
-    const name = await this.ampName().catch(() => this.ampName());
+    // A request right after connecting sometimes goes unanswered (issue #26: "timeout waiting for 3:17";
+    // cause unconfirmed), so each handshake read is asked once more after a timeout. ampStatus isn't:
+    // the Spark 40 never answers it.
+    const retry = { retries: 1 };
+    const name = await this.ampName(retry);
     const model = modelSettings(name);
     this.transport.configure?.(model);
     this.info = { name, model };
-    this.info.serial = await this.serial().catch(() => null);
-    this.info.firmware = await this.firmware().catch(() => null);
-    this.info.presetNumber = await this.presetNumber().catch(() => null);
+    this.info.serial = await this.serial(retry).catch(() => null);
+    this.info.firmware = await this.firmware(retry).catch(() => null);
+    this.info.presetNumber = await this.presetNumber(retry).catch(() => null);
     this.info.status = await this.ampStatus().catch(() => null); // not on Spark 40
     return this.info;
   }
 
   // ---- requests ------------------------------------------------------------
 
-  async ampName() {
-    return (await this.request(M.requestAmpName())).name;
+  async ampName(opts) {
+    return (await this.request(M.requestAmpName(), opts)).name;
   }
-  async serial() {
-    return (await this.request(M.requestSerial())).serial;
+  async serial(opts) {
+    return (await this.request(M.requestSerial(), opts)).serial;
   }
-  async firmware() {
-    return (await this.request(M.requestFirmware())).version;
+  async firmware(opts) {
+    return (await this.request(M.requestFirmware(), opts)).version;
   }
-  async presetNumber() {
-    return (await this.request(M.requestPresetNumber())).slot;
+  async presetNumber(opts) {
+    return (await this.request(M.requestPresetNumber(), opts)).slot;
   }
   async ampStatus() {
     return this.request(M.requestAmpStatus(), { timeoutMs: 1500 });
@@ -161,9 +169,29 @@ export class SparkClient extends EventTarget {
     return job;
   }
 
-  /** Send a request (02 xx) and resolve with the decoded 03 xx reply. */
-  request(message, { timeoutMs = this.timeoutMs } = {}) {
-    return this._oneAtATime(`${CMD.RESPONSE}:${message.sub}`, timeoutMs, false, message);
+  /**
+   * Send a request (02 xx) and resolve with the decoded 03 xx reply. With retries, a request that
+   * times out is sent again after retryDelayMs; any other error (disconnect, failed write) is
+   * thrown as it is. Requests are reads, so asking twice is safe.
+   */
+  async request(message, { timeoutMs = this.timeoutMs, retries = 0, retryDelayMs = 250 } = {}) {
+    const key = `${CMD.RESPONSE}:${message.sub}`;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this._oneAtATime(key, timeoutMs, false, message);
+      } catch (err) {
+        if (attempt >= retries || !isTimeout(err)) throw err;
+        // If the unanswered reply was lost halfway, the decoder is stuck inside it and would swallow
+        // the next reply too. Only reset it when nothing else is waiting for a reply.
+        if (this.pending.length === 0) this.decoder.reset();
+        // A late answer to this attempt would answer the retry, and the retry's own answer would then
+        // look like an amp-side event. Treat one unrequested reply of this kind as late until then.
+        this.lateReplies.set(key, Date.now() + retryDelayMs + timeoutMs + 500);
+        this._emit('log', { text: `no reply to ${key}, asking again` });
+        await sleep(retryDelayMs);
+        if (this.closed) throw new Error('disconnected');
+      }
+    }
   }
 
   /** Send a write (01 xx) and resolve when acknowledged (04 xx). */
@@ -238,6 +266,10 @@ export class SparkClient extends EventTarget {
     if (waiter) {
       this._remove(waiter);
       waiter.resolve(decoded);
+    } else if (this.lateReplies.has(key)) {
+      const until = this.lateReplies.get(key);
+      this.lateReplies.delete(key);
+      if (Date.now() <= until) return; // the late answer to a retried request, not an amp-side event
     }
     // 03 xx messages that were not requested are amp-side events (knobs, buttons)
     if (raw.cmd === CMD.RESPONSE || raw.cmd === CMD.WRITE) this._emit(decoded.type, { ...decoded, solicited: !!waiter });
@@ -247,4 +279,12 @@ export class SparkClient extends EventTarget {
   _emit(type, detail) {
     this.dispatchEvent(new CustomEvent(type, { detail }));
   }
+}
+
+function isTimeout(err) {
+  return /^timeout waiting for /.test(err?.message ?? '');
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

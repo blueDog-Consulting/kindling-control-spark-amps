@@ -56,9 +56,18 @@ export function demoPresets(count = 4) {
 }
 
 export class MockSparkTransport {
-  constructor({ name = 'Spark 40', latencyMs = 15, battery = true, fixedChain = true, busyPresets = false, dropFirstRequests = 0 } = {}) {
-    // Simulates an amp that isn't listening yet: the first N requests get no reply.
-    this.dropRequests = dropFirstRequests;
+  constructor({
+    name = 'Spark 40',
+    latencyMs = 15,
+    battery = true,
+    fixedChain = true,
+    busyPresets = false,
+    dropFirstRequests = 0,
+  } = {}) {
+    // Simulates an amp that isn't listening yet (issue #26): the first N requests (02 xx, of any
+    // kind) after each connect get no reply. Writes are still answered.
+    this.dropFirstRequests = dropFirstRequests;
+    this.dropRequests = 0;
     this.ampName = name;
     // With busyPresets the mock ignores a preset request that arrives while it is still
     // answering the previous one: one model of an amp that can't overlap multi-chunk
@@ -84,6 +93,7 @@ export class MockSparkTransport {
   async connect() {
     await sleep(this.latencyMs);
     this.connected = true;
+    this.dropRequests = this.dropFirstRequests;
     return { name: `${this.ampName} BLE (simulated)` };
   }
 
