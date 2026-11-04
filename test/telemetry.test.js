@@ -1,6 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scrub, detectApp, buildReport, sanitizeReport, createReporter, fingerprint, PREF_KEY } from '../src/app/telemetry.js';
+import {
+  scrub,
+  detectApp,
+  buildReport,
+  sanitizeReport,
+  createReporter,
+  fingerprint,
+  PREF_KEY,
+  scrubLog,
+  buildLog,
+  sanitizeLog,
+  LOG_LIMITS,
+  LOG_ENDPOINT,
+  ENDPOINT,
+} from '../src/app/telemetry.js';
 import { handle } from '../telemetry/worker.js';
 import { stamp } from '../tools/stamp-version.js';
 
@@ -185,6 +199,106 @@ test('worker rejects bad requests', async () => {
   assert.equal((await post('{}', '/other')).status, 404);
   assert.equal((await handle(new Request('https://e.test/v1/report'), {}, undefined, log)).status, 405);
   assert.equal((await handle(new Request('https://e.test/v1/report', { method: 'OPTIONS' }), {}, undefined, log)).status, 204);
+});
+
+const SAMPLE_LOG = [
+  'connecting to "Jeremy\'s Spark"',
+  '0.100s ← [3:11] #5 ampName name=Spark 40 BLE',
+  '    01 fe 00 00 53 53 f0 01 11 05 4a 53 70 61 72 6b',
+  '0.200s → raw 01 fe 00 00 41 ff 1d 00',
+  '0.300s ← [3:23] #6 serial serial=S999C123456',
+  '0.400s ← [3:1] #2 preset "My Tone" slot=current Gate → Twin',
+  'connect failed on S999C123456',
+  'bluetooth: device AbC123dEf456GhI789== at /Users/jeremy/x.js, mail jeremy@example.com',
+].join('\n');
+
+test('scrubLog keeps raw bytes and removes names, ids, serials and paths from the text', () => {
+  const out = scrubLog(SAMPLE_LOG);
+  assert.match(out, /^    01 fe 00 00 53 53 f0 01 11 05 4a 53 70 61 72 6b$/m, 'hex lines kept as they are');
+  assert.match(out, /→ raw 01 fe 00 00 41 ff 1d 00/);
+  assert.match(out, /ampName …/);
+  assert.match(out, /serial …$/m);
+  assert.match(out, /preset "…" slot=current Gate → Twin/);
+  assert.match(out, /connect failed on <id>/);
+  assert.match(out, /^0\.100s ← \[3:11\] #5/m, 'timings and keys stay');
+  for (const secret of ['Jeremy', 'Spark 40 BLE', 'S999C', 'My Tone', 'AbC123', 'jeremy@', '/Users/jeremy']) assert.ok(!out.includes(secret), secret);
+  assert.equal(scrubLog(out), out, 'scrubbing twice changes nothing (the Worker re-scrubs)');
+});
+
+test('scrubLog keeps only the newest lines within the caps', () => {
+  const many = Array.from({ length: LOG_LIMITS.lines + 50 }, (_, i) => `line ${i}`).join('\n');
+  const out = scrubLog(many).split('\n');
+  assert.equal(out.length, LOG_LIMITS.lines);
+  assert.equal(out.at(-1), `line ${LOG_LIMITS.lines + 49}`);
+  const long = Array.from({ length: 200 }, () => 'x'.repeat(300)).join('\n');
+  assert.ok(scrubLog(long).length <= LOG_LIMITS.chars);
+  assert.ok(scrubLog('y'.repeat(5000)).length <= LOG_LIMITS.line * 2);
+  assert.equal(scrubLog(''), '');
+});
+
+test('buildLog and sanitizeLog: allow-listed fields only', () => {
+  const r = buildLog(SAMPLE_LOG, { app: 'desktop', os: 'windows', version: '0.3.0', note: 'it broke, mail me at a@b.com', issue: 16 });
+  assert.deepEqual(Object.keys(r).sort(), ['app', 'issue', 'kind', 'lines', 'log', 'note', 'os', 'v', 'version']);
+  assert.equal(r.kind, 'log');
+  assert.equal(r.lines, 8);
+  assert.equal(r.note, 'it broke, mail me at <email>');
+  const clean = sanitizeLog({ ...r, ip: '1.2.3.4', deviceId: 'x' });
+  assert.deepEqual(Object.keys(clean).sort(), ['app', 'issue', 'kind', 'lines', 'log', 'note', 'os', 'version']);
+  assert.equal(clean.log, r.log);
+  // the Worker re-scrubs a log a modified client didn't scrub
+  assert.ok(!sanitizeLog({ ...r, log: SAMPLE_LOG }).log.includes('My Tone'));
+  assert.equal(sanitizeLog({ ...r, os: 'windows', app: 'android' }).os, undefined);
+  assert.equal(sanitizeLog({ ...r, issue: '16' }).issue, undefined);
+  assert.equal(sanitizeLog({ ...r, kind: 'error' }), null);
+  assert.equal(sanitizeLog({ ...r, app: 'tv' }), null);
+  assert.equal(sanitizeLog({ ...r, version: 'x' }), null);
+  assert.equal(sanitizeLog({ ...r, log: '' }), null);
+  assert.equal(sanitizeLog({ ...r, log: 'x'.repeat(LOG_LIMITS.chars * 2 + 1) }), null);
+  assert.equal(sanitizeLog([]), null);
+});
+
+test('reporter.sendLog: user-initiated, independent of the error-report switch, capped per session', async () => {
+  assert.equal(LOG_ENDPOINT, ENDPOINT.replace(/\/report$/, '/log'));
+  const sent = [];
+  const send = (url, body) => sent.push({ url, body: JSON.parse(body) });
+  const storage = memoryStorage();
+  storage.setItem(PREF_KEY, 'off');
+  const r = createReporter({ version: '1.0.0', app: 'android', storage, send });
+  assert.equal(r.canSendLog, true);
+  assert.equal(await r.sendLog(''), null, 'empty logs are not sent');
+  const out = await r.sendLog(SAMPLE_LOG, { note: 'n', issue: 3 });
+  assert.equal(out.kind, 'log');
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].url, 'https://errors.kindlingcontrol.app/v1/log');
+  assert.equal(sent[0].body.issue, 3);
+  await r.sendLog(SAMPLE_LOG);
+  await r.sendLog(SAMPLE_LOG);
+  assert.equal(r.canSendLog, false);
+  assert.equal(await r.sendLog(SAMPLE_LOG), null);
+  assert.equal(sent.length, 3);
+  assert.equal(createReporter({ version: 'dev', app: 'web', send }).canSendLog, false, 'dev builds send nothing');
+  assert.equal(createReporter({ endpoint: '', version: '1.0.0', app: 'web', send }).canSendLog, false);
+});
+
+test('worker /v1/log logs the re-scrubbed log under a random log_id', async () => {
+  const logs = [];
+  const log = { log: (o) => logs.push(o), error: () => assert.fail('not an error report') };
+  const body = JSON.stringify({ ...buildLog(SAMPLE_LOG, { app: 'android', version: '0.3.0' }), extra: 'nope' });
+  const req = new Request('https://e.test/v1/log', { method: 'POST', body, headers: { 'CF-Connecting-IP': '1.2.3.4', 'User-Agent': 'Secret/1.0' } });
+  const res = await handle(req, {}, undefined, log);
+  assert.equal(res.status, 204);
+  assert.equal(logs.length, 1);
+  const { log_id: id, ...rest } = logs[0];
+  assert.match(id, /^[0-9a-f-]{36}$/);
+  assert.equal(rest.event, 'console_log');
+  assert.equal(rest.kind, 'log');
+  assert.equal(rest.extra, undefined);
+  assert.ok(!JSON.stringify(logs).includes('1.2.3.4'));
+  assert.ok(!JSON.stringify(logs).includes('Secret'));
+  const post = (b) => handle(new Request('https://e.test/v1/log', { method: 'POST', body: b }), {}, undefined, log);
+  assert.equal((await post('nope')).status, 400);
+  assert.equal((await post(JSON.stringify({ kind: 'log', app: 'web', version: 'dev', log: '' }))).status, 400);
+  assert.equal((await post('x'.repeat(70 * 1024))).status, 413);
 });
 
 test('stamp-version writes the version', () => {
