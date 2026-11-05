@@ -490,8 +490,8 @@ const rig = createRig({
   root: $('#rig'),
   state,
   actions: {
-    setParam: (effect, p, v) => state.client?.setParam(effect, p, v).catch((e) => (logLine('err', e.message), reportError('set-param', e))),
-    setOnOff: (effect, on) => state.client?.setEffectOnOff(effect, on).catch((e) => (logLine('err', e.message), reportError('set-on-off', e))),
+    setParam: (effect, p, v) => state.connected && state.client?.setParam(effect, p, v).catch((e) => (logLine('err', e.message), reportError('set-param', e))),
+    setOnOff: (effect, on) => state.connected && state.client?.setEffectOnOff(effect, on).catch((e) => (logLine('err', e.message), reportError('set-on-off', e))),
     async changeEffect(from, to) {
       if (!state.connected) {
         const fx = state.preset.pedals.find((f) => f.name === from);
