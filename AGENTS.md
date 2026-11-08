@@ -64,20 +64,23 @@ src/                     everything that ships; served as-is, no bundler, no bui
     effects.js           effect/amp catalog, param labels, AMP_KNOB_ORDER, blankPreset(), BASED_ON, SLOT_ORDER
 desktop/                 Electron main + preload (serves src/ over the secure kindling:// scheme)
 android/, ios/           Capacitor native projects (generated; web assets are synced in, not committed)
-tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release (the one-command release), release-plan, release-notes, release-android.sh
+tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, issue-platforms (issue form -> platform labels), release (the one-command release), release-plan, release-notes, release-android.sh
                          (the Android build, run locally and by CI), build-icons, stamp-version, autofix,
                          screenshots (marketing images via Playwright; the website repo runs it)
 assets/logo/concepts/    logo source SVGs (kindling, knob, monogram, necks, amp, pick); `npm run icons` renders all platform icons
 build/                   generated desktop icons for electron-builder (committed)
 .github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release),
-                         autofix.yml (error-report or bug issue -> Workers AI fix -> draft PR)
+                         autofix.yml (error-report or bug issue -> Workers AI fix -> draft PR),
+                         issue-platforms.yml (issue form "App" answer -> platform:* labels)
+.github/ISSUE_TEMPLATE/  issue forms: bug.yml, feature.yml, config.yml (docs/ISSUES.md)
 .github/feature-workflow.json  switch and limits for the feature-request workflow (tools/feature-sweep.js)
 .claude/                 settings.json (enables the Superpowers plugin), skills/feature-sweep/ (the feature-request workflow)
 test/                    node:test suites; test/fixtures holds real captures
 release-notes/           versioned store "What's new" text: <version>/android.txt, macos.txt
 TRADEMARKS.md            what forks may do with the name, logo, app ID and store presence (the GPL covers the code only)
 docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md,
-                         TELEMETRY.md (anonymous error reports), FEATURE-WORKFLOW.md (feature requests -> Superpowers plan/build PRs)
+                         TELEMETRY.md (anonymous error reports), FEATURE-WORKFLOW.md (feature requests -> Superpowers plan/build PRs),
+                         ISSUES.md (issue forms, platform labels, the project board)
 telemetry/               Cloudflare Worker (worker.js, wrangler.jsonc, schema.sql for D1) that receives error reports and opens issues; deployed by hand
 ```
 
@@ -172,6 +175,13 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 - **Two phases:** *plan* runs `superpowers:brainstorming` with no questions (each question becomes a written **Assumption**) and `superpowers:writing-plans`, committing `docs/plans/issue-<n>-<slug>-{design,plan}.md` to `claude/feature-<n>-<slug>` as a **draft** PR and labelling the issue `superpowers:planned`. *implement* runs only after a maintainer adds `superpowers:approved`: `superpowers:subagent-driven-development` with TDD on the same branch; `npm test`, `npm run check:docs` and `node tools/feature-sweep.js check-paths` must pass; the PR stays a draft (`superpowers:implemented`). Never merge or mark ready.
 - **Limits:** `maxRunsPerIssue` 5 (runs are counted by `<!-- feature-sweep:run -->` in issue comments; at the limit the issue gets `superpowers:blocked`), `maxIssuesPerSweep` 1, and `deniedPaths` (`LICENSE`, `.github/workflows/`, `telemetry/`, `.claude/`, the config, the selector and `tools/check-docs.js`). Don't let the workflow edit its own guard rails.
 - `.claude/settings.json` enables `superpowers@superpowers-marketplace` for **every** Claude Code session in this repo; the skill falls back to reading a clone of obra/superpowers if the plugin doesn't load. `.claude/` and the config count as material paths for the docs rule.
+
+## Issues and labels
+
+- Issue forms live in `.github/ISSUE_TEMPLATE/` (`bug.yml` sets type Bug, `feature.yml` type Feature, `config.yml` links the guide's troubleshooting and the presets hub). Full description: `docs/ISSUES.md`.
+- **The forms apply no labels.** `bug` starts the auto-fix workflow and is added at triage (after `triaged`); `enhancement` and `superpowers:*` drive the feature-request workflow, and `test/feature-sweep.test.js` fails if a form mentions a workflow label. Keep it that way.
+- **Platform labels:** `platform:desktop`, `platform:android`, `platform:ios`, `platform:web`. No platform label means all platforms (shared `src/`). `.github/workflows/issue-platforms.yml` adds them on `opened`/`edited` from the forms' **App** answer via `tools/issue-platforms.js` (`PLATFORMS`: exact option text -> label, colour, description; it creates a missing label). It only adds, never removes. The body is untrusted: passed through `env`, only exact option texts count. Changing an option means changing both forms and `PLATFORMS` (`test/issue-platforms.test.js` checks; options must not contain commas).
+- Work is tracked on an org-level GitHub Project set up by hand (fields, views and workflows in `docs/ISSUES.md`); platform stays a label there because a single-select field can't hold several. Large work (the iOS app) is a parent issue with sub-issues.
 
 ## Website
 
