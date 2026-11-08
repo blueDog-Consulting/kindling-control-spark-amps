@@ -93,3 +93,12 @@ test('the CLI writes only the --only stores and rejects --require outside them',
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /--require android is not in --only macos/);
 });
+
+test('ios notes are validated against the 4000 character App Store limit', () => {
+  assert.equal(STORES.ios.limit, 4000);
+  const ok = repoWith('0.3.0', { 'ios.txt': 'x'.repeat(4000) });
+  assert.deepEqual(loadStoreNotes('0.3.0', { root: ok, only: ['ios'] }).notes, { ios: 'x'.repeat(4000) });
+  const bad = repoWith('0.3.0', { 'ios.txt': 'x'.repeat(4001) });
+  assert.match(loadStoreNotes('0.3.0', { root: bad, only: ['ios'] }).errors[0], /4001 characters; App Store \(iOS\) allows 4000/);
+  assert.match(loadStoreNotes('0.3.0', { root: repoWith('0.3.0', {}), require: ['ios'] }).errors[0], /missing App Store \(iOS\) notes/);
+});

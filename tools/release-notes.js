@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Versioned store release notes ("What's new") for the Android and macOS store listings.
+// Versioned store release notes ("What's new") for the Android, iOS and macOS store listings.
 // Notes live in release-notes/<version>/<store>.txt and are tied to the release tag, so
 // v0.3.0 ships exactly the notes committed under release-notes/0.3.0/.
 //
-//   node tools/release-notes.js <tag|version> [--only android,macos] [--require android,macos]
+//   node tools/release-notes.js <tag|version> [--only android,ios,macos] [--require android,ios,macos]
 //                                             [--out <dir>] [--markdown <file>] [--root <dir>]
 //
 //   --only      look only at these stores (default: all). The release job passes the apps it actually built,
@@ -23,6 +23,7 @@ import { versionFromTag } from './release-plan.js';
 /** Per-store limits (characters) and display names. Play: 500 per language; App Store / Mac App Store: 4000. */
 export const STORES = {
   android: { label: 'Google Play', limit: 500 },
+  ios: { label: 'App Store (iOS)', limit: 4000 },
   macos: { label: 'Mac App Store', limit: 4000 },
 };
 
