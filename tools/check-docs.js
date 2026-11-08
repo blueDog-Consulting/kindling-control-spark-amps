@@ -29,6 +29,8 @@ export const MATERIAL = [
   /^\.github\/workflows\//,
   /^src\/version\.js$/,
   /^telemetry\//, // the error-report Worker
+  /^\.claude\//, // project skills and plugin settings (feature-request workflow)
+  /^\.github\/feature-workflow\.json$/,
 ];
 
 /** Paths that count as user/developer documentation. */

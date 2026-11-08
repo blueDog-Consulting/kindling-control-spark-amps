@@ -32,14 +32,25 @@ function fakeD1() {
 const report = (over = {}) => ({ app: 'android', version: '0.3.0', kind: 'caught', name: 'Error', message: 'timeout waiting for 03 01', where: 'connect', stack: 'at f (/spark/client.js:190:20)', first: true, ...over });
 const quiet = { log() {}, warn() {}, error() {} };
 
-function fakeGitHub() {
+/**
+ * Fake GitHub API. `calls` holds issue creations, `labelCalls` the follow-up label requests.
+ * By default it drops `labels` on creation, as GitHub does for tokens without push access.
+ */
+function fakeGitHub({ keepLabels = false, labelStatus = 200 } = {}) {
   const calls = [];
+  const labelCalls = [];
   const original = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
-    calls.push({ url, init, body: JSON.parse(init.body) });
-    return new Response(JSON.stringify({ number: 41 + calls.length }), { status: 201 });
+    const body = JSON.parse(init.body);
+    if (/\/issues\/\d+\/labels$/.test(url)) {
+      labelCalls.push({ url, init, body });
+      return new Response(JSON.stringify(body.labels.map((name) => ({ name }))), { status: labelStatus });
+    }
+    calls.push({ url, init, body });
+    const labels = keepLabels ? body.labels.map((name) => ({ name })) : [];
+    return new Response(JSON.stringify({ number: 41 + calls.length, labels }), { status: 201 });
   };
-  return { calls, restore: () => (globalThis.fetch = original) };
+  return { calls, labelCalls, restore: () => (globalThis.fetch = original) };
 }
 
 test('counts installs (first = true only) and opens one issue at the threshold', { skip: !sqlite && 'needs node:sqlite' }, async () => {
@@ -65,6 +76,11 @@ test('counts installs (first = true only) and opens one issue at the threshold',
     assert.match(body.title, /^\[error\] Error: timeout waiting for 03 01/);
     assert.match(body.body, /android,desktop\/windows/);
     assert.match(body.body, /first seen 0\.3\.0, latest 0\.3\.1/);
+    // GitHub dropped the label on creation, so the Worker adds it in a second call
+    assert.equal(gh.labelCalls.length, 1);
+    assert.equal(gh.labelCalls[0].url, 'https://api.github.com/repos/o/r/issues/42/labels');
+    assert.equal(gh.labelCalls[0].init.headers.Authorization, 'Bearer t');
+    assert.deepEqual(gh.labelCalls[0].body, { labels: [ISSUE_LABEL] });
     // more reports don't open more issues
     await track(env, 'abc', report(), quiet, '2026-11-02');
     assert.equal(gh.calls.length, 1);
@@ -93,6 +109,40 @@ test('no token or repo: counts only; daily cap; GitHub failure releases the clai
     await assert.rejects(track(env, 'd', report({ message: 'd' }), quiet, '2026-11-03'), /500/);
     const row = DB.db.prepare('SELECT issue_state, issue_created FROM errors WHERE fingerprint = ?').get('d');
     assert.deepEqual({ ...row }, { issue_state: null, issue_created: null });
+  } finally {
+    gh.restore();
+  }
+});
+
+test('no second label call when GitHub kept the label', { skip: !sqlite && 'needs node:sqlite' }, async () => {
+  const DB = fakeD1();
+  const gh = fakeGitHub({ keepLabels: true });
+  try {
+    const env = { DB, GITHUB_TOKEN: 't', GITHUB_REPO: 'o/r', ISSUE_THRESHOLD: '1' };
+    const r = await track(env, 'k', report(), quiet, '2026-11-01');
+    assert.equal(r.issue.number, 42);
+    assert.equal(gh.labelCalls.length, 0);
+  } finally {
+    gh.restore();
+  }
+});
+
+test('a labelling failure keeps the issue claimed (no duplicate) and is logged', { skip: !sqlite && 'needs node:sqlite' }, async () => {
+  const DB = fakeD1();
+  const gh = fakeGitHub({ labelStatus: 403 });
+  const warnings = [];
+  const log = { ...quiet, warn: (w) => warnings.push(w) };
+  try {
+    const env = { DB, GITHUB_TOKEN: 't', GITHUB_REPO: 'o/r', ISSUE_THRESHOLD: '1' };
+    const r = await track(env, 'l', report(), log, '2026-11-01');
+    assert.equal(r.issue.number, 42);
+    assert.equal(warnings.length, 1);
+    assert.equal(warnings[0].event, 'issue_label_failed');
+    assert.match(warnings[0].error, /403/);
+    const row = DB.db.prepare('SELECT issue_number, issue_state FROM errors WHERE fingerprint = ?').get('l');
+    assert.deepEqual({ ...row }, { issue_number: 42, issue_state: 'open' });
+    await track(env, 'l', report(), log, '2026-11-01');
+    assert.equal(gh.calls.length, 1, 'no duplicate issue');
   } finally {
     gh.restore();
   }

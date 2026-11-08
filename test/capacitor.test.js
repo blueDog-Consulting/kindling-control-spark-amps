@@ -79,3 +79,18 @@ test('Capacitor transport drives the amp through the native plugin API', async (
 test('isAvailable is false in a plain browser', () => {
   assert.equal(CapacitorBleTransport.isAvailable(), false);
 });
+
+test('closing the native device chooser surfaces as NotFoundError (not reported as an error)', async (t) => {
+  const plugin = fakeNativePlugin(new MockSparkTransport());
+  globalThis.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: { BluetoothLe: plugin } };
+  t.after(() => delete globalThis.Capacitor);
+  plugin.requestDevice = async () => {
+    throw new Error('requestDevice cancelled.');
+  };
+  const tr = new CapacitorBleTransport();
+  await assert.rejects(tr.connect(), (e) => e.name === 'NotFoundError' && /cancelled/.test(e.message));
+  plugin.requestDevice = async () => {
+    throw new Error('Location permission denied');
+  };
+  await assert.rejects(tr.connect(), (e) => e.name !== 'NotFoundError');
+});

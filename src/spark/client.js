@@ -29,6 +29,7 @@ export class SparkClient extends EventTarget {
     this.seq = 0;
     this.pending = []; // { key, resolve, reject, timer }
     this.queue = Promise.resolve();
+    this.inFlight = new Map(); // reply key -> promise of the request currently waiting for it
     this.info = {};
     this.decoder = new StreamDecoder((m) => this._onMessage(m), {
       onError: (e) => this._emit('error', { error: e }),
@@ -198,16 +199,34 @@ export class SparkClient extends EventTarget {
 
   /** Send a request (02 xx) and resolve with the decoded 03 xx reply. */
   request(message, { timeoutMs = this.timeoutMs } = {}) {
-    const p = this._expect(`${CMD.RESPONSE}:${message.sub}`, timeoutMs);
-    this.send(message).catch((e) => this._reject(p, e));
-    return p.promise;
+    return this._oneAtATime(`${CMD.RESPONSE}:${message.sub}`, timeoutMs, false, message);
   }
 
   /** Send a write (01 xx) and resolve when acknowledged (04 xx). */
   command(message, { timeoutMs = this.timeoutMs, optional = false } = {}) {
-    const p = this._expect(`${CMD.ACK}:${message.sub}`, timeoutMs, optional);
-    this.send(message).catch((e) => this._reject(p, e));
-    return p.promise;
+    return this._oneAtATime(`${CMD.ACK}:${message.sub}`, timeoutMs, optional, message);
+  }
+
+  /**
+   * Replies are matched only by cmd:sub, so two requests waiting for the same reply type
+   * can't tell their answers apart, and an amp busy with one multi-chunk preset transfer
+   * may not answer an overlapping request at all ("timeout waiting for 3:1", issue #9).
+   * So at most one request per reply key is outstanding: the next one is sent once the
+   * previous one has settled, and its timeout starts only then.
+   */
+  _oneAtATime(key, timeoutMs, optional, message) {
+    const previous = this.inFlight.get(key) ?? Promise.resolve();
+    const run = previous.then(() => {
+      const p = this._expect(key, timeoutMs, optional);
+      this.send(message).catch((e) => this._reject(p, e));
+      return p.promise;
+    });
+    const settled = run.catch(() => {});
+    this.inFlight.set(key, settled);
+    settled.then(() => {
+      if (this.inFlight.get(key) === settled) this.inFlight.delete(key);
+    });
+    return run;
   }
 
   /** Send raw, already-encoded bytes (for the reverse-engineering console). */

@@ -206,15 +206,32 @@ function showBattery(s) {
 // presets
 // ---------------------------------------------------------------------------
 
-async function refreshPreset() {
-  if (!state.client) return;
-  try {
-    state.preset = await state.client.getPreset('current');
-    renderPreset();
-  } catch (err) {
-    logLine('err', `could not read current preset: ${err.message}`);
-    reportError('read-preset', err);
+// Amp events (preset button, effect change) can ask for a refresh while one is still
+// running. Instead of queueing one read per event, a refresh requested meanwhile makes the
+// running one read once more when it finishes; every caller awaits that same, latest read.
+let refreshing = null;
+let refreshAgain = false;
+
+function refreshPreset() {
+  if (!state.client) return Promise.resolve();
+  if (refreshing) {
+    refreshAgain = true;
+    return refreshing;
   }
+  refreshing = (async () => {
+    do {
+      refreshAgain = false;
+      if (!state.client) break;
+      try {
+        state.preset = await state.client.getPreset('current');
+        renderPreset();
+      } catch (err) {
+        logLine('err', `could not read current preset: ${err.message}`);
+        reportError('read-preset', err);
+      }
+    } while (refreshAgain);
+  })().finally(() => (refreshing = null));
+  return refreshing;
 }
 
 $('#refresh').addEventListener('click', refreshPreset);
@@ -733,6 +750,30 @@ function appendLog(list, li) {
   list.prepend(li);
   while (list.children.length > 500) list.lastElementChild.remove();
 }
+
+// Console as plain text, oldest first (the list is newest first), with each message's raw bytes.
+function consoleText() {
+  return [...consoleEls.log.children]
+    .reverse()
+    .map((li) => {
+      const summary = li.querySelector('summary');
+      if (!summary) return li.textContent;
+      const hex = li.querySelector('.hex')?.textContent.trim().split('\n').join(' ');
+      return `${summary.textContent}${hex ? `\n    ${hex}` : ''}`;
+    })
+    .join('\n');
+}
+
+$('#copy-log').addEventListener('click', async () => {
+  const text = consoleText();
+  if (!text) return toast('The Console is empty.');
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(`Copied ${consoleEls.log.children.length} Console lines.`, 'ok');
+  } catch {
+    toast('Couldn\'t copy automatically. Select the lines in the Console and copy them by hand.', 'warn');
+  }
+});
 
 $('#clear-log').addEventListener('click', () => consoleEls.log.replaceChildren());
 

@@ -1,10 +1,7 @@
-- devops: update android release workflow
-- Move every website link to kindlingcontrol.app
-- Keep wrangler at "latest" and use the repo's wrangler in the docs
-- Note that the error-report Worker lives on kindlingcontrol.app
-- Point the apps at errors.kindlingcontrol.app
-- fix: wrong domain
-- chore: updates to wrangler + deps
-- Name the zone for the error-report Worker's custom domain
-- Remove website section from README
-- chore: update release notes v0.1.1
+Small update with a few things you asked for.
+
+• Error reports are opt-in: you're asked once on first launch and can switch them on or off any time in Settings. Nothing identifying is ever sent.
+• New Settings screen with an About section (version, licence, links).
+• The connection status is now a coloured Bluetooth icon, so the top bar fits small phones.
+
+Free and open source, no account needed.

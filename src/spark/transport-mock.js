@@ -56,8 +56,13 @@ export function demoPresets(count = 4) {
 }
 
 export class MockSparkTransport {
-  constructor({ name = 'Spark 40', latencyMs = 15, battery = true, fixedChain = true, swap = 'ok' } = {}) {
+  constructor({ name = 'Spark 40', latencyMs = 15, battery = true, fixedChain = true, busyPresets = false, swap = 'ok' } = {}) {
     this.ampName = name;
+    // With busyPresets the mock ignores a preset request that arrives while it is still
+    // answering the previous one: one model of an amp that can't overlap multi-chunk
+    // transfers (unverified on real hardware; see docs/PROTOCOL.md).
+    this.busyPresets = busyPresets;
+    this.presetBusy = false;
     // How the mock answers an effect swap (01 06): 'ok' swaps and acks; 'ignore'
     // acks but keeps the old model; 'silent' neither swaps nor acks.
     this.swap = swap;
@@ -145,8 +150,10 @@ export class MockSparkTransport {
         const isCurrent = hi === 0x01;
         const p = isCurrent ? this.current : lo === TEMP_SLOT ? this.tempPreset : this.presets[lo];
         if (!p) return;
+        if (this.busyPresets && this.presetBusy) return; // dropped: still sending the last one
         const pw = presetWriter(p, lo, { current: isCurrent });
-        return this._reply(CMD.RESPONSE, SUB.PRESET, pw.toBytes(), seq);
+        this.presetBusy = true;
+        return this._reply(CMD.RESPONSE, SUB.PRESET, pw.toBytes(), seq, () => (this.presetBusy = false));
       }
       default:
         return; // unknown request: real amps stay silent too
@@ -209,7 +216,7 @@ export class MockSparkTransport {
     this._reply(CMD.RESPONSE, sub, w.toBytes(), this.seq);
   }
 
-  _reply(cmd, sub, data, seq) {
+  _reply(cmd, sub, data, seq, done = () => {}) {
     const blocks = encodeMessage({ cmd, sub, data }, { seq, direction: 'fromAmp' });
     const stream = blocks.flatMap((b) => Array.from(b));
     // deliver in BLE-notification-sized fragments of random length
@@ -220,6 +227,7 @@ export class MockSparkTransport {
         if (this.connected) this.onData(Uint8Array.from(stream.slice(i, i + n)));
         i += n;
       }
+      done();
     }, this.latencyMs);
   }
 }

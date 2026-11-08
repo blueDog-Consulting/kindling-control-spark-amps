@@ -92,6 +92,8 @@ Parameter values are floats from 0.0 to 1.0. The app shows them as 0 to 10.
 | `02 71` | – | `03 71` | power / battery status **(not Spark 40)** |
 | `02 72`, `02 75`, `02 76`, `02 78` | – | `03 xx` | unknown / looper status **(unverified)** |
 
+Replies carry no request id: the `seq` the amp echoes is not reliable enough to match on, so a reply can only be matched by its `cmd:sub`. Two outstanding requests that expect the same reply (two `02 01` preset reads, say) can't tell their answers apart, and an amp that is still sending one multi-chunk preset may not answer an overlapping request at all **(unverified)**. That was the likely cause of `timeout waiting for 3:1` error reports from the desktop app (issue #9). `SparkClient` therefore keeps at most one request per reply key outstanding and sends the next only once the previous one has been answered or timed out. Requests for different reply keys still overlap.
+
 ### Amp → app (unsolicited events)
 
 | cmd sub | payload | when |
@@ -158,4 +160,5 @@ The Spark 2 stores 8 presets in two banks of four. The bank button on the amp ju
 
 * Spark 2 / NEO-only messages, such as the looper, the extra effect models, and any per-model differences in `03 71`.
 * The meaning of `02 72` / `03 72` and the unknown fields in `03 71`.
+* Whether the amp queues, drops or interleaves a second `02 01` preset request sent while it is still answering the first.
 * Whether the amp accepts preset uploads without the `01 70` licence key on every firmware. The Ignitron community reports that it does.

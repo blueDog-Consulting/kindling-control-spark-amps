@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "maintainers": ["jerdog"],
+  "trigger": {
+    "types": ["Feature"],
+    "labels": ["enhancement"]
+  },
+  "labels": {
+    "go": "superpowers:go",
+    "skip": "superpowers:skip",
+    "planned": "superpowers:planned",
+    "approved": "superpowers:approved",
+    "implemented": "superpowers:implemented",
+    "blocked": "superpowers:blocked"
+  },
+  "maxRunsPerIssue": 5,
+  "maxIssuesPerSweep": 1,
+  "branchPrefix": "claude/feature-",
+  "plansDir": "docs/plans",
+  "deniedPaths": [
+    "LICENSE",
+    ".github/workflows/",
+    "telemetry/",
+    ".claude/",
+    ".github/feature-workflow.json",
+    "tools/feature-sweep.js",
+    "tools/check-docs.js"
+  ]
+}

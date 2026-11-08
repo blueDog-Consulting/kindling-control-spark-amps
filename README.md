@@ -43,7 +43,7 @@ Build instructions for each are in [docs/APPS.md](docs/APPS.md).
   * **Reorder chain** (experimental) lets you drag effects into a new order and try it on the amp. The Spark firmware is believed to use a fixed order, so the app reads the result back and tells you whether your amp kept it.
 * **Presets:** **New** creates a preset, either from the current sound or blank, and puts it on the amp to shape. **Save…** keeps it in *My presets* on this device, stores it in one of the amp's preset slots, or both. The Presets tab lists saved presets to load, export or delete, and imports JSON files. The format is compatible with [Ignitron](https://github.com/stangreg/Ignitron)'s preset files.
 * **Tuner** on models that support it.
-* **Console:** every message in both directions, decoded, with the raw hex. You can also send arbitrary commands. On the web and desktop, **Pop out** moves it into its own window, so you can watch the traffic while you use the Tone screen.
+* **Console:** every message in both directions, decoded, with the raw hex. **Copy** puts the log on the clipboard as text for bug reports. You can also send arbitrary commands. On the web and desktop, **Pop out** moves it into its own window, so you can watch the traffic while you use the Tone screen.
 * **Capture decoder:** load an Android `btsnoop_hci.log` and see exactly what the official app sends. This is how you reverse engineer the features that aren't covered yet. See [docs/CAPTURE.md](docs/CAPTURE.md).
 
 ## Use it
@@ -110,7 +110,7 @@ The protocol itself is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `test/` | `node:test` suites and real-capture fixtures |
 | `src/guide/` | the user guide, shown in the app's Help panel (the website also serves a copy at `/guide/`) |
 | `telemetry/` | Cloudflare Worker (+ D1 schema) that receives the apps' anonymous error reports and opens issues ([TELEMETRY.md](docs/TELEMETRY.md)) |
-| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md), [TELEMETRY.md](docs/TELEMETRY.md) |
+| `docs/` | [PROTOCOL.md](docs/PROTOCOL.md), [APPS.md](docs/APPS.md), [CAPTURE.md](docs/CAPTURE.md), [RELEASING.md](docs/RELEASING.md), [TELEMETRY.md](docs/TELEMETRY.md), [FEATURE-WORKFLOW.md](docs/FEATURE-WORKFLOW.md) |
 | `.github/workflows/` | CI (tests + docs check), the tag-driven app releases, and the error-report auto-fix agent |
 
 ## Development
@@ -131,6 +131,10 @@ Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions 
 ## Error reports and privacy
 
 If the user agrees (the apps ask on first run; the switch is in **Settings**, the gear in the top bar, next to **About**), released apps send anonymous error reports to a Cloudflare Worker so we can see which errors happen in which build: only the app (desktop/Android/iOS), the desktop OS, the app version and the scrubbed error. No ids, IP addresses, device or amp names, serial numbers or preset names. When the same error comes from 2+ installs, the Worker opens a GitHub issue, and an optional auto-fix workflow asks a Workers AI model for a fix and opens a **draft** PR if the tests pass. Details, setup and how to query the reports: [docs/TELEMETRY.md](docs/TELEMETRY.md).
+
+## Feature requests
+
+Open feature requests (type **Feature** or label `enhancement`) from maintainers are planned by a scheduled Claude Code cloud session with the [Superpowers](https://github.com/obra/superpowers) skills: it posts the design and plan as a **draft** PR, and builds it in that PR once a maintainer adds `superpowers:approved`. Switch it off with `enabled` in `.github/feature-workflow.json`. Details: [docs/FEATURE-WORKFLOW.md](docs/FEATURE-WORKFLOW.md).
 
 ## Contributing
 
