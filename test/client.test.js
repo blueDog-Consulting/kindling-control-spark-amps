@@ -107,6 +107,38 @@ test('tryChainOrder: fixed-chain amp normalises the order, flexible amp keeps it
   }
 });
 
+test('swapEffect uses 01 06 when the amp takes it', async () => {
+  const { t, c } = await connected();
+  const sent = [];
+  c.addEventListener('sent', (e) => sent.push(`${e.detail.cmd}:${e.detail.sub}`));
+  const { method, preset } = await c.swapEffect('ChorusAnalog', 'UniVibe');
+  assert.equal(method, 'swap');
+  assert.equal(preset.pedals[4].name, 'UniVibe');
+  assert.equal(t.slot, 0); // still on the hardware preset
+  assert.ok(!sent.includes('1:1'), 'no preset upload');
+});
+
+for (const [swap, how] of [['ignore', 'acks 01 06 but keeps the old model'], ['silent', 'never acks 01 06']]) {
+  test(`swapEffect falls back to the temporary slot when the amp ${how}`, async () => {
+    const t = new MockSparkTransport({ latencyMs: 1, swap });
+    const c = new SparkClient(t, { timeoutMs: 150 });
+    await c.connect();
+    const stored = structuredClone(t.presets[0]);
+    const { method, preset } = await c.swapEffect('ChorusAnalog', 'UniVibe');
+    assert.equal(method, 'preset');
+    assert.equal(preset.pedals[4].name, 'UniVibe');
+    assert.deepEqual(preset.pedals[4].params, [0.5, 0, 0.5]); // knob, switch, knob
+    assert.equal(preset.pedals[4].isOn, true); // keeps the slot's on/off state
+    assert.equal(t.slot, 0x7f);
+    assert.deepEqual(t.presets[0], stored); // nothing stored changed
+  });
+}
+
+test('swapEffect rejects when the effect is not in the live preset', async () => {
+  const { c } = await connected({ swap: 'ignore' });
+  await assert.rejects(c.swapEffect('NoSuchFx', 'UniVibe'), /isn't in the amp's current preset/);
+});
+
 // Issue #9: "timeout waiting for 3:1" when preset reads overlap (e.g. the amp's preset
 // button pressed twice quickly, each press triggering a refresh).
 test('overlapping preset reads are sent one at a time, so none times out (#9)', async () => {

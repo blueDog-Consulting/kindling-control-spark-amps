@@ -18,6 +18,7 @@
 import { encodeMessage, StreamDecoder } from './codec.js';
 import { CMD, SUB, TEMP_SLOT, modelSettings } from './constants.js';
 import * as M from './messages.js';
+import { defaultParams } from './effects.js';
 
 export class SparkClient extends EventTarget {
   constructor(transport, { timeoutMs = 3000, log = null } = {}) {
@@ -99,8 +100,45 @@ export class SparkClient extends EventTarget {
     // 01 04 is not acknowledged by the amp — fire and forget
     return this.send(M.setParam(effectId, index, value));
   }
-  changeEffect(oldId, newId) {
-    return this.command(M.changeEffect(oldId, newId));
+  changeEffect(oldId, newId, opts) {
+    return this.command(M.changeEffect(oldId, newId), opts);
+  }
+
+  /**
+   * Swap the model in a slot and confirm it took, by reading the live preset back.
+   * Tries the dedicated swap message (01 06) first. If the amp doesn't
+   * acknowledge it, or acknowledges it but keeps the old model, the edited
+   * preset is loaded into the temporary slot instead (nothing stored changes).
+   * Resolves with { method: 'swap' | 'preset', preset } where preset is the
+   * amp's live preset afterwards; rejects if neither way worked.
+   */
+  async swapEffect(oldId, newId) {
+    const same = (a, b) => a.toLowerCase() === b.toLowerCase();
+    const has = (p, id) => p.pedals.some((f) => same(f.name, id));
+    let swapError = null;
+    try {
+      // the ack normally takes milliseconds; don't keep the user waiting long before falling back
+      await this.changeEffect(oldId, newId, { timeoutMs: Math.min(this.timeoutMs, 1500) });
+    } catch (err) {
+      if (err.code !== 'ETIMEDOUT') throw err;
+      swapError = err;
+    }
+    const live = await this.getPreset('current');
+    if (!swapError && has(live, newId)) return { method: 'swap', preset: live };
+    this._emit('log', { text: `amp ${swapError ? 'did not acknowledge' : 'ignored'} 01 06 swap ${oldId} -> ${newId}; loading the edited preset into the temporary slot` });
+
+    const i = live.pedals.findIndex((f) => same(f.name, oldId));
+    if (i < 0) {
+      if (has(live, newId)) return { method: 'swap', preset: live }; // took after all
+      throw new Error(`${oldId} isn't in the amp's current preset`);
+    }
+    const edited = structuredClone(live);
+    const old = live.pedals[i];
+    edited.pedals[i] = { name: newId, isOn: old.isOn, params: defaultParams(newId, old.params.length) };
+    await this.loadPreset(edited, TEMP_SLOT);
+    const after = await this.getPreset('current');
+    if (!has(after, newId)) throw new Error(`the amp didn't accept ${newId}`);
+    return { method: 'preset', preset: after };
   }
   setEffectOnOff(effectId, on) {
     return this.command(M.setEffectOnOff(effectId, on));
@@ -206,7 +244,7 @@ export class SparkClient extends EventTarget {
     entry.timer = setTimeout(() => {
       this._remove(entry);
       if (optional) entry.resolve(null);
-      else entry.reject(new Error(`timeout waiting for ${key}`));
+      else entry.reject(Object.assign(new Error(`timeout waiting for ${key}`), { code: 'ETIMEDOUT' }));
     }, timeoutMs);
     this.pending.push(entry);
     return entry;
