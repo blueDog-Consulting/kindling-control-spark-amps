@@ -36,11 +36,13 @@ The "What's new" text for the store listings is versioned with the release. It l
 | File | Store | Limit |
 |---|---|---|
 | `android.txt` | Google Play, "What's new" | 500 characters |
+| `ios.txt` | App Store (iPhone and iPad), "What's New in This Version" | 4000 characters |
 | `macos.txt` | Mac App Store, "What's New in This Version" | 4000 characters |
 
 They must be committed and pushed before you tag, so `v0.2.0` ships exactly `release-notes/0.2.0/`. `npm run release` does that for you (it drafts `android.txt` and opens your editor); `macos.txt` stays a manual, optional file. Details and an example layout are in [release-notes/README.md](../release-notes/README.md).
 
 - Store notes belong to the apps a release builds. The `plan` job works out that set (today: Android, when it's built) and checks only those notes, with `release-notes.js --only`. A **final** tag that builds Android fails right away if `android.txt` is missing, empty or over the limit, before anything is built. Pre-release tags need no notes, and a release that builds no store app checks none.
+- `ios.txt` is optional and validated like `macos.txt`: iOS isn't built in CI yet, so CI neither checks nor publishes it; check it with `npm run release:notes` and paste it into App Store Connect. When iOS joins `release.yml` (#33), add `ios` to the plan job's set and to the "needs notes" rule in `tools/release.js` together.
 - `macos.txt` is optional. macOS isn't built in CI, so CI neither checks nor publishes it; check it with `npm run release:notes` and paste it into App Store Connect when you ship the Mac app. Once macOS joins the build matrix, add `macos` to the plan job's set with the desktop build.
 - The `release` job checks out the tag and publishes exactly the plan job's set: a **Store release notes** section in the GitHub Release body and `kindling-control-<version>-android-whatsnew.txt`, ready to paste into Play Console. A release that skipped Android carries no Play notes. Nothing is uploaded to a store automatically yet.
 - Check ahead of time: `npm run release:notes -- v0.2.0 --require android`.
