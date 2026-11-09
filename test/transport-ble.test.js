@@ -9,7 +9,7 @@ import { SparkClient } from '../src/spark/client.js';
  * configurable properties, write-with-response optionally failing the way
  * Chrome on macOS reports it, and a flaky first startNotifications().
  */
-function fakeBluetooth(amp, { props = { write: true, writeWithoutResponse: true }, withResponseFails = false, flakyNotify = false } = {}) {
+function fakeBluetooth(amp, { props = { write: true, writeWithoutResponse: true }, withResponseFails = false, flakyNotify = false, serviceDropsFirst = false } = {}) {
   const log = { withResponse: [], withoutResponse: [], notifyAttempts: 0 };
   const notFound = () => Object.assign(new Error('GATT operation failed for unknown reason.'), { name: 'NotSupportedError' });
   const rx = new EventTarget();
@@ -42,7 +42,12 @@ function fakeBluetooth(amp, { props = { write: true, writeWithoutResponse: true 
       connected: true,
       connect: async () => {
         await amp.connect();
-        return { getPrimaryService: async () => ({ getCharacteristic: async (u) => (u === 0xffc1 ? tx : rx) }) };
+        return { getPrimaryService: async () => {
+          log.serviceAttempts = (log.serviceAttempts ?? 0) + 1;
+          if (serviceDropsFirst && log.serviceAttempts === 1) {
+            throw Object.assign(new Error('GATT Server is disconnected. Cannot retrieve services.'), { name: 'NetworkError' });
+          }
+          return ({ getCharacteristic: async (u) => (u === 0xffc1 ? tx : rx) }); } };
       },
       disconnect() {},
     },
@@ -106,4 +111,10 @@ test('errors name the GATT step that failed', async () => {
     },
   };
   await assert.rejects(t.connect(), (e) => e.message.startsWith('find Spark service 0xFFC0 failed') && e.name === 'NotFoundError');
+});
+
+test('Windows: GATT drop while finding the service is retried once (#41)', async () => {
+  const { info, log } = await run({ serviceDropsFirst: true });
+  assert.equal(info.name, 'Spark 2');
+  assert.equal(log.serviceAttempts, 2);
 });
