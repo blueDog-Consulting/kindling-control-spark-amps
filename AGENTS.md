@@ -116,7 +116,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 - `01 04` ends with an input byte (`00` = Input 1). The Spark 2 silently ignores knob changes without it, the same way `01 15` needs its trailing `00`. Don't drop trailing bytes the official app sends.
 
 **Transports:**
-- Prefer **write-without-response**. Write-with-response fails on Spark 2 + macOS with "GATT operation failed for unknown reason". Both transports fall back to the other mode once and log it.
+- Prefer **write-without-response**. Write-with-response fails on Spark 2 + macOS with "GATT operation failed for unknown reason". Both transports fall back to the other mode once and log it. The Web Bluetooth transport also retries GATT connect + service lookup once on a `NetworkError` (Windows drops the link right after connecting, issue #41).
 - Until the amp reports its name, use `UNKNOWN_MODEL` (≤ 0x64-byte writes, 80 ms pause per block). After the handshake, `modelSettings(name)` applies the per-model limits.
 - The transport interface is `connect()`, `disconnect()`, `write(block)`, `configure(model)`, plus the callbacks `onData`, `onDisconnect`, `onLog`. New transports must implement it, and should be testable against `MockSparkTransport` (see `test/transport-ble.test.js` and `test/capacitor.test.js` for fakes of each platform API).
 
