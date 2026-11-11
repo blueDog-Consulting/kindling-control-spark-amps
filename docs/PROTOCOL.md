@@ -154,7 +154,7 @@ The Spark 2 stores 8 presets in two banks of four. The bank button on the amp ju
 
 `02 11` amp name → `02 2A` checksums → `02 23` serial → `01 70` licence → `02 01` × 4 (stored presets) → `02 10` selected preset → `02 2F` firmware → `02 01 01 00` live state.
 
-`SparkClient.handshake()` runs a reduced version of this: name, serial, firmware, selected preset and power status.
+`SparkClient.handshake()` runs a reduced version of this: name, serial, firmware, selected preset and power status. Only the name is required; the other steps may fail without failing the handshake, but if the amp drops the Bluetooth link during any of them the handshake fails with `disconnected` (issue #43).
 
 ## Open questions (good targets for your captures)
 
