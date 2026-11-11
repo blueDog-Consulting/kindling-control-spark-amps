@@ -30,6 +30,7 @@ export class SparkClient extends EventTarget {
     this.queue = Promise.resolve();
     this.inFlight = new Map(); // reply key -> promise of the request currently waiting for it
     this.info = {};
+    this.connected = false;
     this.decoder = new StreamDecoder((m) => this._onMessage(m), {
       onError: (e) => this._emit('error', { error: e }),
     });
@@ -39,6 +40,7 @@ export class SparkClient extends EventTarget {
     };
     transport.onLog = (text) => this._emit('log', { text });
     transport.onDisconnect = () => {
+      this.connected = false;
       this._failAll(new Error('disconnected'));
       this._emit('disconnected', {});
     };
@@ -46,6 +48,7 @@ export class SparkClient extends EventTarget {
 
   async connect() {
     const r = await this.transport.connect();
+    this.connected = true;
     this.decoder.reset();
     this._emit('connected', r || {});
     return r;
@@ -65,6 +68,10 @@ export class SparkClient extends EventTarget {
     this.info.firmware = await this.firmware().catch(() => null);
     this.info.presetNumber = await this.presetNumber().catch(() => null);
     this.info.status = await this.ampStatus().catch(() => null); // not on Spark 40
+    // The optional steps above swallow their errors, including "disconnected". If the amp
+    // dropped the link part-way, fail the handshake instead of reporting a dead link as
+    // connected (issue #43).
+    if (!this.connected) throw new Error('disconnected');
     return this.info;
   }
 
