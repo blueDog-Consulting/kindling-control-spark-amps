@@ -9,7 +9,13 @@ app ──POST /v1/report──▶ kindling-errors Worker ──▶ Workers Logs
                                                                                    │
                          .github/workflows/autofix.yml ◀──────── label ────────────┘
                          Workers AI model → patch → npm test → draft PR (or a comment with its analysis)
+
+app ──POST /v1/log───▶ kindling-errors Worker ──▶ Workers Logs (the whole log, event = console_log, log_id)
+   (user pressed Send)          │
+                                └─▶ D1 logs row ──(≤ MAX_LOG_ISSUES_PER_DAY)──▶ GitHub issue [console-log] → link to the log entry
 ```
+
+Users can also send their **Console log** on purpose, from Settings (see [Console logs](#console-logs) below).
 
 ## Consent: opt-in
 
@@ -59,6 +65,18 @@ To open an issue only when an error affects **several installs**, the Worker nee
 
 Requests are `POST text/plain` with `mode: 'no-cors'`, `credentials: 'omit'` and no referrer, so there's no CORS preflight from the `kindling://` (desktop) and `capacitor://`/`https://localhost` (mobile) origins.
 
+## Console logs
+
+The Console log is often what a bug report needs, so released apps can send it on request (issue #25).
+
+- **Only when the user asks, every time.** Settings → **Send Console log…** (`#settings-log`, `#send-log-open`) opens `#log-dialog`, which shows the scrubbed log exactly as it will be sent, an optional note ("What happened?", up to 500 characters) and an optional GitHub issue number. Nothing is sent unless they press **Send**; the text sent is the previewed text, not whatever the Console holds by then. It doesn't depend on the error-report switch. Like error reports, it's hidden in `dev` builds (unless `?errors=on`), with `?mock` and in forks without an endpoint. At most 3 logs per session (`reporter.sendLog`, `canSendLog`).
+- **What is sent** (`buildLog()`): `{ v, app, os?, version, kind: "log", lines, log, note?, issue? }` to `/v1/log` on the same host as `ENDPOINT` (`LOG_ENDPOINT`), as the same `text/plain` `no-cors` request.
+- **Scrubbing** (`scrubLog()`, run by the app and again by the Worker in `sanitizeLog()`): only the newest 300 lines / 24,000 characters are kept, lines are capped, and the text of each line goes through `scrub()` (quotes, ids, e-mail addresses, paths, serial-like tokens). The decoded `ampName` and `serial` values are dropped. **Raw hex bytes are kept as they are** (runs of 4 or more bytes), as agreed with the maintainer: they make the log useful, but they can contain preset names and the amp's serial number. The preview and the guide's `#send-log` section say so.
+- **Worker:** `POST /v1/log` (body up to 64 KB) validates with `sanitizeLog()`, gives the log a random `log_id` (`crypto.randomUUID()`, linked to nothing else) and writes one line to Workers Logs: `event = console_log`, `log_id`, `app`, `os`, `version`, `lines`, `note`, `issue`, `log`. It never counts towards error fingerprints or `ISSUE_THRESHOLD`.
+- **Issue:** with D1 and `GITHUB_TOKEN`, `trackLog()` stores a row in the `logs` table (id, date, app, version, lines, issue number; not the log) and opens a public issue titled `[console log] <app> <version> (for #<issue>)`, labelled `console-log` (added in a second request if GitHub drops it). Its body (`logIssueBody()`) has the app, version, line count, whether there's a note, the related issue, the `log_id`, and a **link back to the log entry**: `LOG_LINK` (an optional var: the dashboard URL of the Worker's logs, `{id}` replaced by the log id) or, without it, where to find it (Observability, filter `log_id = <id>`). The log and the note are **never** put in the issue, because issues are public; the link needs a Cloudflare login. It has no `<!-- error-report -->` block and isn't labelled `error-report`, so the auto-fix agent doesn't pick it up. If a log shows a real bug, copy the relevant lines (checked for anything personal) into a `bug` or existing issue.
+- **Flood limit:** `MAX_LOG_ISSUES_PER_DAY` (default 5). Logs past the cap are still logged and recorded (`log_issue_capped`), just without an issue. Failures log `log_issue_failed`.
+- After deploying this change, apply `schema.sql` again to create the `logs` table (`CREATE TABLE IF NOT EXISTS`, safe to re-run), and create the `console-log` label once in GitHub if you want a colour/description for it (GitHub creates it on first use otherwise).
+
 ## Setting up the Worker
 
 wrangler is a devDependency of this repo, kept at `"latest"` on purpose, so run `npm install` once and use `npx wrangler` from `telemetry/`. The lockfile holds the version actually installed; `npm install wrangler@latest` (and committing `package-lock.json`) moves it forward.
@@ -74,7 +92,7 @@ npx wrangler deploy
 
 - It deploys as `kindling-errors` on the custom domain `errors.kindlingcontrol.app`. The route names its zone (`"zone_name": "kindlingcontrol.app"`), because wrangler can't always infer it and fails with *Can't infer zone from route* (code 10082). The zone must be in the same Cloudflare account you deploy to (`npx wrangler whoami` shows which account that is). Remove any existing DNS record for `errors.kindlingcontrol.app` first: a custom domain creates its own. To use another host, change `routes` in `wrangler.jsonc` **and** `ENDPOINT` in `src/app/telemetry.js`.
 - `GITHUB_TOKEN`: a fine-grained personal access token (or GitHub App token) for **this repository only**, with **Issues: read and write**. Issues opened with a personal token trigger the auto-fix workflow; ones opened with Actions' own token wouldn't. That permission is enough: GitHub silently drops labels on a new issue unless the token has push access, so the Worker adds the `error-report` label in a second request when the created issue doesn't have it. If that request fails, Workers Logs shows `issue_label_failed`; add the label by hand to start the auto-fix workflow.
-- Vars in `wrangler.jsonc`: `GITHUB_REPO`, `ISSUE_THRESHOLD` (installs before an issue opens, default 2), `MAX_ISSUES_PER_DAY` (default 5; the endpoint is public, so this stops a flood of forged reports from flooding the tracker).
+- Vars in `wrangler.jsonc`: `GITHUB_REPO`, `ISSUE_THRESHOLD` (installs before an issue opens, default 2), `MAX_ISSUES_PER_DAY` (default 5; the endpoint is public, so this stops a flood of forged reports from flooding the tracker), `MAX_LOG_ISSUES_PER_DAY` (Console-log issues, default 5) and the optional `LOG_LINK` (see [Console logs](#console-logs)).
 - Without the D1 binding the Worker only logs; without the token it counts but opens no issues.
 - Forks: set `ENDPOINT` to your own Worker, or to `''` to send nothing (the Settings switch and first-run question then disappear).
 - Check the bundle without deploying: `npx wrangler deploy --dry-run --outdir /tmp/kindling-errors`.
@@ -121,11 +139,11 @@ Cloudflare dashboard → **Workers & Pages → kindling-errors → Observability
 - installs affected: filter `first = true`, group by `fingerprint`
 - a new release: `version = 0.3.0`, group by `where`
 
-The Worker also logs `event = issue_created` and `event = track_failed`. For totals per error: `npx wrangler d1 execute kindling-errors --remote --command "SELECT fingerprint, installs, reports, last_version, issue_number, message FROM errors ORDER BY installs DESC LIMIT 20"`.
+Console logs are `event = console_log`; find one with `log_id = <id>` (from its `console-log` issue). The Worker also logs `event = issue_created`, `event = track_failed`, `event = log_issue_created`, `event = log_issue_capped` and `event = log_issue_failed`. For totals per error: `npx wrangler d1 execute kindling-errors --remote --command "SELECT fingerprint, installs, reports, last_version, issue_number, message FROM errors ORDER BY installs DESC LIMIT 20"`.
 
 ## Testing locally
 
-`npm run serve` and open `http://localhost:8787/?errors=on`: `?errors=on` lets a `dev` build ask and send, with `app: "web"` and `version: "dev"`, so you can see reports arrive (or point `ENDPOINT` at `npx wrangler dev` while testing). Clear the site's localStorage to see the first-run question again. Tests: `test/telemetry.test.js` (scrubbing, allow-list, consent, the `first` flag, the Worker), `test/telemetry-issues.test.js` (D1 counting and issues, against `node:sqlite`; skipped on Node versions without it), `test/autofix.test.js` (the agent's parsing, file picking, edits and path checks).
+`npm run serve` and open `http://localhost:8787/?errors=on`: `?errors=on` lets a `dev` build ask and send, with `app: "web"` and `version: "dev"`, so you can see reports arrive (or point `ENDPOINT` at `npx wrangler dev` while testing). Clear the site's localStorage to see the first-run question again. Tests: `test/telemetry.test.js` (scrubbing, allow-list, consent, the `first` flag, Console logs, the Worker), `test/telemetry-issues.test.js` (D1 counting, error and console-log issues, against `node:sqlite`; skipped on Node versions without it), `test/autofix.test.js` (the agent's parsing, file picking, edits and path checks).
 
 ## App stores
 

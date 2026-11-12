@@ -19,3 +19,15 @@ CREATE TABLE IF NOT EXISTS errors (
   issue_created TEXT                         -- server date the issue was opened
 );
 CREATE INDEX IF NOT EXISTS errors_issue_created ON errors (issue_created);
+
+-- Console logs sent from Settings → Send Console log… (one row per log; the log text itself
+-- is only in Workers Logs, under the same log_id). Used to cap issues per day.
+CREATE TABLE IF NOT EXISTS logs (
+  log_id        TEXT PRIMARY KEY,            -- random, made by the Worker
+  created       TEXT NOT NULL,               -- server date (YYYY-MM-DD)
+  app           TEXT NOT NULL,
+  version       TEXT NOT NULL,
+  lines         INTEGER NOT NULL,
+  issue_number  INTEGER
+);
+CREATE INDEX IF NOT EXISTS logs_created ON logs (created);
