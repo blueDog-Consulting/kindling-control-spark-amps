@@ -1,0 +1,79 @@
+name: Bug report
+description: Something doesn't work, or doesn't work with your amp.
+type: Bug
+# No labels here on purpose: the `bug` label starts the auto-fix workflow, so it's added at triage.
+# The "App" answer becomes platform:* labels (tools/issue-platforms.js).
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! The [troubleshooting guide](https://kindlingcontrol.app/guide/#troubleshooting) fixes most connection problems.
+        This is a public page: please don't paste anything personal (names, serial numbers, email addresses).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+      placeholder: I picked the Clean preset on my Spark 2, and the amp kept the old sound.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Connect to the amp
+        2. Open Presets, pick slot 3
+        3. ...
+  - type: dropdown
+    id: app
+    attributes:
+      label: App
+      description: Which app were you using? Pick all that have the problem.
+      multiple: true
+      options:
+        - Desktop app (Windows/macOS/Linux)
+        - Android app
+        - iPhone or iPad app
+        - Browser (development build)
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: In Settings (the gear) → About.
+      placeholder: 0.3.0
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and operating system
+      placeholder: Pixel 8, Android 16 / MacBook Air, macOS 26
+  - type: dropdown
+    id: amp
+    attributes:
+      label: Amp model
+      options:
+        - Spark 40
+        - Spark MINI
+        - Spark GO
+        - Spark 2
+        - Spark NEO
+        - Other / not sure
+        - No amp (simulator)
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Amp firmware version
+      description: Optional. Shown in the Console after connecting, or in the official app.
+  - type: textarea
+    id: log
+    attributes:
+      label: Console log
+      description: Optional. Open the Console tab, press Copy, and paste here. Red lines are the most useful.
+      render: text

@@ -135,6 +135,10 @@ If the user agrees (the apps ask on first run; the switch is in **Settings**, th
 
 Open feature requests (type **Feature** or label `enhancement`) from maintainers are planned by a scheduled Claude Code cloud session with the [Superpowers](https://github.com/obra/superpowers) skills: it posts the design and plan as a **draft** PR, and builds it in that PR once a maintainer adds `superpowers:approved`. Switch it off with `enabled` in `.github/feature-workflow.json`. Details: [docs/FEATURE-WORKFLOW.md](docs/FEATURE-WORKFLOW.md).
 
+## Reporting bugs and requesting features
+
+Use the [issue forms](https://github.com/bluedog-consulting/kindling-control-spark-amps/issues/new/choose): **Bug report** or **Feature request**. The form's **App** answer adds `platform:desktop`, `platform:android`, `platform:ios` or `platform:web` labels automatically; an issue with no platform label affects every app. How issues, labels and the project board fit together: [docs/ISSUES.md](docs/ISSUES.md).
+
 ## Contributing
 
 Read [AGENTS.md](AGENTS.md) first. It describes how the system fits together, and it applies to people as well as AI agents. One rule is enforced in CI: **any change to how the system works must update the docs and `AGENTS.md` in the same change.** CI also runs the tests on every pull request and on every push to `main`.

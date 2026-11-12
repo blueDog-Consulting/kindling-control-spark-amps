@@ -31,6 +31,7 @@ export const MATERIAL = [
   /^telemetry\//, // the error-report Worker
   /^\.claude\//, // project skills and plugin settings (feature-request workflow)
   /^\.github\/feature-workflow\.json$/,
+  /^\.github\/ISSUE_TEMPLATE\//, // issue forms (the App answer feeds tools/issue-platforms.js)
 ];
 
 /** Paths that count as user/developer documentation. */
