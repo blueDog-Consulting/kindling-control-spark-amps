@@ -20,6 +20,9 @@
 /** Where reports go. Forks: point this at your own Worker, or set it to '' to send nothing. */
 export const ENDPOINT = 'https://errors.kindlingcontrol.app/v1/report';
 
+/** Where Console logs go (Settings → Send Console log…). Same Worker as error reports. */
+export const LOG_ENDPOINT = ENDPOINT ? ENDPOINT.replace(/\/report$/, '/log') : '';
+
 /** localStorage key for the user's answer: 'on' or 'off' (missing = not asked yet, send nothing). */
 export const PREF_KEY = 'kindling-control.error-reports';
 /** localStorage key for the fingerprints this install has reported (device only, never sent as a list). */
@@ -33,6 +36,9 @@ const LIMITS = { message: 300, stack: 1500, where: 32, name: 40 };
 const MAX_PER_SESSION = 20;
 const MAX_PENDING = 5; // held until the user answers the first-run question
 const MAX_KNOWN = 200;
+/** Console logs: the newest lines are kept, up to these caps. */
+export const LOG_LIMITS = { lines: 300, chars: 24000, line: 400, note: 500 };
+const MAX_LOGS_PER_SESSION = 3;
 
 /**
  * Remove anything that could identify a person or their gear from free text:
@@ -66,6 +72,55 @@ export function scrub(text, max = LIMITS.message) {
     .replace(/\b\d{6,}\b/g, '<n>');
   s = s.replace(/[^\S\n]+/g, ' ').trim();
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+// Runs of at least 4 hex bytes ("01 fe 00 00 …"): kept as they are in Console logs.
+const HEX_RUN = /((?:\b[0-9a-f]{2}\b[ ]?){4,})/gi;
+
+/**
+ * Clean a Console log (the text of Settings → Send Console log…) before it is sent, and
+ * again in the Worker. Raw protocol bytes are kept as they are, because they are what makes
+ * a log useful (the maintainer agreed to that; they can contain preset names and the amp's
+ * serial number). Everything else on a line goes through scrub(), and the decoded amp name
+ * and serial number are removed. Only the newest LOG_LIMITS.lines lines / LOG_LIMITS.chars
+ * characters are kept.
+ */
+export function scrubLog(text) {
+  const lines = String(text ?? '')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => scrubLogLine(line))
+    .filter((line) => line.trim());
+  const out = [];
+  let chars = 0;
+  for (let i = lines.length - 1; i >= 0 && out.length < LOG_LIMITS.lines; i--) {
+    chars += lines[i].length + 1;
+    if (chars > LOG_LIMITS.chars) break;
+    out.push(lines[i]);
+  }
+  return out.reverse().join('\n');
+}
+
+function scrubLogLine(line) {
+  const indent = /^\s*/.exec(line)[0].slice(0, 4);
+  const parts = line
+    .trim()
+    // decoded amp name and serial number: drop the value
+    .replace(/(\b(?:ampName|serial)\b).*$/, '$1 …')
+    .split(HEX_RUN);
+  // scrub() trims; keep the spaces around each text part so "raw 01 fe …" stays readable
+  const s = parts
+    .map((part, i) => (i % 2 ? part : part.trim() ? `${/^\s*/.exec(part)[0] ? ' ' : ''}${scrubLogText(part)}${/\s$/.test(part) ? ' ' : ''}` : part))
+    .join('')
+    .trim();
+  const capped = s.length > LOG_LIMITS.line * 2 ? `${s.slice(0, LOG_LIMITS.line * 2 - 1)}…` : s;
+  return indent + capped;
+}
+
+// Logs say more than error messages, so shorter serial-like tokens go too: 8+ letters and
+// digits with at least 4 digits and a letter (e.g. S999C123456).
+function scrubLogText(text) {
+  return scrub(text, LOG_LIMITS.line).replace(/\b(?=[A-Za-z0-9]*\d{4})(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{8,}\b/g, '<id>');
 }
 
 /** Which app this is, from the runtime. Pass `window` (or a stand-in in tests). */
@@ -122,6 +177,36 @@ export function sanitizeReport(input) {
   return out;
 }
 
+/** Build a Console log report (Settings → Send Console log…). `issue` is an optional GitHub issue number. */
+export function buildLog(text, { app = 'web', os, version = 'dev', note = '', issue } = {}) {
+  const log = scrubLog(text);
+  const report = { v: 1, app, version, kind: 'log', lines: log ? log.split('\n').length : 0, log };
+  if (os) report.os = os;
+  const n = scrub(note, LOG_LIMITS.note);
+  if (n) report.note = n;
+  if (Number.isInteger(issue) && issue > 0 && issue < 1e6) report.issue = issue;
+  return report;
+}
+
+/** The Worker's check for a Console log: like sanitizeReport(), and scrubs the log again. */
+export function sanitizeLog(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const { app, os, version, kind, log, note, issue } = input;
+  if (kind !== 'log' || !APPS.includes(app)) return null;
+  if (typeof version !== 'string' || !/^(?:dev|\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]{1,32})?)$/.test(version)) return null;
+  if (typeof log !== 'string' || log.length > LOG_LIMITS.chars * 2) return null;
+  const clean = scrubLog(log);
+  if (!clean) return null;
+  const out = { app, version, kind: 'log', lines: clean.split('\n').length, log: clean };
+  if (app === 'desktop' && OSES.includes(os)) out.os = os;
+  if (typeof note === 'string' && note) {
+    const n = scrub(note, LOG_LIMITS.note);
+    if (n) out.note = n;
+  }
+  if (Number.isInteger(issue) && issue > 0 && issue < 1e6) out.issue = issue;
+  return out;
+}
+
 /** Short stable id for grouping the same error (name + message + first stack frame). */
 export async function fingerprint(report) {
   const frame = report.stack?.split('\n').find((l) => /\.js|:\d+/.test(l)) ?? '';
@@ -143,10 +228,12 @@ export async function fingerprint(report) {
  *           send?: (url: string, body: string) => void, force?: boolean }} opts
  *   `force` sends from 'dev' builds too (?errors=on, for testing the Worker).
  */
-export function createReporter({ endpoint = ENDPOINT, version, app, os, storage = null, send = defaultSend, force = false }) {
+export function createReporter({ endpoint = ENDPOINT, logEndpoint, version, app, os, storage = null, send = defaultSend, force = false }) {
   const seenThisSession = new Set();
   const pending = [];
   let sent = 0;
+  let logsSent = 0;
+  if (logEndpoint === undefined) logEndpoint = endpoint ? endpoint.replace(/\/report$/, '/log') : '';
   const available = !!endpoint && (version !== 'dev' || force);
 
   const read = (key) => {
@@ -218,6 +305,26 @@ export function createReporter({ endpoint = ENDPOINT, version, app, os, storage 
           return report;
         }
         return await deliver(report);
+      } catch {
+        return null;
+      }
+    },
+    /** Can a Console log be sent from this build? (independent of the error-report switch) */
+    get canSendLog() {
+      return available && !!logEndpoint && logsSent < MAX_LOGS_PER_SESSION;
+    },
+    /**
+     * Send a Console log. Only ever called when the user presses Send in the preview, so it
+     * doesn't depend on the error-report switch. Resolves to the report sent, or null.
+     */
+    async sendLog(text, { note = '', issue } = {}) {
+      try {
+        if (!reporter.canSendLog) return null;
+        const report = buildLog(text, { app, os, version, note, issue });
+        if (!report.log) return null;
+        logsSent++;
+        send(logEndpoint, JSON.stringify(report));
+        return report;
       } catch {
         return null;
       }

@@ -13,10 +13,16 @@
 // because Cloudflare would otherwise record user agent, location and request
 // metadata automatically. "Installs" are counted without ids: each app sends
 // first = true only the first time it reports a given error. See docs/TELEMETRY.md.
+//
+// POST /v1/log takes a Console log the user chose to send (Settings → Send Console
+// log…). It is logged in full to Workers Logs with a random log_id and, with DB and
+// GITHUB_TOKEN, opened as a GitHub issue labelled `console-log` that links back to that
+// log entry. The issue never contains the log itself, because issues are public.
 
-import { sanitizeReport, fingerprint } from '../src/app/telemetry.js';
+import { sanitizeReport, sanitizeLog, fingerprint } from '../src/app/telemetry.js';
 
 const MAX_BODY = 8 * 1024;
+const MAX_LOG_BODY = 64 * 1024;
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -24,12 +30,14 @@ const CORS = {
   'Access-Control-Max-Age': '86400',
 };
 export const ISSUE_LABEL = 'error-report';
+export const LOG_LABEL = 'console-log';
 
 export async function handle(request, env = {}, ctx = { waitUntil: () => {} }, log = console) {
   const { pathname } = new URL(request.url);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-  if (pathname !== '/v1/report') return new Response('not found', { status: 404, headers: CORS });
+  if (pathname !== '/v1/report' && pathname !== '/v1/log') return new Response('not found', { status: 404, headers: CORS });
   if (request.method !== 'POST') return new Response('method not allowed', { status: 405, headers: { ...CORS, Allow: 'POST' } });
+  if (pathname === '/v1/log') return handleLog(request, env, ctx, log);
 
   const body = await readLimited(request, MAX_BODY);
   if (body == null) return new Response('too large', { status: 413, headers: CORS });
@@ -47,6 +55,76 @@ export async function handle(request, env = {}, ctx = { waitUntil: () => {} }, l
   log.error({ event: 'client_error', fingerprint: fp, ...report });
   if (env.DB) ctx.waitUntil(track(env, fp, report, log).catch((err) => log.warn({ event: 'track_failed', fingerprint: fp, error: String(err?.message ?? err) })));
   return new Response(null, { status: 204, headers: CORS });
+}
+
+async function handleLog(request, env, ctx, log) {
+  const body = await readLimited(request, MAX_LOG_BODY);
+  if (body == null) return new Response('too large', { status: 413, headers: CORS });
+  let input;
+  try {
+    input = JSON.parse(body);
+  } catch {
+    return new Response('bad json', { status: 400, headers: CORS });
+  }
+  const report = sanitizeLog(input);
+  if (!report) return new Response('bad log', { status: 400, headers: CORS });
+  const logId = globalThis.crypto.randomUUID();
+  // The whole (re-scrubbed) log, in one line: filter event = console_log, log_id = <id>.
+  log.log({ event: 'console_log', log_id: logId, ...report });
+  if (env.DB) ctx.waitUntil(trackLog(env, logId, report, log).catch((err) => log.warn({ event: 'log_issue_failed', log_id: logId, error: String(err?.message ?? err).slice(0, 200) })));
+  return new Response(null, { status: 204, headers: CORS });
+}
+
+/** Record a Console log in D1 and open its GitHub issue (capped per day: the endpoint is public). */
+export async function trackLog(env, logId, report, log = console, today = new Date().toISOString().slice(0, 10)) {
+  await env.DB.prepare('INSERT INTO logs (log_id, created, app, version, lines) VALUES (?1, ?2, ?3, ?4, ?5)')
+    .bind(logId, today, report.os ? `${report.app}/${report.os}` : report.app, report.version, report.lines)
+    .run();
+  if (!env.GITHUB_TOKEN || !env.GITHUB_REPO) return { issue: null };
+  const { n } = await env.DB.prepare('SELECT count(*) AS n FROM logs WHERE created = ?1 AND issue_number IS NOT NULL').bind(today).first();
+  if (n >= Number(env.MAX_LOG_ISSUES_PER_DAY ?? 5)) {
+    log.warn({ event: 'log_issue_capped', log_id: logId });
+    return { issue: null };
+  }
+  const title = `[console log] ${report.os ? `${report.app}/${report.os}` : report.app} ${report.version}${report.issue ? ` (for #${report.issue})` : ''}`;
+  const res = await github(env, '/issues', { title, body: logIssueBody(logId, report, env), labels: [LOG_LABEL] });
+  if (!res.ok) throw new Error(`GitHub issue creation failed: ${res.status} ${(await res.text()).slice(0, 200)}`);
+  const issue = await res.json();
+  await env.DB.prepare('UPDATE logs SET issue_number = ?2 WHERE log_id = ?1').bind(logId, issue.number).run();
+  log.log({ event: 'log_issue_created', log_id: logId, issue: issue.number });
+  try {
+    await ensureLabel(env, issue, LOG_LABEL);
+  } catch (err) {
+    log.warn({ event: 'issue_label_failed', log_id: logId, issue: issue.number, error: String(err.message).slice(0, 200) });
+  }
+  return { issue };
+}
+
+/**
+ * The public issue for a Console log: what it came from and a link back to the log entry
+ * in Workers Logs. Not the log or the user's note: those stay in Cloudflare.
+ * LOG_LINK (optional var) is the dashboard URL of the Worker's logs; `{id}` in it becomes the log id.
+ */
+export function logIssueBody(logId, report, env = {}) {
+  const link = env.LOG_LINK ? String(env.LOG_LINK).replaceAll('{id}', encodeURIComponent(logId)) : '';
+  return [
+    'A user sent their Console log from Settings → Send Console log… (see `docs/TELEMETRY.md`).',
+    '',
+    '| | |',
+    '|---|---|',
+    `| App | ${report.os ? `${report.app}/${report.os}` : report.app} |`,
+    `| Version | ${report.version} |`,
+    `| Lines | ${report.lines} |`,
+    `| Note from the user | ${report.note ? 'yes (in the log entry)' : 'no'} |`,
+    ...(report.issue ? [`| Related issue | #${report.issue} |`] : []),
+    `| Log id | \`${logId}\` |`,
+    '',
+    link
+      ? `**[Open the log entry in Cloudflare](${link})**, then filter \`log_id = ${logId}\`.`
+      : `Open the log entry in Cloudflare: Workers & Pages → kindling-errors → Observability, filter \`log_id = ${logId}\`.`,
+    '',
+    'The log stays in Cloudflare because issues are public. If it shows a bug, open or update a bug issue with the lines that matter (check them for anything personal first), or link this from the matching `error-report` issue.',
+  ].join('\n');
 }
 
 /** Count the report in D1 and open a GitHub issue when enough installs have hit it. */
@@ -149,10 +227,10 @@ async function createIssue(env, fp, report, row) {
  * recommended token only has Issues: read and write. Adding the label in a second call needs
  * only that permission, and it is what starts the auto-fix workflow.
  */
-async function ensureLabel(env, issue) {
+async function ensureLabel(env, issue, label = ISSUE_LABEL) {
   const names = (issue.labels ?? []).map((l) => (typeof l === 'string' ? l : l.name));
-  if (names.includes(ISSUE_LABEL)) return;
-  const res = await github(env, `/issues/${issue.number}/labels`, { labels: [ISSUE_LABEL] });
+  if (names.includes(label)) return;
+  const res = await github(env, `/issues/${issue.number}/labels`, { labels: [label] });
   if (!res.ok) throw new Error(`GitHub labelling failed: ${res.status} ${(await res.text()).slice(0, 200)}`);
 }
 

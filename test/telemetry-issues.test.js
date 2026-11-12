@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { track, issueBody, handle, ISSUE_LABEL } from '../telemetry/worker.js';
+import { track, issueBody, handle, ISSUE_LABEL, trackLog, logIssueBody, LOG_LABEL } from '../telemetry/worker.js';
 
 let sqlite = null;
 try {
@@ -162,4 +162,45 @@ test('issue body has the machine-readable report block and nothing else from the
   const body = issueBody('abc', report(), { installs: 2, reports: 3, apps: 'android', first_version: '0.3.0', last_version: '0.3.0' });
   const json = JSON.parse(/<!-- error-report -->\n```json\n([\s\S]+?)\n```/.exec(body)[1]);
   assert.deepEqual(Object.keys(json), ['fingerprint', 'name', 'message', 'where', 'stack']);
+});
+
+const logReport = (over = {}) => ({ app: 'desktop', os: 'macos', version: '0.3.0', kind: 'log', lines: 12, log: '0.1s raw 01 fe 00 00', note: 'secret note', issue: 16, ...over });
+
+test('console logs open one console-log issue each, linking back to the log, capped per day', { skip: !sqlite && 'needs node:sqlite' }, async () => {
+  const DB = fakeD1();
+  const gh = fakeGitHub();
+  try {
+    const env = { DB, GITHUB_TOKEN: 't', GITHUB_REPO: 'o/r', MAX_LOG_ISSUES_PER_DAY: '2', LOG_LINK: 'https://dash.example/logs?q={id}' };
+    const r = await trackLog(env, 'id-1', logReport(), quiet, '2026-11-04');
+    assert.equal(r.issue.number, 42);
+    const { body } = gh.calls[0];
+    assert.equal(body.title, '[console log] desktop/macos 0.3.0 (for #16)');
+    assert.deepEqual(body.labels, [LOG_LABEL]);
+    assert.match(body.body, /\(https:\/\/dash\.example\/logs\?q=id-1\)/);
+    assert.match(body.body, /log_id = id-1/);
+    assert.match(body.body, /Related issue \| #16/);
+    assert.ok(!body.body.includes('secret note'), 'the note stays in Cloudflare');
+    assert.ok(!body.body.includes('01 fe'), 'the log stays in Cloudflare');
+    assert.ok(!body.body.includes('<!-- error-report -->'), 'not picked up by the auto-fix agent');
+    assert.deepEqual(gh.labelCalls[0].body.labels, [LOG_LABEL]);
+    await trackLog(env, 'id-2', logReport({ issue: undefined }), quiet, '2026-11-04');
+    assert.equal(gh.calls[1].body.title, '[console log] desktop/macos 0.3.0');
+    const r3 = await trackLog(env, 'id-3', logReport(), quiet, '2026-11-04');
+    assert.equal(r3.issue, null, 'capped');
+    assert.equal(gh.calls.length, 2);
+    assert.equal(DB.db.prepare('SELECT count(*) AS n FROM logs').get().n, 3, 'still recorded');
+    await trackLog(env, 'id-4', logReport(), quiet, '2026-11-05');
+    assert.equal(gh.calls.length, 3, 'a new day');
+    const row = DB.db.prepare('SELECT issue_number FROM logs WHERE log_id = ?').get('id-1');
+    assert.equal(row.issue_number, 42);
+  } finally {
+    gh.restore();
+  }
+});
+
+test('console-log issue without LOG_LINK says where to find the log', () => {
+  const body = logIssueBody('abc', logReport({ note: undefined, issue: undefined }));
+  assert.match(body, /Observability, filter `log_id = abc`/);
+  assert.match(body, /Note from the user \| no/);
+  assert.ok(!/Related issue/.test(body));
 });

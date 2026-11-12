@@ -16,7 +16,11 @@
   "vars": {
     "GITHUB_REPO": "bluedog-consulting/kindling-control-spark-amps",
     "ISSUE_THRESHOLD": "2",
-    "MAX_ISSUES_PER_DAY": "5"
+    "MAX_ISSUES_PER_DAY": "5",
+    // Console logs (POST /v1/log) each open one `console-log` issue, at most this many a day.
+    "MAX_LOG_ISSUES_PER_DAY": "5"
+    // Optional: "LOG_LINK": the dashboard URL of this Worker's logs (Workers & Pages -> kindling-errors ->
+    // Observability), linked from each console-log issue; "{id}" in it is replaced by the log id.
   },
   // Secret (not in this file): npx wrangler secret put GITHUB_TOKEN
   //   a fine-grained token for this repository only, with "Issues: read and write". Without it, no issues are opened.

@@ -129,7 +129,7 @@ Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions 
 
 ## Error reports and privacy
 
-If the user agrees (the apps ask on first run; the switch is in **Settings**, the gear in the top bar, next to **About**), released apps send anonymous error reports to a Cloudflare Worker so we can see which errors happen in which build: only the app (desktop/Android/iOS), the desktop OS, the app version and the scrubbed error. No ids, IP addresses, device or amp names, serial numbers or preset names. When the same error comes from 2+ installs, the Worker opens a GitHub issue, and an optional auto-fix workflow asks a Workers AI model for a fix and opens a **draft** PR if the tests pass. Details, setup and how to query the reports: [docs/TELEMETRY.md](docs/TELEMETRY.md).
+If the user agrees (the apps ask on first run; the switch is in **Settings**, the gear in the top bar, next to **About**), released apps send anonymous error reports to a Cloudflare Worker so we can see which errors happen in which build: only the app (desktop/Android/iOS), the desktop OS, the app version and the scrubbed error. No ids, IP addresses, device or amp names, serial numbers or preset names. When the same error comes from 2+ installs, the Worker opens a GitHub issue, and an optional auto-fix workflow asks a Workers AI model for a fix and opens a **draft** PR if the tests pass. Users can also choose to send their **Console log** (Settings → *Send Console log…*, with a preview of exactly what is sent); it's kept in Cloudflare and a public `console-log` issue links to it, without the log's contents. Details, setup and how to query the reports: [docs/TELEMETRY.md](docs/TELEMETRY.md).
 
 ## Feature requests
 

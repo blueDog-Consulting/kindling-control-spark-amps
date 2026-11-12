@@ -51,6 +51,7 @@
         <li><a href="#troubleshooting">Troubleshooting</a></li>
         <li><a href="#settings">Settings and About</a></li>
         <li><a href="#privacy">Privacy and error reports</a></li>
+        <li><a href="#send-log">Sending your Console log</a></li>
         <li><a href="#help">Getting help</a></li>
       </ol>
     </nav>
@@ -321,7 +322,7 @@
       <section id="settings">
         <h2>Settings and About</h2>
         <p>
-          The gear button in the top bar opens <strong>Settings</strong>. In released apps it holds the <strong>Send anonymous error reports</strong> switch (see <a href="#privacy">Privacy and error reports</a>).
+          The gear button in the top bar opens <strong>Settings</strong>. In released apps it holds the <strong>Send anonymous error reports</strong> switch (see <a href="#privacy">Privacy and error reports</a>) and the <strong>Send Console log…</strong> button (see <a href="#send-log">Sending your Console log</a>).
           The <strong>About</strong> part shows which version and which app you're using (include both when you report a problem), with links to the source code, the issue tracker and this guide.
         </p>
       </section>
@@ -348,16 +349,41 @@
         <p>
           When the same error is reported by more than one app, it is posted as a public issue on the project's GitHub page so it can be fixed. That issue contains only the report contents above.
         </p>
+        <p>
+          Sending your whole Console log is a separate, one-off choice with its own preview: see <a href="#send-log">Sending your Console log</a>.
+        </p>
       </section>
 
       <!-- ------------------------------------------------------------------ -->
+      <section id="send-log">
+        <h2>Sending your Console log</h2>
+        <p>
+          If something goes wrong, the <a href="#console">Console</a> usually shows why. In released apps you can send it to the project: open <strong>Settings</strong> (the gear in the top bar) and press <strong>Send Console log…</strong>.
+          It works whether or not error reports are switched on, because it only happens when you ask for it.
+        </p>
+        <ol>
+          <li>Reproduce the problem first, so the Console has it (the log keeps the newest 300 lines).</li>
+          <li>Press <strong>Send Console log…</strong>. A preview shows <strong>exactly</strong> what will be sent.</li>
+          <li>Optionally say what happened, and give the number of your GitHub issue if you opened one.</li>
+          <li>Press <strong>Send</strong>, or <strong>Cancel</strong> to send nothing.</li>
+        </ol>
+        <p>
+          <strong>What is removed:</strong> from the text of each line, names in quotes (preset and device names), the amp's name and serial number, IDs, e-mail addresses and file paths, the same way as for error reports.
+          <strong>What is kept:</strong> the raw bytes exchanged with the amp, because those are what make the log useful. They can contain your preset names and the amp's serial number.
+        </p>
+        <p>
+          The log goes to the project's error-report service, and a public GitHub issue is opened that links to it. That issue shows only the app, version and number of lines; the log itself and your note are not public.
+          No ID for you or your device, your IP address or your location is sent. At most 3 logs can be sent per session.
+        </p>
+      </section>
+
       <section id="help">
         <h2>Getting help</h2>
         <p>
           Found a bug, or something doesn't work with your amp? Please <a href="https://github.com/bluedog-consulting/kindling-control-spark-amps/issues/new/choose" target="_blank" rel="noopener">open an issue on GitHub</a> and choose <strong>Bug report</strong> (or <strong>Feature request</strong> for an idea).
         </p>
         <p>
-          The form asks for your amp model, your device, which app you use and its version (in <strong>Settings → About</strong>). If you can, paste the Console log too: open the <strong>Console</strong> tab and press <strong>Copy</strong>. Issues are public, so leave out anything personal.
+          The form asks for your amp model, your device, which app you use and its version (in <strong>Settings → About</strong>). If you can, paste the Console log too: open the <strong>Console</strong> tab and press <strong>Copy</strong>. In released apps you can instead <a href="#send-log">send the whole Console log</a> and give it your issue's number. Issues are public, so leave out anything personal.
         </p>
         <p>
           If KindlingControl is useful to you, you can support it with the yellow <strong>Buy me a coffee</strong> button in the top bar of the web and desktop apps.
