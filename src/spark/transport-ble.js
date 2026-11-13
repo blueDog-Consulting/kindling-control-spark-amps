@@ -67,6 +67,9 @@ export class WebBluetoothTransport {
   }
 
   async write(block) {
+    // Same error as the Capacitor transport. Without it, a write before connect() finished
+    // (or after it failed) hit the missing characteristic as a TypeError (issue #47).
+    if (!this.tx) throw new Error('not connected');
     for (let i = 0; i < block.length; i += this.maxWrite) {
       await this._writePart(block.subarray(i, i + this.maxWrite));
     }
