@@ -55,6 +55,7 @@ function reportError(where, err) {
 const state = {
   client: null,
   connected: false,
+  connecting: false, // a Connect attempt (picker, GATT, handshake) is running
   preset: null, // current live state
   slot: null,
   bank: 0, // which bank of four the preset buttons show
@@ -91,6 +92,12 @@ $('#connect').addEventListener('click', async () => {
     await state.client.disconnect();
     return;
   }
+  // One attempt at a time: a second click used to replace state.client while the first
+  // attempt was still connecting, and the first then read the preset through the new,
+  // unconnected transport (issue #47).
+  if (state.connecting) return;
+  state.connecting = true;
+  $('#connect').disabled = true;
   setStatus('busy', 'Connecting…');
   const client = new SparkClient(makeTransport());
   state.client = client;
@@ -100,6 +107,8 @@ $('#connect').addEventListener('click', async () => {
     setStatus('busy', 'Handshake…');
     const info = await client.handshake();
     state.connected = true;
+    state.connecting = false;
+    $('#connect').disabled = false;
     showInfo(info);
     setStatus('connected', info.name);
     setConnectedUi(true);
@@ -120,11 +129,17 @@ $('#connect').addEventListener('click', async () => {
     try {
       await client.disconnect();
     } catch {}
+  } finally {
+    if (state.client === client) {
+      state.connecting = false;
+      $('#connect').disabled = false;
+    }
   }
 });
 
 function wireClient(c) {
   c.addEventListener('disconnected', () => {
+    if (state.client !== c) return; // an earlier connection; a newer one is in charge
     state.connected = false;
     setStatus('idle', 'Disconnected');
     setConnectedUi(false);
@@ -211,7 +226,7 @@ let refreshing = null;
 let refreshAgain = false;
 
 function refreshPreset() {
-  if (!state.client) return Promise.resolve();
+  if (!state.client || !state.connected) return Promise.resolve();
   if (refreshing) {
     refreshAgain = true;
     return refreshing;
@@ -219,7 +234,7 @@ function refreshPreset() {
   refreshing = (async () => {
     do {
       refreshAgain = false;
-      if (!state.client) break;
+      if (!state.client || !state.connected) break; // the amp went away (or a new connect started)
       try {
         state.preset = await state.client.getPreset('current');
         renderPreset();

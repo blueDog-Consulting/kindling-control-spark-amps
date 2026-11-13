@@ -10,6 +10,7 @@ Every platform runs the same UI and protocol code from `src/`. Only the Bluetoot
 | iPad / iPhone | Capacitor (`ios/`) | native CoreBluetooth, same plugin |
 
 The app picks the transport at runtime: native plugin if present, otherwise Web Bluetooth.
+Every transport rejects `write()` with `Error('not connected')` until `connect()` has finished, and the app runs one Connect attempt at a time (the button is disabled while it runs).
 
 iPad is the reason the native apps exist. Every browser on iOS/iPadOS uses WebKit, which has no Web Bluetooth, so a web page can't reach the amp there.
 
