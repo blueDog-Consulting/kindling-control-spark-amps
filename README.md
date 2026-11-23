@@ -58,6 +58,7 @@ npm run serve          # http://localhost:8787  (no dependencies)
                        # http://localhost:8787/?mock=Spark%20GO  simulated GO (battery, tuner)
                        # http://localhost:8787/?mock=Spark%202   simulated Spark 2 (two banks, 8 presets)
                        # …&reorder=1                              simulated amp that accepts reordered chains
+                       # …&drop=1                                 simulated amp that ignores the first request after connecting
 ```
 
 Close the official Spark app first; it may hold the BLE connection. Then tap **Connect** and pick your amp.
@@ -129,11 +130,15 @@ Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions 
 
 ## Error reports and privacy
 
-If the user agrees (the apps ask on first run; the switch is in **Settings**, the gear in the top bar, next to **About**), released apps send anonymous error reports to a Cloudflare Worker so we can see which errors happen in which build: only the app (desktop/Android/iOS), the desktop OS, the app version and the scrubbed error. No ids, IP addresses, device or amp names, serial numbers or preset names. When the same error comes from 2+ installs, the Worker opens a GitHub issue, and an optional auto-fix workflow asks a Workers AI model for a fix and opens a **draft** PR if the tests pass. Details, setup and how to query the reports: [docs/TELEMETRY.md](docs/TELEMETRY.md).
+If the user agrees (the apps ask on first run; the switch is in **Settings**, the gear in the top bar, next to **About**), released apps send anonymous error reports to a Cloudflare Worker so we can see which errors happen in which build: only the app (desktop/Android/iOS), the desktop OS, the app version and the scrubbed error. No ids, IP addresses, device or amp names, serial numbers or preset names. When the same error comes from 2+ installs, the Worker opens a GitHub issue, and an optional auto-fix workflow asks a Workers AI model for a fix and opens a **draft** PR if the tests pass. Users can also choose to send their **Console log** (Settings → *Send Console log…*, with a preview of exactly what is sent); it's kept in Cloudflare and a public `console-log` issue links to it, without the log's contents. Details, setup and how to query the reports: [docs/TELEMETRY.md](docs/TELEMETRY.md).
 
 ## Feature requests
 
 Open feature requests (type **Feature** or label `enhancement`) from maintainers are planned by a scheduled Claude Code cloud session with the [Superpowers](https://github.com/obra/superpowers) skills: it posts the design and plan as a **draft** PR, and builds it in that PR once a maintainer adds `superpowers:approved`. Switch it off with `enabled` in `.github/feature-workflow.json`. Details: [docs/FEATURE-WORKFLOW.md](docs/FEATURE-WORKFLOW.md).
+
+## Reporting bugs and requesting features
+
+Use the [issue forms](https://github.com/bluedog-consulting/kindling-control-spark-amps/issues/new/choose): **Bug report** or **Feature request**. The form's **App** answer adds `platform:desktop`, `platform:android`, `platform:ios` or `platform:web` labels automatically; an issue with no platform label affects every app. How issues, labels and the project board fit together: [docs/ISSUES.md](docs/ISSUES.md).
 
 ## Contributing
 
