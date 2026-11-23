@@ -14,6 +14,7 @@ import {
   TEMP_SLOT,
   PRESETS_PER_BANK,
   blankPreset,
+  defaultParams,
   randomUuid,
 } from '../spark/index.js';
 import { PresetLibrary } from './library.js';
@@ -75,6 +76,7 @@ function makeTransport() {
       name: params.get('mock') || 'Spark 40',
       battery: params.get('mock') !== 'Spark 40' && !!params.get('mock'),
       fixedChain: !params.has('reorder'), // ?mock&reorder=1 simulates an amp that accepts reordered chains
+      swap: params.get('swap') || 'ok', // ?mock&swap=ignore|silent simulates an amp that won't take 01 06
       dropFirstRequests: Number(params.get('drop')) || 0, // ?mock&drop=1: the amp ignores the first request
     });
     window.mockAmp = state.mock; // play with it from devtools: mockAmp.turnKnob(3, 0, 0.9)
@@ -491,22 +493,33 @@ const rig = createRig({
   root: $('#rig'),
   state,
   actions: {
-    setParam: (effect, p, v) => state.client?.setParam(effect, p, v).catch((e) => (logLine('err', e.message), reportError('set-param', e))),
-    setOnOff: (effect, on) => state.client?.setEffectOnOff(effect, on).catch((e) => (logLine('err', e.message), reportError('set-on-off', e))),
+    setParam: (effect, p, v) => state.connected && state.client?.setParam(effect, p, v).catch((e) => (logLine('err', e.message), reportError('set-param', e))),
+    setOnOff: (effect, on) => state.connected && state.client?.setEffectOnOff(effect, on).catch((e) => (logLine('err', e.message), reportError('set-on-off', e))),
     async changeEffect(from, to) {
       if (!state.connected) {
         const fx = state.preset.pedals.find((f) => f.name === from);
-        if (fx) fx.name = to;
+        if (fx) Object.assign(fx, { name: to, params: defaultParams(to, fx.params.length) });
+        state.unsaved = true;
         renderPreset();
         return true;
       }
       try {
-        await state.client.changeEffect(from, to);
-        await refreshPreset();
+        const { method, preset } = await state.client.swapEffect(from, to);
+        state.preset = preset;
+        if (method === 'preset') {
+          // the amp ignored the swap message; the edited tone now lives in the temporary slot
+          state.slot = TEMP_SLOT;
+          state.unsaved = true;
+          highlightSlot();
+          logLine('info', `swap ${from} → ${to}: amp ignored 01 06, loaded the edited preset into the temporary slot`);
+          toast('Changed the effect by loading the edited preset into the temporary slot. Nothing stored changed; use Save… to keep it.');
+        }
+        renderPreset();
         return true;
       } catch (err) {
-        logLine('err', err.message);
+        logLine('err', `could not change ${from} to ${to}: ${err.message}`);
         reportError('change-effect', err);
+        toast(`Couldn't change the effect: ${err.message}`, 'warn', { label: 'Troubleshooting', run: () => openHelp('troubleshooting') });
         return false;
       }
     },

@@ -6,7 +6,7 @@
 import { encodeMessage, StreamDecoder, MsgWriter } from './codec.js';
 import { CMD, SUB, TEMP_SLOT } from './constants.js';
 import { decode, presetWriter, randomUuid } from './messages.js';
-import { findEffect, canonicalOrder } from './effects.js';
+import { canonicalOrder, defaultParams } from './effects.js';
 
 const P = (name, desc, pedals) => ({ uuid: randomUuid(), name, version: '0.7', description: desc, icon: 'icon.png', bpm: 120, pedals });
 const fx = (name, isOn, params) => ({ name, isOn, params });
@@ -63,6 +63,7 @@ export class MockSparkTransport {
     fixedChain = true,
     busyPresets = false,
     dropFirstRequests = 0,
+    swap = 'ok',
   } = {}) {
     // Simulates an amp that isn't listening yet (issue #26): the first N requests (02 xx, of any
     // kind) after each connect get no reply. Writes are still answered.
@@ -74,6 +75,9 @@ export class MockSparkTransport {
     // transfers (unverified on real hardware; see docs/PROTOCOL.md).
     this.busyPresets = busyPresets;
     this.presetBusy = false;
+    // How the mock answers an effect swap (01 06): 'ok' swaps and acks; 'ignore'
+    // acks but keeps the old model; 'silent' neither swaps nor acks.
+    this.swap = swap;
     // Real firmware is believed to use fixed slots; with fixedChain the mock
     // stores uploaded presets in canonical order, like an amp that ignores reordering.
     this.fixedChain = fixedChain;
@@ -185,11 +189,11 @@ export class MockSparkTransport {
         return; // no ack for 01 04
       }
       case SUB.CHANGE_EFFECT: {
-        const fx = this.current.pedals.find((f) => f.name === d.from);
+        if (this.swap === 'silent') return;
+        const fx = this.swap === 'ok' && this.current.pedals.find((f) => f.name === d.from);
         if (fx) {
           fx.name = d.to;
-          const n = findEffect(d.to)?.params.length || fx.params.length;
-          fx.params = Array.from({ length: n }, () => 0.5);
+          fx.params = defaultParams(d.to, fx.params.length);
         }
         break;
       }

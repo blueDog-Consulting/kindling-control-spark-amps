@@ -1,0 +1,59 @@
+name: Android test build
+
+# A debug-signed APK for testing a pull request on a phone. Not a release: nothing is
+# tagged or published, and the APK is only kept as a workflow artifact (14 days).
+# Runs on PRs that touch the Android app's paths (the same list as APP_PATHS in
+# tools/release-plan.js), and by hand from the Actions tab. See docs/RELEASING.md.
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'android/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tools/release-android.sh'
+      - '.github/workflows/android-debug.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-debug-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags, for the version name
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - uses: android-actions/setup-android@v4 # release-android.sh installs the SDK platform it needs (CI only)
+      - name: Build debug APK
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        # Version name: the latest tag plus -pr<N> (or -dev), e.g. 0.2.0-pr7, so it's never mistaken for a release.
+        run: |
+          base=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || echo v0.0.0)
+          base=${base%%-*}
+          suffix=${PR:+pr$PR}
+          bash tools/release-android.sh "$base-${suffix:-dev}" --debug --skip-install --no-notes
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-debug-apk
+          path: out/*.apk
+          if-no-files-found: error
+          retention-days: 14
