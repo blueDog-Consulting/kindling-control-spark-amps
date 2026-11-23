@@ -37,7 +37,8 @@ export function planRelease(files, { force = false } = {}) {
 /**
  * vMAJOR.MINOR.PATCH[-pre.N] -> version name + monotonically increasing Android versionCode.
  * code = major*1e6 + minor*1e4 + patch*100 + suffix, where suffix is
- *   alpha.N -> 0+N, beta.N -> 33+N, rc.N -> 66+N (N up to 32), final release -> 99
+ *   alpha.N -> 0+N, beta.N -> 33+N, rc.N -> 66+N (N up to 32), final release -> 99,
+ *   any other suffix (e.g. the PR test builds' -pr48 or -dev) -> 0
  * so 1.2.3-alpha.1 < 1.2.3-beta.1 < 1.2.3-beta.2 < 1.2.3-rc.1 < 1.2.3 < 1.2.4-alpha.1.
  * Android refuses to install an update with a lower versionCode, so this order matters.
  */
@@ -50,9 +51,15 @@ export function versionFromTag(tag) {
   let suffix = 99;
   if (pre) {
     const channel = /^(alpha|beta|rc)/i.exec(pre)?.[1].toLowerCase();
-    const n = Number(/(\d+)$/.exec(pre)?.[1] ?? 0);
-    if (n > 32) throw new Error('pre-release number must be 0-32');
-    suffix = ({ alpha: 0, beta: 33, rc: 66 }[channel] ?? 0) + n;
+    if (channel) {
+      const n = Number(/(\d+)$/.exec(pre)?.[1] ?? 0);
+      if (n > 32) throw new Error('pre-release number must be 0-32');
+      suffix = { alpha: 0, beta: 33, rc: 66 }[channel] + n;
+    } else {
+      // Other suffixes (the PR test builds' -pr<N> and -dev) get 0, the lowest code for that
+      // version: those builds are never uploaded, and a PR number can exceed 32 (#48).
+      suffix = 0;
+    }
   }
   return {
     name: `${major}.${minor}.${patch}${pre ? `-${pre}` : ''}`,
