@@ -17,7 +17,7 @@ The bytes are identical on BLE and SPP. They're a stream of **blocks**, and a bl
 
 Writing to the amp, as Ignitron does on real amps:
 
-* Use **write-without-response**. On Spark 2 + macOS, write-with-response fails with "GATT operation failed for unknown reason". The transports here fall back to the other mode once if a write fails.
+* Use **write-without-response**. On Spark 2 + macOS, write-with-response fails with "GATT operation failed for unknown reason". The transports here fall back to the other mode once if a write fails. Web Bluetooth also reconnects and repeats the service lookup once if the GATT link drops during connect (seen on Windows, "GATT Server is disconnected"; **unverified** on hardware).
 * Spark 40, GO and NEO accept up to `0xAD` bytes per write. MINI and Spark 2 need writes of `0x64` bytes or less, and a pause of about 80 ms after each block.
 * Until the amp has reported its name (`02 11`), use the conservative limits: `0x64`-byte writes with 80 ms between blocks.
 
@@ -75,7 +75,7 @@ Parameter values are floats from 0.0 to 1.0. The app shows them as 0 to 10.
 |---|---|---|---|
 | `01 01` | preset (see below), multi-chunk | `05 01` per chunk, `04 01` at the end | upload preset to slot 0–3 or `7F` (temporary) |
 | `01 04` | pstr effect, int param, float value, input (`00` = Input 1, `01` = Input 2) | **none** | set a parameter. The **Spark 2** (firmware 2.7.2.200) silently ignores it without the trailing input byte. We always send `00`; that this is harmless on the Spark 40 / GO / MINI / NEO is **(unverified)** |
-| `01 06` | pstr old, pstr new | `04 06` | swap the model in a slot (e.g. `Twin` → `Plexi`) |
+| `01 06` | pstr old, pstr new | `04 06` | swap the model in a slot (e.g. `Twin` → `Plexi`). A user report (issue #5) says model changes didn't take on their amp; which amps or firmware ignore `01 06`, and whether it needs trailing bytes like `01 04`/`01 15`, is **(unverified)**. `SparkClient.swapEffect()` therefore reads the live preset back and, if the amp didn't ack or kept the old model, loads the edited preset into the temporary slot instead |
 | `01 15` | pstr effect, bool, `00` | `04 15` | effect on/off |
 | `01 28` | pstr effect, bool | `04 28` | ask the amp to report expression/wah volume (JH.Vox846) |
 | `01 38` | `00`, slot | `04 38` | select a hardware preset (0–3; **Spark 2: 0–7**, where 4–7 is bank 2), or `7F` |
@@ -154,7 +154,7 @@ The Spark 2 stores 8 presets in two banks of four. The bank button on the amp ju
 
 `02 11` amp name → `02 2A` checksums → `02 23` serial → `01 70` licence → `02 01` × 4 (stored presets) → `02 10` selected preset → `02 2F` firmware → `02 01 01 00` live state.
 
-`SparkClient.handshake()` runs a reduced version of this: name, serial, firmware, selected preset and power status. Each of the first four reads is asked a second time (after a 250 ms pause) if it gets no reply; the status request isn't, because the Spark 40 never answers it: desktop (Windows) and Android reports of `timeout waiting for 3:17` on connect (issue #26) suggest the amp sometimes ignores the first request after connecting **(unverified; cause not confirmed on real hardware)**.
+`SparkClient.handshake()` runs a reduced version of this: name, serial, firmware, selected preset and power status. Each of the first four reads is asked a second time (after a 250 ms pause) if it gets no reply; the status request isn't, because the Spark 40 never answers it: desktop (Windows) and Android reports of `timeout waiting for 3:17` on connect (issue #26) suggest the amp sometimes ignores the first request after connecting **(unverified; cause not confirmed on real hardware)**. Only the name is required; the other steps may fail without failing the handshake, but if the amp drops the Bluetooth link during any of them the handshake fails with `disconnected` (issue #43).
 
 ## Open questions (good targets for your captures)
 

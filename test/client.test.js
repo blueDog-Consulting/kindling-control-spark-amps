@@ -107,6 +107,38 @@ test('tryChainOrder: fixed-chain amp normalises the order, flexible amp keeps it
   }
 });
 
+test('swapEffect uses 01 06 when the amp takes it', async () => {
+  const { t, c } = await connected();
+  const sent = [];
+  c.addEventListener('sent', (e) => sent.push(`${e.detail.cmd}:${e.detail.sub}`));
+  const { method, preset } = await c.swapEffect('ChorusAnalog', 'UniVibe');
+  assert.equal(method, 'swap');
+  assert.equal(preset.pedals[4].name, 'UniVibe');
+  assert.equal(t.slot, 0); // still on the hardware preset
+  assert.ok(!sent.includes('1:1'), 'no preset upload');
+});
+
+for (const [swap, how] of [['ignore', 'acks 01 06 but keeps the old model'], ['silent', 'never acks 01 06']]) {
+  test(`swapEffect falls back to the temporary slot when the amp ${how}`, async () => {
+    const t = new MockSparkTransport({ latencyMs: 1, swap });
+    const c = new SparkClient(t, { timeoutMs: 150 });
+    await c.connect();
+    const stored = structuredClone(t.presets[0]);
+    const { method, preset } = await c.swapEffect('ChorusAnalog', 'UniVibe');
+    assert.equal(method, 'preset');
+    assert.equal(preset.pedals[4].name, 'UniVibe');
+    assert.deepEqual(preset.pedals[4].params, [0.5, 0, 0.5]); // knob, switch, knob
+    assert.equal(preset.pedals[4].isOn, true); // keeps the slot's on/off state
+    assert.equal(t.slot, 0x7f);
+    assert.deepEqual(t.presets[0], stored); // nothing stored changed
+  });
+}
+
+test('swapEffect rejects when the effect is not in the live preset', async () => {
+  const { c } = await connected({ swap: 'ignore' });
+  await assert.rejects(c.swapEffect('NoSuchFx', 'UniVibe'), /isn't in the amp's current preset/);
+});
+
 // Issue #9: "timeout waiting for 3:1" when preset reads overlap (e.g. the amp's preset
 // button pressed twice quickly, each press triggering a refresh).
 test('overlapping preset reads are sent one at a time, so none times out (#9)', async () => {
@@ -135,6 +167,29 @@ test('different reply keys still run concurrently', async () => {
   const [name, preset] = await Promise.all([c.ampName(), c.getPreset('current')]);
   assert.equal(name, 'Spark GO');
   assert.equal(preset.current, true);
+});
+
+test('handshake fails if the amp drops the link part-way (#43)', async () => {
+  const { t, c } = await connected();
+  let disconnected = 0;
+  c.addEventListener('disconnected', () => disconnected++);
+  // Drop the link right after the amp has answered the name request.
+  const request = t._request.bind(t);
+  t._request = (sub, m, seq) => {
+    const r = request(sub, m, seq);
+    if (sub === 0x11) setTimeout(() => t.disconnect(), 5);
+    return r;
+  };
+  assert.equal(c.connected, true);
+  await assert.rejects(c.handshake(), /disconnected/);
+  assert.equal(c.connected, false);
+  assert.equal(disconnected, 1);
+});
+
+test('handshake fails at once if the link drops before the name arrives', async () => {
+  const { t, c } = await connected({ latencyMs: 50 });
+  setTimeout(() => t.disconnect(), 5);
+  await assert.rejects(c.handshake(), /disconnected/);
 });
 
 test('handshake retries the amp name once when the first request is ignored (issue #26)', async () => {

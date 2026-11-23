@@ -58,6 +58,10 @@ They must be committed and pushed before you tag, so `v0.2.0` ships exactly `rel
 
 **macOS** isn't in the pipeline yet either: its build doesn't work in CI so far, so it was taken out of the desktop matrix in `release.yml` to keep it from blocking releases (any failed build skips publishing). Build the `.dmg` locally with `npm run desktop:dist` on a Mac (see [APPS.md](APPS.md)), and add the `macos-latest` row back once it builds.
 
+## Android test builds (not releases)
+
+`.github/workflows/android-debug.yml` builds a **debug-signed APK** for testing a pull request on a phone. It runs on every PR that touches the Android app's paths (the list above, plus `tools/release-android.sh` and the workflow itself), and by hand from **Actions → Android test build → Run workflow** once the file is on `main`. It tags nothing and publishes nothing: the APK is a workflow artifact (`android-debug-apk`, kept 14 days) on the run's summary page, and downloading it needs a GitHub login. It goes through the same `tools/release-android.sh --debug` as releases. The version name is the latest tag plus `-pr<N>` (or `-dev`), e.g. `0.2.0-pr7`, which `src/version.js` is stamped with, so opted-in error reports from test builds are identifiable. A debug-signed APK can't update an installed Play Store or release-signed copy: testers uninstall that first (which clears **My presets**, so they should export them).
+
 **iOS** isn't in the pipeline yet. It needs a macOS runner, an Apple Developer account and signing certificates. Build it locally for now (see [APPS.md](APPS.md)).
 
 ## Secrets (repo Settings → Secrets and variables → Actions)

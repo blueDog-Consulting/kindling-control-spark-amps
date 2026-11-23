@@ -167,6 +167,17 @@ export function paramInfo(effectId, index, slotKey) {
   return { name: `Param ${index + 1}`, kind: 'knob' };
 }
 
+/**
+ * Starting values for a model's parameters after swapping it into a slot:
+ * 0.5 for knobs, 0 for switches and selectors. Models not in the catalog (or
+ * with no known parameters) get fallbackCount knobs, e.g. the old model's count.
+ */
+export function defaultParams(effectId, fallbackCount = 0) {
+  const known = findEffect(effectId)?.params ?? [];
+  const n = known.length || fallbackCount;
+  return Array.from({ length: n }, (_, i) => (known[i] && known[i].kind !== 'knob' ? 0 : 0.5));
+}
+
 /** A neutral starting point for a new preset: clean amp, gate + reverb on, the rest off. */
 export function blankPreset(name = 'New preset') {
   const p = (id, isOn, params) => ({ name: id, isOn, params });
