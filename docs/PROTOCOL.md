@@ -75,7 +75,7 @@ Parameter values are floats from 0.0 to 1.0. The app shows them as 0 to 10.
 |---|---|---|---|
 | `01 01` | preset (see below), multi-chunk | `05 01` per chunk, `04 01` at the end | upload preset to slot 0–3 or `7F` (temporary) |
 | `01 04` | pstr effect, int param, float value, input (`00` = Input 1, `01` = Input 2) | **none** | set a parameter. The **Spark 2** (firmware 2.7.2.200) silently ignores it without the trailing input byte. We always send `00`; that this is harmless on the Spark 40 / GO / MINI / NEO is **(unverified)** |
-| `01 06` | pstr old, pstr new | `04 06` | swap the model in a slot (e.g. `Twin` → `Plexi`) |
+| `01 06` | pstr old, pstr new | `04 06` | swap the model in a slot (e.g. `Twin` → `Plexi`). A user report (issue #5) says model changes didn't take on their amp; which amps or firmware ignore `01 06`, and whether it needs trailing bytes like `01 04`/`01 15`, is **(unverified)**. `SparkClient.swapEffect()` therefore reads the live preset back and, if the amp didn't ack or kept the old model, loads the edited preset into the temporary slot instead |
 | `01 15` | pstr effect, bool, `00` | `04 15` | effect on/off |
 | `01 28` | pstr effect, bool | `04 28` | ask the amp to report expression/wah volume (JH.Vox846) |
 | `01 38` | `00`, slot | `04 38` | select a hardware preset (0–3; **Spark 2: 0–7**, where 4–7 is bank 2), or `7F` |
