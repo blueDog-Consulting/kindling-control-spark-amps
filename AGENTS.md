@@ -64,22 +64,25 @@ src/                     everything that ships; served as-is, no bundler, no bui
     effects.js           effect/amp catalog, param labels, AMP_KNOB_ORDER, blankPreset(), BASED_ON, SLOT_ORDER
 desktop/                 Electron main + preload (serves src/ over the secure kindling:// scheme)
 android/, ios/           Capacitor native projects (generated; web assets are synced in, not committed)
-tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, release (the one-command release), release-plan, release-notes, release-android.sh
+tools/                   btsnoop-decode CLI, zero-dep dev server, check-docs, issue-platforms (issue form -> platform labels), release (the one-command release), release-plan, release-notes, release-android.sh
                          (the Android build, run locally and by CI), build-icons, stamp-version, autofix,
                          screenshots (marketing images via Playwright; the website repo runs it)
 assets/logo/concepts/    logo source SVGs (kindling, knob, monogram, necks, amp, pick); `npm run icons` renders all platform icons
 build/                   generated desktop icons for electron-builder (committed)
 .github/workflows/       ci.yml (tests + docs rule), release.yml (tag -> build changed apps -> GitHub Release),
                          android-debug.yml (PR -> debug APK as a workflow artifact, not a release),
-                         autofix.yml (error-report or bug issue -> Workers AI fix -> draft PR)
+                         autofix.yml (error-report or bug issue -> Workers AI fix -> draft PR),
+                         issue-platforms.yml (issue form "App" answer -> platform:* labels)
+.github/ISSUE_TEMPLATE/  issue forms: bug.yml, feature.yml, config.yml (docs/ISSUES.md)
 .github/feature-workflow.json  switch and limits for the feature-request workflow (tools/feature-sweep.js)
 .claude/                 settings.json (enables the Superpowers plugin), skills/feature-sweep/ (the feature-request workflow)
 test/                    node:test suites; test/fixtures holds real captures
 release-notes/           versioned store "What's new" text: <version>/android.txt, macos.txt
 TRADEMARKS.md            what forks may do with the name, logo, app ID and store presence (the GPL covers the code only)
 docs/                    PROTOCOL.md (wire format), APPS.md (building apps), CAPTURE.md (sniffing the official app), RELEASING.md,
-                         TELEMETRY.md (anonymous error reports), FEATURE-WORKFLOW.md (feature requests -> Superpowers plan/build PRs)
-telemetry/               Cloudflare Worker (worker.js, wrangler.jsonc, schema.sql for D1) that receives error reports and opens issues; deployed by hand
+                         TELEMETRY.md (anonymous error reports), FEATURE-WORKFLOW.md (feature requests -> Superpowers plan/build PRs),
+                         ISSUES.md (issue forms, platform labels, the project board)
+telemetry/               Cloudflare Worker (worker.js, wrangler.jsonc, schema.sql for D1) that receives error reports and Console logs and opens issues; deployed by hand
 ```
 
 ## Commands
@@ -90,6 +93,7 @@ npm run serve                    # http://localhost:8787 (Web Bluetooth works on
                                  #   ?mock  ?mock=Spark%20GO  ?mock=Spark%202  -> simulated amps
                                  #   add &reorder=1 for a simulated amp that accepts reordered chains
                                  #   add &swap=ignore or &swap=silent for one that won't take a model swap (01 06)
+                                 #   add &drop=1 for one that ignores the first request after connecting
 npm run check:docs               # the documentation rule, against origin/main
 npm install                      # only needed for the desktop/mobile shells
 npm run desktop:mock             # Electron against the simulated Spark GO
@@ -114,6 +118,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 - Floats are float32 and must round-trip **bit-exactly**: presets are checksummed. Don't round values in the codec; format them for display in the UI only.
 - `seq` runs 1..0x7F. `01 04` (set parameter) gets **no ack**; other `01 xx` writes get `04 xx`, and `02 xx` requests get `03 xx`.
 - Replies are matched only by `cmd:sub`, so `SparkClient` keeps **at most one request per reply key** outstanding (`_oneAtATime`); the next is sent, and its timeout started, once the previous one settles. Overlapping preset reads caused `timeout waiting for 3:1` (issue #9). In the app, `refreshPreset()` merges refreshes requested while one runs into one more read. `MockSparkTransport({ busyPresets: true })` drops preset requests that arrive mid-transfer, to test this.
+- `request(msg, { retries, retryDelayMs })` can resend a request (`02 xx`, a read) that **timed out**; any other error (disconnect, failed write) is thrown unchanged, and a disconnect during the 250 ms pause rejects with `disconnected`. Before a retry the client resets `StreamDecoder` (only if nothing else is waiting: a reply cut off halfway would swallow the next one), and treats one unrequested reply of that key, for about one timeout, as the late answer to the first attempt, so it isn't emitted as an amp-side event. `handshake()` uses `retries: 1` for name, serial, firmware and selected preset (a request right after connecting is sometimes unanswered, issue #26, cause unverified), not for `ampStatus` (the Spark 40 never answers it). An amp that never answers now fails the connect after about 6 s. `MockSparkTransport({ dropFirstRequests: n })` (`?mock&drop=n` in the app) ignores the first n requests after each connect.
 - Effect names in `01 04`/`01 06`/`01 15` are "prefixed strings" (length byte + fixstr).
 - `01 04` ends with an input byte (`00` = Input 1). The Spark 2 silently ignores knob changes without it, the same way `01 15` needs its trailing `00`. Don't drop trailing bytes the official app sends.
 
@@ -164,6 +169,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 - The Worker never reads the IP, headers or `request.cf`, and re-scrubs with the same `sanitizeReport()`. `wrangler.jsonc` keeps **invocation logs and traces off** for it (traces would record user agent, location and ASN); keep it that way, and keep it a separate Worker. Its custom-domain route must keep `zone_name` (wrangler can't always infer the zone: error 10082).
 - With D1 (`DB`, `telemetry/schema.sql`) it counts installs per fingerprint and, at `ISSUE_THRESHOLD` (2), opens one public GitHub issue labelled `error-report` (secret `GITHUB_TOKEN`, capped by `MAX_ISSUES_PER_DAY`). GitHub silently drops `labels` on a new issue when the token lacks push access, so `ensureLabel()` adds the label in a second call if the created issue doesn't have it (the label is what starts the auto-fix workflow); a labelling failure is logged (`issue_label_failed`) and never releases the claim, so it can't open a duplicate. The issue's `<!-- error-report -->` JSON block is the contract with the auto-fix agent; change `issueBody()` and `parseIssueReport()` together.
 - **Auto-fix:** `.github/workflows/autofix.yml` + `tools/autofix.js` (off unless the repo variable `AUTOFIX_ENABLED` is `true`). It runs when an issue is labelled `error-report` (uses only the report block, `parseIssueReport`) or `bug` (uses the title and description, `parseBugReport`: HTML comments stripped, capped at 200 / 4,000 characters; files picked by `candidateFilesForBug`). A `bug` is skipped when the issue already has `triaged`, because Claude's scheduled triage handled it. A Workers AI model (`AUTOFIX_MODEL`, default `@cf/openai/gpt-oss-120b`; models with smaller context windows, such as `@cf/qwen/qwen2.5-coder-32b-instruct` at 32k, need an entry in `MODEL_LIMITS`) proposes search/replace edits; they're tested in a read-only job and become a **draft** PR (pushed and opened with `AUTOFIX_PR_TOKEN` if set, so CI runs), or an issue comment (always posted with Actions' own `github.token`, so the PR token needs no Issues permission). Issue content is untrusted: only the report block (or a bug's capped title and description) is used, edits are limited to `ALLOWED_PATH` (`src/app/*.js` except `telemetry.js`, and `src/spark/*.js`), the writing job never runs the patched code, and nothing is merged automatically. Don't widen any of that without thinking through prompt injection from forged reports.
+- **Console logs** (issue #25): Settings → **Send Console log…** (`#settings-log`) opens `#log-dialog`, a preview of exactly what is sent plus an optional note and GitHub issue number; nothing is sent until the user presses Send, and the previewed text is what's sent. It's independent of the error-report switch (a one-off user action), hidden where reports are (dev builds, `?mock`, no endpoint), max 3 per session (`reporter.sendLog`). `scrubLog()` keeps the newest 300 lines / 24,000 chars, scrubs each line's text with `scrub()`, drops decoded `ampName`/`serial` values, and **keeps raw hex runs as they are** (the maintainer's call; they can contain preset names and the serial, and the preview and guide `#send-log` say so). The Worker's `POST /v1/log` re-checks with `sanitizeLog()`, logs the whole thing as `event = console_log` with a random `log_id`, and `trackLog()` (D1 `logs` table) opens a public `console-log` issue with a link back to the log entry (`LOG_LINK` var, `{id}` placeholder) capped by `MAX_LOG_ISSUES_PER_DAY`. **The log and note never go into the issue** (issues are public), and the issue has no report block and no `error-report` label, so auto-fix ignores it. Change `buildLog()`/`sanitizeLog()` together, and keep the dialog text, the guide's `#send-log`, and `docs/TELEMETRY.md` in agreement.
 - Reports are sent only when `src/version.js` is stamped (the committed value `'dev'` sends nothing; `?errors=on` overrides for testing), never with `?mock`, at most 20 per session and each error once per session.
 - In `app.js`, report failures with `reportError('<where>', err)` next to the `logLine('err', …)`. Don't report errors whose messages are about the user's own files (import, capture). `src/app/telemetry.js` must stay DOM-free at import: the Worker bundles it.
 
@@ -175,6 +181,13 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 - **Two phases:** *plan* runs `superpowers:brainstorming` with no questions (each question becomes a written **Assumption**) and `superpowers:writing-plans`, committing `docs/plans/issue-<n>-<slug>-{design,plan}.md` to `claude/feature-<n>-<slug>` as a **draft** PR and labelling the issue `superpowers:planned`. *implement* runs only after a maintainer adds `superpowers:approved`: `superpowers:subagent-driven-development` with TDD on the same branch; `npm test`, `npm run check:docs` and `node tools/feature-sweep.js check-paths` must pass; the PR stays a draft (`superpowers:implemented`). Never merge or mark ready.
 - **Limits:** `maxRunsPerIssue` 5 (runs are counted by `<!-- feature-sweep:run -->` in issue comments; at the limit the issue gets `superpowers:blocked`), `maxIssuesPerSweep` 1, and `deniedPaths` (`LICENSE`, `.github/workflows/`, `telemetry/`, `.claude/`, the config, the selector and `tools/check-docs.js`). Don't let the workflow edit its own guard rails.
 - `.claude/settings.json` enables `superpowers@superpowers-marketplace` for **every** Claude Code session in this repo; the skill falls back to reading a clone of obra/superpowers if the plugin doesn't load. `.claude/` and the config count as material paths for the docs rule.
+
+## Issues and labels
+
+- Issue forms live in `.github/ISSUE_TEMPLATE/` (`bug.yml` sets type Bug, `feature.yml` type Feature, `config.yml` links the guide's troubleshooting and the presets hub). Full description: `docs/ISSUES.md`.
+- **The forms apply no labels.** `bug` starts the auto-fix workflow and is added at triage (after `triaged`); `enhancement` and `superpowers:*` drive the feature-request workflow, and `test/feature-sweep.test.js` fails if a form mentions a workflow label. Keep it that way.
+- **Platform labels:** `platform:desktop`, `platform:android`, `platform:ios`, `platform:web`. No platform label means all platforms (shared `src/`). `.github/workflows/issue-platforms.yml` adds them on `opened`/`edited` from the forms' **App** answer via `tools/issue-platforms.js` (`PLATFORMS`: exact option text -> label, colour, description; it creates a missing label). It only adds, never removes. The body is untrusted: passed through `env`, only exact option texts count. Changing an option means changing both forms and `PLATFORMS` (`test/issue-platforms.test.js` checks; options must not contain commas).
+- Work is tracked on an org-level GitHub Project set up by hand (fields, views and workflows in `docs/ISSUES.md`); platform stays a label there because a single-select field can't hold several. Large work (the iOS app) is a parent issue with sub-issues.
 
 ## Website
 

@@ -19,7 +19,7 @@ import {
 } from '../spark/index.js';
 import { PresetLibrary } from './library.js';
 import { createRig } from './rig.js';
-import { createReporter, detectApp } from './telemetry.js';
+import { createReporter, detectApp, scrubLog } from './telemetry.js';
 import { VERSION } from '../version.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -77,6 +77,7 @@ function makeTransport() {
       battery: params.get('mock') !== 'Spark 40' && !!params.get('mock'),
       fixedChain: !params.has('reorder'), // ?mock&reorder=1 simulates an amp that accepts reordered chains
       swap: params.get('swap') || 'ok', // ?mock&swap=ignore|silent simulates an amp that won't take 01 06
+      dropFirstRequests: Number(params.get('drop')) || 0, // ?mock&drop=1: the amp ignores the first request
     });
     window.mockAmp = state.mock; // play with it from devtools: mockAmp.turnKnob(3, 0, 0.9)
     return state.mock;
@@ -649,9 +650,38 @@ function openSettings() {
     $('#error-reports-on').checked = errors.enabled;
     explainReports($('.settings-reports-body'));
   }
+  $('#settings-log').hidden = !reports;
+  $('#send-log-open').disabled = !errors.canSendLog;
   $('#settings-dialog').showModal();
 }
 $('#settings-open').addEventListener('click', openSettings);
+
+// Send Console log: a one-off, previewed send that the user starts; independent of the
+// error-report switch. The preview shows the scrubbed text, exactly as it is sent.
+$('#send-log-open').addEventListener('click', () => {
+  const text = scrubLog(consoleText());
+  if (!text) return toast('The Console is empty. Connect and reproduce the problem first.');
+  $('#settings-dialog').close();
+  $('#log-preview').textContent = text;
+  $('#log-lines').textContent = String(text.split('\n').length);
+  $('#log-dialog').returnValue = '';
+  $('#log-dialog').showModal();
+});
+$('#log-dialog').addEventListener('close', async () => {
+  const dialog = $('#log-dialog');
+  if (dialog.returnValue !== 'send') return;
+  const issue = Number.parseInt($('#log-issue').value, 10);
+  // the previewed text, not the Console as it is now: what was shown is what is sent
+  const sent = await errors.sendLog($('#log-preview').textContent, { note: $('#log-note').value, issue: Number.isInteger(issue) ? issue : undefined });
+  if (sent) {
+    $('#log-note').value = '';
+    $('#log-issue').value = '';
+    toast(`Sent ${sent.lines} Console lines. Thank you!`, 'ok');
+  } else toast('The log couldn\'t be sent (at most 3 per session).', 'warn');
+});
+$('#log-dialog').addEventListener('click', (e) => {
+  if (e.target.closest('[data-help]')) $('#log-dialog').close();
+});
 $('#error-reports-on').addEventListener('change', (e) => (errors.enabled = e.target.checked));
 // Help links inside these dialogs open the guide on top of them.
 $('#settings-dialog').addEventListener('click', (e) => {
