@@ -75,6 +75,7 @@ function makeTransport() {
       name: params.get('mock') || 'Spark 40',
       battery: params.get('mock') !== 'Spark 40' && !!params.get('mock'),
       fixedChain: !params.has('reorder'), // ?mock&reorder=1 simulates an amp that accepts reordered chains
+      dropFirstRequests: Number(params.get('drop')) || 0, // ?mock&drop=1: the amp ignores the first request
     });
     window.mockAmp = state.mock; // play with it from devtools: mockAmp.turnKnob(3, 0, 0.9)
     return state.mock;
