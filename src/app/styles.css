@@ -616,6 +616,13 @@ dialog#bt-picker h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
 .settings-section h3 { margin: 0; font-size: 0.95rem; }
 .settings-section .linklike { justify-self: start; font-size: 0.85rem; }
 .reports-explainer { display: grid; gap: 0.4rem; }
+.settings-section > button:not(.linklike) { justify-self: start; }
+.log-preview {
+  margin: 0; max-height: 14rem; overflow: auto; padding: 0.5rem; font-size: 0.75rem; line-height: 1.35;
+  white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+}
+#log-dialog label { display: grid; gap: 0.25rem; font-size: 0.85rem; }
+#log-dialog textarea, #log-dialog input { font: inherit; width: 100%; box-sizing: border-box; }
 .about-name { margin: 0; }
 #about-version { color: var(--muted); font-size: 0.85rem; }
 .about-links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-size: 0.9rem; }

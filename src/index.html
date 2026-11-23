@@ -227,6 +227,25 @@
     </form>
   </dialog>
 
+  <dialog id="log-dialog" aria-labelledby="log-title">
+    <form method="dialog" class="dialog-form">
+      <div class="dialog-title"><h2 id="log-title">Send Console log</h2><button type="button" class="help-link" data-help="send-log" aria-label="Help: sending the Console log">?</button></div>
+      <p class="hint">This is exactly what will be sent: the newest <span id="log-lines"></span> lines of the Console, with names in quotes, IDs and the amp's name and serial number removed from the text. The raw bytes are kept as they are; they can contain preset names and the amp's serial number.</p>
+      <pre id="log-preview" class="log-preview" tabindex="0" aria-label="The log that will be sent"></pre>
+      <label>What happened? (optional, not public)
+        <textarea id="log-note" rows="2" maxlength="500" placeholder="e.g. the amp disconnected when I saved a preset"></textarea>
+      </label>
+      <label>GitHub issue number, if you opened one (optional)
+        <input id="log-issue" type="number" min="1" max="999999" inputmode="numeric" placeholder="e.g. 16">
+      </label>
+      <p class="hint">The log goes to the project's error-report service, and a public GitHub issue is opened that links to it. The issue shows only the app, version and number of lines, not the log or your note.</p>
+      <div class="row dialog-buttons">
+        <button value="cancel">Cancel</button>
+        <button value="send" class="primary">Send</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="settings-dialog" aria-labelledby="settings-title">
     <form method="dialog" class="dialog-form">
       <div class="dialog-title"><h2 id="settings-title">Settings</h2><button type="button" class="help-link" data-help="settings" aria-label="Help: settings and about">?</button></div>
@@ -235,6 +254,11 @@
         <label class="row"><input type="checkbox" id="error-reports-on"> Send anonymous error reports</label>
         <div class="settings-reports-body"></div>
         <button type="button" class="linklike" data-help="privacy">More about privacy</button>
+      </section>
+      <section id="settings-log" class="settings-section" aria-labelledby="settings-log-title" hidden>
+        <h3 id="settings-log-title">Console log</h3>
+        <p class="hint">Having a problem? Send the Console's log so it can be looked into. You see exactly what is sent first, and nothing is sent unless you press Send.</p>
+        <button type="button" id="send-log-open">Send Console log…</button>
       </section>
       <section class="settings-section" aria-labelledby="about-title">
         <h3 id="about-title">About</h3>
