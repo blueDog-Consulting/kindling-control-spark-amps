@@ -35,8 +35,12 @@ export class WebBluetoothTransport {
     this.device.addEventListener('gattserverdisconnected', () => this.onDisconnect());
     this.onLog(`selected "${this.device.name}"`);
 
-    const server = await step('connect to GATT server', () => this.device.gatt.connect());
-    const service = await step('find Spark service 0xFFC0', () => server.getPrimaryService(BLE_SERVICE));
+    // Windows sometimes drops the link right after connecting ("GATT Server is disconnected" while looking up
+    // the service). Reconnect and look the service up again, once, before giving up (issue #41).
+    const service = await step('find Spark service 0xFFC0', async () => {
+      const server = await step('connect to GATT server', () => this.device.gatt.connect());
+      return server.getPrimaryService(BLE_SERVICE);
+    }, { retries: 1, delayMs: 400, when: (err) => err?.name === 'NetworkError' });
     this.tx = await step('find write characteristic 0xFFC1', () => service.getCharacteristic(BLE_WRITE_CHAR));
     this.rx = await step('find notify characteristic 0xFFC2', () => service.getCharacteristic(BLE_NOTIFY_CHAR));
     this.onLog(`0xFFC1 supports: ${describe(this.tx.properties)}`);
@@ -98,12 +102,12 @@ export class WebBluetoothTransport {
   }
 }
 
-async function step(what, fn, { retries = 0, delayMs = 0 } = {}) {
+async function step(what, fn, { retries = 0, delayMs = 0, when = () => true } = {}) {
   for (let attempt = 0; ; attempt++) {
     try {
       return await fn();
     } catch (err) {
-      if (attempt >= retries) throw wrap(what, err);
+      if (attempt >= retries || !when(err)) throw err.step ? err : wrap(what, err);
       await sleep(delayMs);
     }
   }
