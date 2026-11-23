@@ -169,6 +169,29 @@ test('different reply keys still run concurrently', async () => {
   assert.equal(preset.current, true);
 });
 
+test('handshake fails if the amp drops the link part-way (#43)', async () => {
+  const { t, c } = await connected();
+  let disconnected = 0;
+  c.addEventListener('disconnected', () => disconnected++);
+  // Drop the link right after the amp has answered the name request.
+  const request = t._request.bind(t);
+  t._request = (sub, m, seq) => {
+    const r = request(sub, m, seq);
+    if (sub === 0x11) setTimeout(() => t.disconnect(), 5);
+    return r;
+  };
+  assert.equal(c.connected, true);
+  await assert.rejects(c.handshake(), /disconnected/);
+  assert.equal(c.connected, false);
+  assert.equal(disconnected, 1);
+});
+
+test('handshake fails at once if the link drops before the name arrives', async () => {
+  const { t, c } = await connected({ latencyMs: 50 });
+  setTimeout(() => t.disconnect(), 5);
+  await assert.rejects(c.handshake(), /disconnected/);
+});
+
 test('handshake retries the amp name once when the first request is ignored (issue #26)', async () => {
   const { c } = await connected({ dropFirstRequests: 1 });
   const info = await c.handshake();
