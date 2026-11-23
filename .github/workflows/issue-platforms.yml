@@ -1,0 +1,51 @@
+name: Label issues by platform
+
+# Reads the "App" answer of the issue forms (.github/ISSUE_TEMPLATE/) and adds the matching
+# platform:* labels (tools/issue-platforms.js). It only adds labels; it never removes any, so
+# labels changed at triage stay. No label means "all platforms" (the shared src/).
+#
+# The issue body is untrusted: it reaches the script through env, and only exact matches of
+# the known options turn into labels, so the body can't choose a label name.
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions: {}
+
+concurrency:
+  group: issue-platforms-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Add platform labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          labels=$(node tools/issue-platforms.js)
+          [ -z "$labels" ] && { echo "No platform answer"; exit 0; }
+          node --input-type=module -e "
+            import { PLATFORMS } from './tools/issue-platforms.js';
+            for (const p of PLATFORMS) console.log([p.label, p.color, p.description].join('\t'));
+          " | while IFS=$'\t' read -r name color description; do
+            # Create the label the first time it's needed; leave an existing one alone.
+            if grep -qxF "$name" <<<"$labels"; then
+              gh label create "$name" --color "$color" --description "$description" 2>/dev/null || true
+            fi
+          done
+          args=()
+          while read -r l; do args+=(--add-label "$l"); done <<<"$labels"
+          gh issue edit "$ISSUE" "${args[@]}"

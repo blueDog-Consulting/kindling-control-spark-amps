@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: User guide and troubleshooting
+    url: https://kindlingcontrol.app/guide/#troubleshooting
+    about: Connection problems and common questions, answered.
+  - name: Presets hub
+    url: https://kindlingcontrol.app/presets/
+    about: Share and download presets.
