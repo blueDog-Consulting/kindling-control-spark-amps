@@ -38,4 +38,8 @@ test('version codes increase through alpha, beta, rc to the final release', () =
   assert.throws(() => versionFromTag('release-1'), /semantic version/);
   assert.throws(() => versionFromTag('v1.100.0'), /0-99/);
   assert.throws(() => versionFromTag('v1.0.0-beta.40'), /0-32/);
+  // PR test builds (android-debug.yml): any PR number works, and they sort below the release.
+  assert.equal(versionFromTag('v0.2.0-pr48').code, 20000);
+  assert.equal(versionFromTag('v0.2.0-pr48').name, '0.2.0-pr48');
+  assert.equal(versionFromTag('v0.2.0-dev').code, 20000);
 });
