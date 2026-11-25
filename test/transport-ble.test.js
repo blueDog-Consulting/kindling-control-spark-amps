@@ -113,6 +113,14 @@ test('errors name the GATT step that failed', async () => {
   await assert.rejects(t.connect(), (e) => e.message.startsWith('find Spark service 0xFFC0 failed') && e.name === 'NotFoundError');
 });
 
+test('a request before connect() finished fails with "not connected", not a TypeError (issue #47)', async () => {
+  const t = new WebBluetoothTransport();
+  t.bluetooth = { requestDevice: () => new Promise(() => {}) }; // device picker still open
+  const client = new SparkClient(t, { timeoutMs: 1000 });
+  client.connect(); // never finishes
+  await assert.rejects(client.getPreset('current'), (err) => err.name === 'Error' && err.message === 'not connected');
+});
+
 test('Windows: GATT drop while finding the service is retried once (#41)', async () => {
   const { info, log } = await run({ serviceDropsFirst: true });
   assert.equal(info.name, 'Spark 2');
