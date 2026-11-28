@@ -257,3 +257,51 @@ test('a late reply to a retried request is not reported as an amp-side event', a
   await new Promise((r) => setTimeout(r, 100));
   assert.deepEqual(events, [true]);
 });
+
+/** Flips the checksum byte of the first chunk of the next `times` 03 01 preset replies the amp sends. */
+function damagePresetReplies(t, times) {
+  const deliver = t.onData;
+  let left = times;
+  t.onData = (bytes) => {
+    const b = Uint8Array.from(bytes);
+    for (let i = 0; left > 0 && i + 5 < b.length; i++) {
+      if (b[i] === 0xf0 && b[i + 1] === 0x01 && b[i + 4] === 0x03 && b[i + 5] === 0x01) {
+        b[i + 3] ^= 0x01;
+        left--;
+        break;
+      }
+    }
+    deliver(b);
+  };
+}
+
+test('a preset that arrives with a bad checksum is read once more (#30)', async () => {
+  const { t, c } = await connected();
+  const sent = [];
+  const logs = [];
+  c.addEventListener('sent', (e) => e.detail.sub === 0x01 && e.detail.cmd === 0x02 && sent.push(e.detail));
+  c.addEventListener('log', (e) => logs.push(e.detail.text));
+  damagePresetReplies(t, 1);
+  const p = await c.getPreset(1);
+  assert.equal(p.name, demoPresets()[1].name);
+  assert.equal(sent.length, 2);
+  assert.ok(logs.some((l) => l.includes('arrived damaged')), logs.join('\n'));
+});
+
+test('a preset damaged twice is returned after one re-read, not retried forever (#30)', async () => {
+  const { t, c } = await connected();
+  const sent = [];
+  c.addEventListener('sent', (e) => e.detail.sub === 0x01 && e.detail.cmd === 0x02 && sent.push(e.detail));
+  damagePresetReplies(t, 5);
+  const p = await c.getPreset(1);
+  assert.equal(p.name, demoPresets()[1].name);
+  assert.equal(sent.length, 2);
+});
+
+test('a clean preset read is not repeated', async () => {
+  const { c } = await connected();
+  const sent = [];
+  c.addEventListener('sent', (e) => e.detail.sub === 0x01 && e.detail.cmd === 0x02 && sent.push(e.detail));
+  await c.getPreset(0);
+  assert.equal(sent.length, 1);
+});

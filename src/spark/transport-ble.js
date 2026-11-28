@@ -36,11 +36,13 @@ export class WebBluetoothTransport {
     this.onLog(`selected "${this.device.name}"`);
 
     // Windows sometimes drops the link right after connecting ("GATT Server is disconnected" while looking up
-    // the service). Reconnect and look the service up again, once, before giving up (issue #41).
+    // the service, issue #41), and BlueZ on Linux fails the connect itself with "Connection attempt failed"
+    // when the link can't be set up in time (issue #44). Both are NetworkErrors: reconnect and look the
+    // service up again, up to twice, waiting a little longer the second time, before giving up.
     const service = await step('find Spark service 0xFFC0', async () => {
       const server = await step('connect to GATT server', () => this.device.gatt.connect());
       return server.getPrimaryService(BLE_SERVICE);
-    }, { retries: 1, delayMs: 400, when: (err) => err?.name === 'NetworkError' });
+    }, { retries: 2, delayMs: [400, 1200], when: (err) => err?.name === 'NetworkError', log: this.onLog });
     this.tx = await step('find write characteristic 0xFFC1', () => service.getCharacteristic(BLE_WRITE_CHAR));
     this.rx = await step('find notify characteristic 0xFFC2', () => service.getCharacteristic(BLE_NOTIFY_CHAR));
     this.onLog(`0xFFC1 supports: ${describe(this.tx.properties)}`);
@@ -105,13 +107,17 @@ export class WebBluetoothTransport {
   }
 }
 
-async function step(what, fn, { retries = 0, delayMs = 0, when = () => true } = {}) {
+// Runs fn, retrying up to `retries` times when `when(err)` holds. `delayMs` is the pause before each retry:
+// a number, or a list with one entry per retry (the last one repeats).
+async function step(what, fn, { retries = 0, delayMs = 0, when = () => true, log } = {}) {
   for (let attempt = 0; ; attempt++) {
     try {
       return await fn();
     } catch (err) {
       if (attempt >= retries || !when(err)) throw err.step ? err : wrap(what, err);
-      await sleep(delayMs);
+      const wait = Array.isArray(delayMs) ? delayMs[Math.min(attempt, delayMs.length - 1)] : delayMs;
+      log?.(`${err.step ?? what} failed (${err.message}); retrying in ${wait} ms`);
+      await sleep(wait);
     }
   }
 }
