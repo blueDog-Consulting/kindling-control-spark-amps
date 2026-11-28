@@ -135,7 +135,15 @@ input.switch:disabled { opacity: 0.45; cursor: not-allowed; }
 .brand img { inline-size: 2rem; block-size: 2rem; border-radius: 0.5rem; box-shadow: 0 0 14px rgb(255 138 31 / 0.25); }
 .brand b { font-weight: 400; color: var(--accent); }
 @media (width < 420px) { .brand { font-size: 1rem; } .brand img { inline-size: 1.75rem; block-size: 1.75rem; } }
-@media (width < 480px) { .brand > span { display: none; } .topbar { gap: 0.5rem; } } /* phones: logo only, so the buttons fit */
+/* phones and narrow windows (iPad split view): logo only, so the buttons fit. Below 560px the status text is
+   hidden too; with the name still shown, "Disconnect" ran off-screen between 480 and 533px. */
+@media (width < 560px) { .brand > span { display: none; } .topbar { gap: 0.5rem; } }
+/* the narrowest phones and iPad Slide Over (320px) */
+@media (width < 380px) {
+  .topbar { gap: 0.3rem; padding-inline: 0.5rem; }
+  .topbar > #connect { padding-inline: 0.6rem; }
+  .topbar > .settings-btn, .topbar > .help-btn, .topbar > .coffee-btn { padding-inline: 0.45rem; }
+}
 
 .pill {
   display: inline-flex; align-items: center; gap: 0.35rem;
