@@ -42,7 +42,7 @@ The "What's new" text for the store listings is versioned with the release. It l
 They must be committed and pushed before you tag, so `v0.2.0` ships exactly `release-notes/0.2.0/`. `npm run release` does that for you (it drafts `android.txt` and opens your editor); `macos.txt` stays a manual, optional file. Details and an example layout are in [release-notes/README.md](../release-notes/README.md).
 
 - Store notes belong to the apps a release builds. The `plan` job works out that set (today: Android, when it's built) and checks only those notes, with `release-notes.js --only`. A **final** tag that builds Android fails right away if `android.txt` is missing, empty or over the limit, before anything is built. Pre-release tags need no notes, and a release that builds no store app checks none.
-- `ios.txt` is optional and validated like `macos.txt`: iOS isn't built in CI yet, so CI neither checks nor publishes it; check it with `npm run release:notes` and paste it into App Store Connect. When iOS joins `release.yml` (#33), add `ios` to the plan job's set and to the "needs notes" rule in `tools/release.js` together.
+- `ios.txt` is optional and validated like `macos.txt`. CI builds iOS only as an unsigned compile check (below), which ships nowhere, so CI neither checks nor publishes `ios.txt`; check it with `npm run release:notes` and paste it into App Store Connect. Signed iOS builds are uploaded by hand (see *Signed builds for TestFlight*), so `ios.txt` stays optional; if CI ever ships iOS, add `ios` to the plan job's set and to the "needs notes" rule in `tools/release.js` together.
 - `macos.txt` is optional. macOS isn't built in CI, so CI neither checks nor publishes it; check it with `npm run release:notes` and paste it into App Store Connect when you ship the Mac app. Once macOS joins the build matrix, add `macos` to the plan job's set with the desktop build.
 - The `release` job checks out the tag and publishes exactly the plan job's set: a **Store release notes** section in the GitHub Release body and `kindling-control-<version>-android-whatsnew.txt`, ready to paste into Play Console. A release that skipped Android carries no Play notes. Nothing is uploaded to a store automatically yet.
 - Check ahead of time: `npm run release:notes -- v0.2.0 --require android`.
@@ -53,8 +53,9 @@ They must be committed and pushed before you tag, so `v0.2.0` ships exactly `rel
 |---|---|---|
 | Android | `src/`, `android/`, `capacitor.config.json`, `package.json`, `package-lock.json` | `…-android.apk` + `.aab` (signed), or `…-android-debug.apk` |
 | Desktop | `src/`, `desktop/`, `build/` (icons), `package.json`, `package-lock.json` | Windows `.exe` (NSIS), Linux `.AppImage` + `.deb` |
+| iOS (compile check) | `src/`, `ios/`, `capacitor.config.json`, `package.json`, `package-lock.json` | nothing published: an unsigned iOS Simulator app, kept as the `ios-simulator-app` workflow artifact |
 
-- Changes that only touch docs, tests, tools, `telemetry/` or `ios/` build nothing. The error-report Worker in `telemetry/` is deployed by hand with wrangler ([TELEMETRY.md](TELEMETRY.md)).
+- Changes that only touch docs, tests, tools or `telemetry/` build nothing. The error-report Worker in `telemetry/` is deployed by hand with wrangler ([TELEMETRY.md](TELEMETRY.md)).
 - An app that is skipped keeps its downloads on the earlier release, and the release notes say so.
 - The first tag (no earlier `v*` tag) builds everything.
 
@@ -64,7 +65,24 @@ They must be committed and pushed before you tag, so `v0.2.0` ships exactly `rel
 
 `.github/workflows/android-debug.yml` builds a **debug-signed APK** for testing a pull request on a phone. It runs on every PR that touches the Android app's paths (the list above, plus `tools/release-android.sh` and the workflow itself), and by hand from **Actions → Android test build → Run workflow** once the file is on `main`. It tags nothing and publishes nothing: the APK is a workflow artifact (`android-debug-apk`, kept 14 days) on the run's summary page, and downloading it needs a GitHub login. It goes through the same `tools/release-android.sh --debug` as releases. The version name is the latest tag plus `-pr<N>` (or `-dev`), e.g. `0.2.0-pr7`, which `src/version.js` is stamped with, so opted-in error reports from test builds are identifiable. `versionFromTag()` gives any suffix other than `alpha`/`beta`/`rc` the lowest `versionCode` for that version (suffix 0), so every PR number works; before that, PRs above #32 failed with `pre-release number must be 0-32` (#48). A debug-signed APK can't update an installed Play Store or release-signed copy: testers uninstall that first (which clears **My presets**, so they should export them).
 
-**iOS** isn't in the pipeline yet. It needs a macOS runner, an Apple Developer account and signing certificates. Build it locally for now (see [APPS.md](APPS.md)).
+## iOS builds
+
+The iPhone and iPad app isn't released yet. CI can prove it **compiles**, with no Apple account or secrets, but **that's switched off until iOS builds start**: both workflows below run their iOS job only when the repo variable `IOS_BUILDS_ENABLED` is `true` (*Settings → Secrets and variables → Actions → Variables*). Unset or anything else, the jobs show as skipped and use no macOS runner minutes. `npm run release:ios` works locally either way.
+
+- `tools/release-ios.sh` (`npm run release:ios -- [vX.Y.Z] [--skip-install]`) is the one iOS build path, like `release-android.sh` for Android. On macOS with Xcode it stamps `src/version.js` (and restores it), runs `npx cap sync ios`, and builds the `App` scheme for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`. `CFBundleShortVersionString` is the tag's `MAJOR.MINOR.PATCH` (Apple allows only numbers) and `CFBundleVersion` is `versionFromTag()`'s code, the same strictly increasing number as Android's `versionCode`; the script checks the built app carries it. Output: `out/kindling-control-<version>-ios-simulator.zip`.
+- `release.yml` runs it in an `ios` job on `macos-latest` when the plan says iOS changed. The job has `continue-on-error: true` and the `release` job doesn't wait for it, so a broken iOS build can never block the Android and desktop release (the reason macOS desktop left the matrix). Look at the run's **ios** job to see whether the tag compiles.
+- `.github/workflows/ios-build.yml` runs the same script on PRs that touch the iOS paths (plus the script and the workflow), and by hand from **Actions → iOS build check**, so a PR that breaks the iOS build shows it before merging. `test/release-plan.test.js` checks its paths match `APP_PATHS.ios`.
+- The simulator app can't be installed on a device or uploaded.
+
+### Signed builds for TestFlight (by hand)
+
+The maintainer builds and uploads App Store builds on their own Mac; CI never signs or uploads iOS and holds no Apple credentials (decided for #34). It needs a paid Apple Developer account whose team owns the bundle id `dev.bluedog.kindlingcontrol` (don't change it), and Xcode signed in to that team (*Xcode → Settings → Accounts*).
+
+1. Check out the release tag (`git checkout v0.3.0`), so the build matches public source (GPL boundary).
+2. `APPLE_TEAM_ID=ABCDE12345 npm run release:ios -- v0.3.0 --signed`. The team id is on developer.apple.com → *Membership*; it can also go in the git-ignored `.env` as `APPLE_TEAM_ID=…`. Signing is automatic (`-allowProvisioningUpdates`): Xcode creates or fetches the distribution certificate and App Store profile itself, so no certificate or profile files are kept in the repo. The script archives, refuses an archive not signed by that team, exports with `method = app-store-connect`, and writes `out/kindling-control-<version>-ios.ipa`.
+3. Upload the `.ipa` with Apple's **Transporter** app (or from *Xcode → Window → Organizer*), then add testers in App Store Connect → TestFlight. Paste `release-notes/<version>/ios.txt` as the "What to Test" / "What's New" text.
+
+`CFBundleVersion` is the tag's `versionFromTag()` code, so it only goes up, and App Store Connect refuses a build number it has already seen: a re-upload of the same version needs a new tag (for example `v0.3.0-rc.2` → `v0.3.0`). Key-custody notes belong in the private repo.
 
 ## Secrets (repo Settings → Secrets and variables → Actions)
 

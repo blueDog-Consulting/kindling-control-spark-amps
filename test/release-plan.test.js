@@ -1,28 +1,31 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { planRelease, versionFromTag } from '../tools/release-plan.js';
 
 const builds = (plan) => Object.entries(plan).filter(([, p]) => p.build).map(([a]) => a).sort();
 
 test('shared web code rebuilds every app', () => {
-  assert.deepEqual(builds(planRelease(['src/app/rig.js'])), ['android', 'desktop']);
+  assert.deepEqual(builds(planRelease(['src/app/rig.js'])), ['android', 'desktop', 'ios']);
 });
 
 test('app-specific changes only rebuild that app', () => {
   assert.deepEqual(builds(planRelease(['desktop/main.js'])), ['desktop']);
   assert.deepEqual(builds(planRelease(['build/icon-mac.png'])), ['desktop']);
-  assert.deepEqual(builds(planRelease(['android/app/build.gradle', 'capacitor.config.json'])), ['android']);
-  assert.deepEqual(builds(planRelease(['package-lock.json'])), ['android', 'desktop']);
+  assert.deepEqual(builds(planRelease(['android/app/build.gradle'])), ['android']);
+  assert.deepEqual(builds(planRelease(['ios/App/App/Info.plist'])), ['ios']);
+  assert.deepEqual(builds(planRelease(['capacitor.config.json'])), ['android', 'ios']);
+  assert.deepEqual(builds(planRelease(['package-lock.json'])), ['android', 'desktop', 'ios']);
 });
 
-test('docs, tests, tools and iOS changes build nothing', () => {
-  assert.deepEqual(builds(planRelease(['README.md', 'docs/APPS.md', 'test/codec.test.js', 'ios/App/App/Info.plist', 'AGENTS.md'])), []);
+test('docs, tests and tools build nothing', () => {
+  assert.deepEqual(builds(planRelease(['README.md', 'docs/APPS.md', 'test/codec.test.js', 'tools/release-ios.sh', 'AGENTS.md'])), []);
   assert.equal(planRelease(['README.md']).android.reason, 'no changes');
 });
 
 test('first release or force builds everything', () => {
-  assert.deepEqual(builds(planRelease(null)), ['android', 'desktop']);
-  assert.deepEqual(builds(planRelease([], { force: true })), ['android', 'desktop']);
+  assert.deepEqual(builds(planRelease(null)), ['android', 'desktop', 'ios']);
+  assert.deepEqual(builds(planRelease([], { force: true })), ['android', 'desktop', 'ios']);
 });
 
 test('version codes increase through alpha, beta, rc to the final release', () => {
@@ -42,4 +45,18 @@ test('version codes increase through alpha, beta, rc to the final release', () =
   assert.equal(versionFromTag('v0.2.0-pr48').code, 20000);
   assert.equal(versionFromTag('v0.2.0-pr48').name, '0.2.0-pr48');
   assert.equal(versionFromTag('v0.2.0-dev').code, 20000);
+});
+
+test('the iOS build check runs for every path that rebuilds iOS', () => {
+  const wf = readFileSync(new URL('../.github/workflows/ios-build.yml', import.meta.url), 'utf8');
+  for (const path of ['src/**', 'ios/**', 'capacitor.config.json', 'package.json', 'package-lock.json']) {
+    assert.ok(wf.includes(`- '${path}'`), `ios-build.yml paths should include ${path}`);
+  }
+  const rel = readFileSync(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8');
+  const job = rel.slice(rel.indexOf('\n  ios:'), rel.indexOf('\n  release:'));
+  assert.match(job, /continue-on-error: true/, 'a failed iOS build must not block the release');
+  // iOS builds stay off until the maintainer turns them on with the repo variable
+  assert.match(job, /if: vars\.IOS_BUILDS_ENABLED == 'true' && /);
+  assert.match(wf, /\n {4}if: vars\.IOS_BUILDS_ENABLED == 'true'\n/);
+  assert.doesNotMatch(rel, /needs: \[[^\]]*\bios\b/, 'the release job must not wait for iOS');
 });
