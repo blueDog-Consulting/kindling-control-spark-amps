@@ -127,7 +127,7 @@ The tests include a real Spark 40 preset dump. The decoder has to reproduce its 
 
 ## Releases
 
-Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions then rebuilds whichever of the web app, the Android app and the desktop apps changed since the last release, and publishes them on the [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases) page. See [docs/RELEASING.md](docs/RELEASING.md) for details and the optional signing and deploy secrets.
+Push a version tag (`git tag v0.2.0 && git push origin v0.2.0`). GitHub Actions then rebuilds whichever of the web app, the Android app and the desktop apps changed since the last release, and publishes them on the [Releases](https://github.com/bluedog-consulting/kindling-control-spark-amps/releases) page. You can also release from the web or a phone: **Actions → Release → Run workflow** on `main` with a new tag creates the tag for you. Google Play notes come from `release-notes/<version>/android.txt` if it's committed, otherwise from the run's **notes** field, otherwise they're generated from the merged pull requests. See [docs/RELEASING.md](docs/RELEASING.md) for details and the optional signing and deploy secrets.
 
 ## Error reports and privacy
 
