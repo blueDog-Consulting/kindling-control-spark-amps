@@ -17,7 +17,7 @@ The bytes are identical on BLE and SPP. They're a stream of **blocks**, and a bl
 
 Writing to the amp, as Ignitron does on real amps:
 
-* Use **write-without-response**. On Spark 2 + macOS, write-with-response fails with "GATT operation failed for unknown reason". The transports here fall back to the other mode once if a write fails. Web Bluetooth also reconnects and repeats the service lookup once if the GATT link drops during connect (seen on Windows, "GATT Server is disconnected"; **unverified** on hardware).
+* Use **write-without-response**. On Spark 2 + macOS, write-with-response fails with "GATT operation failed for unknown reason". The transports here fall back to the other mode once if a write fails. Web Bluetooth also reconnects and repeats the service lookup, up to twice (after 400 ms, then 1.2 s), when connecting fails with a `NetworkError`: the GATT link dropping during the service lookup (seen on Windows, "GATT Server is disconnected") or the connect itself failing (seen on Linux/BlueZ, "Connection attempt failed"). Each retry is logged. **Unverified** on hardware.
 * Spark 40, GO and NEO accept up to `0xAD` bytes per write. MINI and Spark 2 need writes of `0x64` bytes or less, and a pause of about 80 ms after each block.
 * Until the amp has reported its name (`02 11`), use the conservative limits: `0x64`-byte writes with 80 ms between blocks.
 
