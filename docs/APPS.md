@@ -70,6 +70,8 @@ In Xcode:
 
 The project is already universal (iPhone + iPad, all orientations). Getting it to friends via TestFlight or the App Store needs a paid Apple Developer account.
 
+To check that it compiles without opening Xcode or signing anything, run `npm run release:ios` (an unsigned iOS Simulator build in `out/`). CI runs the same script on PRs and release tags; see [RELEASING.md](RELEASING.md#ios-builds).
+
 ## After changing the web code
 
 `src/` is copied into the native projects, so after edits run:

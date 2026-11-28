@@ -5,7 +5,7 @@
 //   node tools/release-plan.js <tag> [previous-tag]
 //
 // Prints a summary and, when $GITHUB_OUTPUT is set, writes:
-//   android / desktop = true|false, version, version_code, prerelease, previous
+//   android / desktop / ios = true|false, version, version_code, prerelease, previous
 
 import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
@@ -15,6 +15,8 @@ import { pathToFileURL } from 'node:url';
 export const APP_PATHS = {
   android: [/^src\//, /^android\//, /^capacitor\.config\.json$/, /^package(-lock)?\.json$/],
   desktop: [/^src\//, /^desktop\//, /^build\//, /^package(-lock)?\.json$/], // build/ = desktop icons
+  // iOS is a compile check only so far (unsigned simulator build, not published): .github/workflows/release.yml
+  ios: [/^src\//, /^ios\//, /^capacitor\.config\.json$/, /^package(-lock)?\.json$/],
 };
 
 /**
