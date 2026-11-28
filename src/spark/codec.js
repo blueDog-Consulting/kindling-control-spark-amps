@@ -427,16 +427,18 @@ export class StreamDecoder {
       const key = `${cmd}:${sub}`;
       let m = this.multi.get(key);
       if (!m || index === 0) {
-        m = { parts: [], seq, raw: [] };
+        m = { parts: [], seq, raw: [], bad: false };
         this.multi.set(key, m);
       }
       m.parts[index] = data.subarray(3);
       m.raw.push(raw);
+      // a bad chunk anywhere spoils the whole message, not just when it's the last one (issue #30)
+      if (!checksumOk) m.bad = true;
       if (index === total - 1) {
         this.multi.delete(key);
         const missing = m.parts.length !== total || m.parts.some((p) => !p);
         const merged = concat(m.parts.filter(Boolean));
-        this.onMessage({ cmd, sub, seq, data: merged, direction: this.direction, checksumOk: checksumOk && !missing, raw: m.raw });
+        this.onMessage({ cmd, sub, seq, data: merged, direction: this.direction, checksumOk: !m.bad && !missing, raw: m.raw });
       }
       return;
     }

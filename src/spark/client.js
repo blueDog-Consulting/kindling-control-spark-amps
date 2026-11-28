@@ -106,9 +106,26 @@ export class SparkClient extends EventTarget {
   async checksums() {
     return (await this.request(M.requestChecksums())).values;
   }
-  /** slot: 0..3, 0x7f, or 'current' */
+  /**
+   * slot: 0..3 (0..7 on the Spark 2), 0x7f, or 'current'.
+   * A reply whose chunks failed their checksum, or arrived incomplete, is read once more
+   * (issue #30: "checksum mismatch on 03 01"). If the second read times out, the first one is
+   * returned; if it is damaged too, it is returned and logged.
+   */
   async getPreset(slot = 'current') {
-    return (await this.request(M.requestPreset(slot), { timeoutMs: 5000 })).preset;
+    const opts = { timeoutMs: 5000 };
+    const first = await this.request(M.requestPreset(slot), opts);
+    if (first.checksumOk !== false) return first.preset;
+    this._emit('log', { text: `preset ${slot} arrived damaged (checksum mismatch), reading it again` });
+    let second;
+    try {
+      second = await this.request(M.requestPreset(slot), opts);
+    } catch (err) {
+      if (!isTimeout(err)) throw err;
+      return first.preset;
+    }
+    if (second.checksumOk === false) this._emit('log', { text: `preset ${slot} arrived damaged again; showing it as read` });
+    return second.preset;
   }
 
   // ---- writes --------------------------------------------------------------

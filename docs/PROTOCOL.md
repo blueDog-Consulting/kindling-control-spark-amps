@@ -43,6 +43,8 @@ The 8-bit payload is split into groups of up to 7 bytes. Each group goes on the 
 
 Presets (`01 01` and `03 01`) are too large for one chunk. Every chunk of a preset starts its 8-bit payload with a 3-byte sub-header, `total, index, length`, and all chunks share the same `seq`.
 
+If any chunk of a preset fails its `xor`, or a chunk is missing, the decoder marks the whole message `checksumOk: false`, and `SparkClient.getPreset()` asks for it once more. Error reports show this happening on Windows and Android (issue #30); the cause, probably a dropped or damaged BLE notification, is **unverified**.
+
 | direction | max 8-bit payload per chunk |
 |---|---|
 | app → amp | `0x80` (one chunk fills one `0xAD` block exactly) |

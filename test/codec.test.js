@@ -144,3 +144,18 @@ test('real Spark 40 capture: 03 01 preset spanning 7 blocks', async () => {
   // re-encoding the parsed preset reproduces the amp's payload exactly
   assert.deepEqual(M.presetWriter(p, 0).toBytes(), out[0].data);
 });
+
+test('a bad checksum in an early chunk marks the whole multi-chunk message as damaged (#30)', () => {
+  const data = M.presetWriter(demoPresets()[2], 1).toBytes();
+  const blocks = encodeMessage({ cmd: 0x03, sub: 0x01, data }, { seq: 5, direction: 'fromAmp' });
+  const stream = blocks.flatMap((b) => Array.from(b));
+  const start = stream.findIndex((b, i) => b === 0xf0 && stream[i + 1] === 0x01);
+  stream[start + 3] ^= 0x01; // first chunk's checksum byte
+  const out = [];
+  const errors = [];
+  const dec = new StreamDecoder((m) => out.push(m), { onError: (e) => errors.push(e.message) });
+  dec.push(stream);
+  assert.deepEqual(errors, ['checksum mismatch on 03 01']);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].checksumOk, false);
+});

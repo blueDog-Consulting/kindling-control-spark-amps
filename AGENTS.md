@@ -114,7 +114,7 @@ npm run release:android -- v0.3.0       # signed apk + aab in out/, built locall
 
 **Wire format** (full detail in `docs/PROTOCOL.md`):
 - Blocks have a 16-byte `01 FE …` header, and chunks are framed `F0 01 seq xor cmd sub <7-bit data> F7`. Chunks can span blocks, and BLE notifications split blocks arbitrarily, so always feed bytes through `StreamDecoder`; never assume one notification is one message.
-- Presets (`01 01` / `03 01`) are multi-chunk with a `[total, index, length]` sub-header. Amp→app chunks carry at most 0x19 data bytes; app→amp chunks at most 0x80.
+- Presets (`01 01` / `03 01`) are multi-chunk with a `[total, index, length]` sub-header. Amp→app chunks carry at most 0x19 data bytes; app→amp chunks at most 0x80. A bad `xor` in **any** chunk (or a missing chunk) makes the merged message `checksumOk: false`; `getPreset()` then reads the preset once more and returns the second read (or the first, if the second times out), issue #30.
 - Floats are float32 and must round-trip **bit-exactly**: presets are checksummed. Don't round values in the codec; format them for display in the UI only.
 - `SparkClient.connected` follows the transport (`connect()` sets it, `onDisconnect` clears it). `handshake()` swallows errors from its optional steps (serial, firmware, preset number, status), so it re-checks `connected` at the end and throws `disconnected` if the link dropped part-way; otherwise the app would show a dead link as connected (issue #43).
 - `seq` runs 1..0x7F. `01 04` (set parameter) gets **no ack**; other `01 xx` writes get `04 xx`, and `02 xx` requests get `03 xx`.
