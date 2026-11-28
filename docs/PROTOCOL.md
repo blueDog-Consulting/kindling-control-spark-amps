@@ -33,7 +33,7 @@ chunk  = F0 01 | seq | xor | cmd | sub | 7-bit data… | F7
 * A block can hold several chunks, and a chunk can **continue into the next block**. Amp → app blocks are at most `0x6A` bytes, and the amp packs several 39-byte chunks into each one. App → amp blocks are at most `0xAD` bytes.
 * `seq` is a message counter (1…0x7F) chosen by the sender. Acks echo it back.
 * `xor` is the XOR of every 7-bit data byte between `sub` and `F7`.
-* All chunk data is 7-bit, so `F0`, `F7` and `01 FE` can't appear inside it. That makes resyncing a stream easy.
+* All chunk data is 7-bit, so `F0`, `F7` and `01 FE` can't appear inside it. That makes resyncing a stream easy. When the decoder resyncs (a chunk that never got its `F7`, or a byte with the top bit set inside one) or a chunk fails its `xor`, the Console line shows the cut-off chunk's header (`F0 01 seq xor cmd sub`), how many data bytes had arrived, and the next bytes in the stream (issue #16). That detail lives in the error's `context` and never goes into error reports.
 
 ### 7-bit packing
 

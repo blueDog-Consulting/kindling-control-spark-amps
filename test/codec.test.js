@@ -159,3 +159,30 @@ test('a bad checksum in an early chunk marks the whole multi-chunk message as da
   assert.equal(out.length, 1);
   assert.equal(out[0].checksumOk, false);
 });
+
+test('a resync error carries the bytes around it for the Console, outside the message (#16)', () => {
+  const [a] = encodeMessage(M.requestAmpName(), { seq: 3 });
+  const [b] = encodeMessage(M.requestSerial(), { seq: 4 });
+  const first = Array.from(a);
+  const cut = first.slice(0, first.indexOf(0xf7)); // chunk without its F7, then the next block
+  const errors = [];
+  const out = [];
+  const dec = new StreamDecoder((m) => out.push(m), { onError: (e) => errors.push(e) });
+  dec.push([...cut, ...b.subarray(16)]);
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].message, 'chunk start inside chunk, resyncing');
+  assert.match(errors[0].context, /^open chunk f0 01 03 [0-9a-f]{2} 02 11 after \d+ data bytes; next f0 01 04/);
+  assert.equal(out.length, 1, 'the next chunk still decodes');
+  assert.equal(out[0].sub, 0x23);
+});
+
+test('a checksum error names the chunk and both checksums (#16, #30)', () => {
+  const [block] = encodeMessage(M.requestAmpName(), { seq: 3 });
+  const bytes = Array.from(block);
+  const start = bytes.indexOf(0xf0);
+  bytes[start + 3] ^= 0x01;
+  const errors = [];
+  new StreamDecoder(() => {}, { onError: (e) => errors.push(e) }).push(bytes);
+  assert.equal(errors[0].message, 'checksum mismatch on 02 11');
+  assert.match(errors[0].context, /^chunk f0 01 03 [0-9a-f]{2} 02 11 … \(\d+ data bytes, xor [0-9a-f]{2}, expected [0-9a-f]{2}\)$/);
+});

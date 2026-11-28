@@ -151,8 +151,10 @@ function wireClient(c) {
   c.addEventListener('sent', (e) => logMessage('tx', { ...decode(e.detail), seq: e.detail.seq, raw: e.detail.blocks }));
   c.addEventListener('sentRaw', (e) => logLine('tx', `raw ${toHex(e.detail.bytes)}`));
   c.addEventListener('error', (e) => {
-    logLine('err', e.detail.error.message);
-    reportError('client', e.detail.error);
+    const err = e.detail.error;
+    // context: the bytes around a decoder resync or bad checksum (issue #16). Console only, never reported.
+    logLine('err', err.context ? `${err.message} (${err.context})` : err.message);
+    reportError('client', err);
   });
   c.addEventListener('log', (e) => logLine('info', `bluetooth: ${e.detail.text}`));
 
