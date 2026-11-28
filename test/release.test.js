@@ -125,8 +125,17 @@ test('pre-releases and releases that skip Android need no notes', async () => {
   assert.ok(!docsOnly.calls.includes('edit'));
 });
 
-test('--yes will not open an editor for missing notes', async () => {
+test('--yes leaves missing notes to the Release workflow, without an editor or a notes commit', async () => {
   const f = fakes();
+  await release('v0.3.0', { yes: true }, f.deps);
+  assert.deepEqual(f.calls, ['git push origin main', 'git tag v0.3.0', 'git push origin v0.3.0']);
+  assert.match(f.logs.join('\n'), /workflow will generate/);
+});
+
+test('--yes still stops on a notes file that is invalid', async () => {
+  const f = fakes();
+  mkdirSync(join(f.root, 'release-notes/0.3.0'), { recursive: true });
+  writeFileSync(join(f.root, 'release-notes/0.3.0/android.txt'), 'x'.repeat(STORES.android.limit + 1));
   await assert.rejects(release('v0.3.0', { yes: true }, f.deps), /--yes opens no editor/);
   assert.deepEqual(f.calls, []);
 });

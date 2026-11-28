@@ -15,7 +15,8 @@ Plain text, no Markdown (the stores don't render it). Write for users: what they
 
 - `npm run release -- v0.3.0` drafts `android.txt` from the commit log, opens it in your editor, validates it, then commits, pushes, tags and pushes the tag.
 - Tagging by hand? Commit and push the notes **before** you tag. `git tag v0.3.0` ships exactly `release-notes/0.3.0/`.
-- A final (non-pre-release) tag that builds Android **fails early** if `android.txt` is missing, empty or over the limit. Pre-releases don't need notes.
+- **No file is fine too.** A final release that builds Android and has no `android.txt` uses the **notes** typed into a manual run of the Release workflow, or else generates them from the titles of the pull requests (and direct commits) since the previous tag that changed the Android app. So you can release from the web: Actions → Release → Run workflow, tag `v0.3.0`.
+- A committed or typed `android.txt` that is empty or over the limit **fails early**. Pre-releases don't need notes.
 - `ios.txt` is optional and, like `macos.txt`, isn't checked or published by CI until iOS is built there.
 - `macos.txt` is optional. macOS isn't built in CI, so CI doesn't check or publish it: check it locally (`npm run release:notes -- v0.3.0`) and paste it into App Store Connect yourself.
 - The release workflow checks and publishes notes only for the store apps that release builds (today: Android). It adds them to the GitHub Release body and attaches `kindling-control-<version>-android-whatsnew.txt`, ready to paste into Play Console.

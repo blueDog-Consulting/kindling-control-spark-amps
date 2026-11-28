@@ -1,6 +1,6 @@
 # Releasing
 
-Releases are cut by pushing a version tag. `.github/workflows/release.yml` then:
+Releases are cut by pushing a version tag, or by starting the Release workflow from GitHub (which works from a phone; see "Releasing from the web" below). `.github/workflows/release.yml` then:
 
 1. runs the tests
 2. works out which apps changed since the previous `v*` tag (`tools/release-plan.js`)
@@ -17,9 +17,18 @@ npm run release -- v0.2.0            # or v0.2.0-beta.1 for a pre-release; add -
 2. works out whether the release needs store notes (a final tag that builds Android does; see "Store release notes"). If `release-notes/<version>/android.txt` is missing or invalid it drafts one from the commit subjects since the previous tag and opens it in `$VISUAL`/`$EDITOR`, re-opening it until it validates
 3. asks for confirmation, then commits the notes, pushes `main`, creates the tag and pushes the tag
 
-`--dry-run` runs the checks and prints the draft notes and the git commands without changing anything. `--yes` skips the confirmation, but opens no editor, so the notes must already exist. By hand, the same thing is: write and commit the notes, `git push origin main`, `git tag v0.2.0`, `git push origin v0.2.0`. Push the notes before the tag: the workflow checks out the tag and fails early without them.
+`--dry-run` runs the checks and prints the draft notes and the git commands without changing anything. `--yes` skips the confirmation and opens no editor: if `android.txt` is missing, the workflow generates the Play notes (an existing but invalid file still stops it). By hand, the same thing is: optionally write and commit the notes, `git push origin main`, `git tag v0.2.0`, `git push origin v0.2.0`. If you write notes, push them before the tag: the workflow reads them from the tag's commit.
 
 Watch it under **Actions → Release**. To rebuild an existing tag, for example after adding secrets, run the workflow manually (*Run workflow*), give it the tag, and tick **force** to build every app.
+
+### Releasing from the web
+
+No computer needed: on github.com (or the GitHub mobile app), open **Actions → Release → Run workflow**, keep the branch on **main**, and enter:
+
+- **tag**: the new version, e.g. `v0.3.0`. The run checks it's a valid version, runs the tests on `main`, then creates the tag on that commit and releases it. A manual run only creates tags from `main`; from another branch it fails. An existing tag is rebuilt instead.
+- **notes** (optional): the Google Play "What's new" text, up to 500 characters. The field is a single line, so type `\n` for a line break. Leave it empty to use a committed `release-notes/<version>/android.txt`, or, if there's none, notes generated from the changes (below).
+
+The tag is pushed with the workflow's own token, which doesn't start a second Release run; this run carries on with the builds. If you add a tag-protection ruleset later, allow GitHub Actions to create `v*` tags, or this step fails.
 
 ## Versions
 
@@ -39,9 +48,15 @@ The "What's new" text for the store listings is versioned with the release. It l
 | `ios.txt` | App Store (iPhone and iPad), "What's New in This Version" | 4000 characters |
 | `macos.txt` | Mac App Store, "What's New in This Version" | 4000 characters |
 
-They must be committed and pushed before you tag, so `v0.2.0` ships exactly `release-notes/0.2.0/`. `npm run release` does that for you (it drafts `android.txt` and opens your editor); `macos.txt` stays a manual, optional file. Details and an example layout are in [release-notes/README.md](../release-notes/README.md).
+Committed notes are read from the tag's commit, so `v0.2.0` ships exactly `release-notes/0.2.0/`. `npm run release` drafts `android.txt` and opens your editor; `macos.txt` stays a manual, optional file. Details and an example layout are in [release-notes/README.md](../release-notes/README.md).
 
-- Store notes belong to the apps a release builds. The `plan` job works out that set (today: Android, when it's built) and checks only those notes, with `release-notes.js --only`. A **final** tag that builds Android fails right away if `android.txt` is missing, empty or over the limit, before anything is built. Pre-release tags need no notes, and a release that builds no store app checks none.
+- Store notes belong to the apps a release builds. The `plan` job works out that set (today: Android, when it's built) and checks only those notes, with `release-notes.js --only`. Pre-release tags need no notes, and a release that builds no store app checks none.
+- A **final** release that builds Android always gets Play notes, in this order (`release-notes.js --fill android`):
+  1. a committed `release-notes/<version>/android.txt`;
+  2. otherwise the **notes** typed into a manual run;
+  3. otherwise notes **generated** from the changes since the previous tag: one line per merged pull request (its title) or direct commit on `main` (its subject, without a trailing `(#12)`), only those that changed the Android app's paths (`APP_PATHS.android`), newest first, cut to 500 characters. Branch merges and "Release notes for …" commits are left out. With nothing to list, the text is "Bug fixes and improvements."
+  
+  The notes are then validated: a committed file or typed notes that are empty or over 500 characters fail the run before anything is built. Notes that weren't committed aren't written back to the repository; they appear in the run's summary, in the GitHub Release (marked as typed in or generated) and in the attached `…-android-whatsnew.txt`. Generated notes are pull-request titles, so read them before pasting them into Play Console.
 - `ios.txt` is optional and validated like `macos.txt`: iOS isn't built in CI yet, so CI neither checks nor publishes it; check it with `npm run release:notes` and paste it into App Store Connect. When iOS joins `release.yml` (#33), add `ios` to the plan job's set and to the "needs notes" rule in `tools/release.js` together.
 - `macos.txt` is optional. macOS isn't built in CI, so CI neither checks nor publishes it; check it with `npm run release:notes` and paste it into App Store Connect when you ship the Mac app. Once macOS joins the build matrix, add `macos` to the plan job's set with the desktop build.
 - The `release` job checks out the tag and publishes exactly the plan job's set: a **Store release notes** section in the GitHub Release body and `kindling-control-<version>-android-whatsnew.txt`, ready to paste into Play Console. A release that skipped Android carries no Play notes. Nothing is uploaded to a store automatically yet.

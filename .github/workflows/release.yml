@@ -1,10 +1,14 @@
 name: Release
 
-# Push a version tag to release:   git tag v0.2.0 && git push origin v0.2.0
-# Only apps whose code changed since the previous v* tag are rebuilt
-# (tools/release-plan.js). Pre-release tags (v0.2.0-beta.1) become GitHub
-# pre-releases. The website (kindlingcontrol.app) lives in its own repo,
-# bluedog-consulting/kindling-control-website.
+# Two ways to release:
+#   - push a version tag:   git tag v0.2.0 && git push origin v0.2.0   (or npm run release -- v0.2.0)
+#   - from the web or a phone: Actions -> Release -> Run workflow, on main, with a new tag such as v0.3.0.
+#     The run tests main, creates the tag on main's commit and releases it. Running it with an existing tag
+#     rebuilds that release.
+# Only apps whose code changed since the previous v* tag are rebuilt (tools/release-plan.js). Pre-release tags
+# (v0.2.0-beta.1) become GitHub pre-releases. Store notes come from release-notes/<version>/ when committed,
+# else from the "notes" input, else they are generated from the changes since the previous tag.
+# The website (kindlingcontrol.app) lives in its own repo, bluedog-consulting/kindling-control-website.
 # See docs/RELEASING.md for secrets and details.
 
 on:
@@ -13,8 +17,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing tag to (re)build, e.g. v0.2.0
+        description: Tag to release, e.g. v0.3.0. A new tag is created on main (run from main); an existing one is rebuilt.
         required: true
+      notes:
+        description: Google Play "What's new" (optional, 500 characters, \n for a new line). Empty = committed file, or generated from the changes.
+        required: false
+        default: ''
       force:
         description: Build every app, even if unchanged
         type: boolean
@@ -33,6 +41,8 @@ env:
 jobs:
   plan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # only used to push a new tag from a manual run on main
     outputs:
       android: ${{ steps.plan.outputs.android }}
       desktop: ${{ steps.plan.outputs.desktop }}
@@ -42,40 +52,94 @@ jobs:
       prerelease: ${{ steps.plan.outputs.prerelease }}
       previous: ${{ steps.plan.outputs.previous }}
       notes_stores: ${{ steps.notes.outputs.stores }}
+      notes_source: ${{ steps.notes.outputs.source }}
+      android_notes: ${{ steps.notes.outputs.android_notes }}
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.TAG }}
           fetch-depth: 0 # full history + tags, to diff against the previous release
+      - name: Check out the tag, or prepare to create it
+        id: tag
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            git checkout -q "refs/tags/$TAG"
+            echo "create=false" >> "$GITHUB_OUTPUT"
+            echo "Releasing the existing tag $TAG ($(git rev-parse --short HEAD))."
+            exit 0
+          fi
+          if [ "$EVENT" != "workflow_dispatch" ] || [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::Tag $TAG doesn't exist. A manual run creates a new tag only when it runs on main."
+            exit 1
+          fi
+          case "$TAG" in v*) ;; *) echo "::error::Tags start with v, like v0.3.0."; exit 1 ;; esac
+          # Fails on anything that isn't vMAJOR.MINOR.PATCH[-pre]: the same rule as the rest of the pipeline.
+          node --input-type=module -e "import { versionFromTag } from './tools/release-plan.js'; versionFromTag(process.argv[1]);" "$TAG"
+          echo "create=true" >> "$GITHUB_OUTPUT"
+          echo "Will create $TAG on main ($(git rev-parse --short HEAD)) once the tests pass."
       - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Test
         run: npm test
+      - name: Create the tag
+        # Pushed with the workflow's own token, which doesn't start another run of this workflow, so this run
+        # carries on with the release. The later jobs check out the tag.
+        if: steps.tag.outputs.create == 'true'
+        run: |
+          git tag "$TAG"
+          git push origin "refs/tags/$TAG"
+          echo "Created $TAG on $(git rev-parse --short HEAD)."
       - name: Decide what to build
         id: plan
         env:
           FORCE_ALL: ${{ github.event.inputs.force || 'false' }}
         run: node tools/release-plan.js "$TAG"
-      - name: Check store release notes
+      - name: Store release notes
         # Store notes belong to the apps this release builds; the release job publishes exactly this set
         # (outputs.stores). Today that's Android when it's built: macOS isn't built in CI, so its notes are
         # neither checked nor attached here (add "macos" with the desktop build once macOS is in the matrix).
-        # A final Android build needs release-notes/<version>/android.txt; fail here, before anything is built.
+        # A final Android release needs Play notes. A committed release-notes/<version>/android.txt wins;
+        # without one, the "notes" input is used, and without that they're generated from the pull requests
+        # and commits since the previous tag that changed the Android app (tools/release-notes.js --fill).
+        # Notes typed into the input that are too long fail here, before anything is built.
         id: notes
         env:
           ANDROID_BUILT: ${{ steps.plan.outputs.android }}
           PRERELEASE: ${{ steps.plan.outputs.prerelease }}
+          PREVIOUS: ${{ steps.plan.outputs.previous }}
+          VERSION: ${{ steps.plan.outputs.version }}
+          RELEASE_NOTES_TEXT: ${{ github.event.inputs.notes }}
         run: |
           stores=''
-          require=()
+          flags=()
           if [ "$ANDROID_BUILT" = "true" ]; then
             stores=android
-            if [ "$PRERELEASE" != "true" ]; then require=(--require android); fi
+            if [ "$PRERELEASE" != "true" ]; then
+              flags=(--require android --fill android)
+              if [ -n "$PREVIOUS" ]; then flags+=(--since "$PREVIOUS"); fi
+            fi
           fi
           echo "stores=$stores" >> "$GITHUB_OUTPUT"
           if [ -z "$stores" ]; then echo "This release builds no store app: no store notes to check."; exit 0; fi
-          node tools/release-notes.js "$TAG" --only "$stores" "${require[@]}"
+          node tools/release-notes.js "$TAG" --only "$stores" "${flags[@]}" | tee notes-check.txt
+          source=$(sed -n 's/^android: source=//p' notes-check.txt)
+          echo "source=$source" >> "$GITHUB_OUTPUT"
+          file="release-notes/$VERSION/android.txt"
+          # Notes that weren't committed exist only in this job's checkout: hand them to the release job.
+          if [ -n "$source" ] && [ "$source" != "committed" ]; then
+            delim="EOF_$(openssl rand -hex 16)"
+            { echo "android_notes<<$delim"; cat "$file"; echo "$delim"; } >> "$GITHUB_OUTPUT"
+            {
+              echo "### Google Play notes ($source)"
+              echo
+              echo '```text'
+              cat "$file"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   android:
     needs: plan
@@ -186,6 +250,8 @@ jobs:
       DESKTOP_BUILT: ${{ needs.plan.outputs.desktop }}
       DESKTOP_REASON: ${{ needs.plan.outputs.desktop_reason }}
       NOTES_STORES: ${{ needs.plan.outputs.notes_stores }}
+      NOTES_SOURCE: ${{ needs.plan.outputs.notes_source }}
+      ANDROID_NOTES: ${{ needs.plan.outputs.android_notes }}
     steps:
       - uses: actions/checkout@v7 # for release-notes/<version>/
         with:
@@ -218,8 +284,17 @@ jobs:
           } > notes.md
           # Versioned store notes, for the store apps this release built (the plan job checked the same set):
           # shown in the release body and attached as <app>-whatsnew.txt, ready to paste into Play Console.
+          # Notes that weren't committed (typed into the run, or generated) come from the plan job.
+          if [ -n "$ANDROID_NOTES" ] && [ ! -f "release-notes/$VERSION/android.txt" ]; then
+            mkdir -p "release-notes/$VERSION"
+            printf '%s\n' "$ANDROID_NOTES" > "release-notes/$VERSION/android.txt"
+          fi
           if [ -n "$NOTES_STORES" ]; then
             node tools/release-notes.js "$TAG" --only "$NOTES_STORES" --out release-files --markdown notes.md
+            case "$NOTES_SOURCE" in
+              generated) echo "_The Google Play notes were generated from the changes since ${PREVIOUS:-the first commit}. Edit them in Play Console if they need it._" >> notes.md; echo >> notes.md ;;
+              input) echo "_The Google Play notes were typed in when this release was started._" >> notes.md; echo >> notes.md ;;
+            esac
           fi
           args=(-f tag_name="$TAG")
           [ -n "$PREVIOUS" ] && args+=(-f previous_tag_name="$PREVIOUS")
