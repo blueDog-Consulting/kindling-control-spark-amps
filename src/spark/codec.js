@@ -395,12 +395,12 @@ export class StreamDecoder {
       }
       if (b & 0x80 && b !== 0xf0) {
         // not valid inside a chunk — resync
-        this.onError(new Error(`unexpected 0x${hex(b)} inside chunk, resyncing`));
+        this.onError(withContext(new Error(`unexpected 0x${hex(b)} inside chunk, resyncing`), this.chunk, buf, i));
         this.chunk = null;
         continue;
       }
       if (b === 0xf0) {
-        this.onError(new Error('chunk start inside chunk, resyncing'));
+        this.onError(withContext(new Error('chunk start inside chunk, resyncing'), this.chunk, buf, i));
         this.chunk = null;
         continue;
       }
@@ -418,7 +418,11 @@ export class StreamDecoder {
     const sub = c[5];
     const packed = c.slice(6, -1);
     const checksumOk = xor(packed) === sum;
-    if (!checksumOk) this.onError(new Error(`checksum mismatch on ${hex(cmd)} ${hex(sub)}`));
+    if (!checksumOk) {
+      const err = new Error(`checksum mismatch on ${hex(cmd)} ${hex(sub)}`);
+      err.context = `chunk ${hexList(c.slice(0, 6))} … (${packed.length} data bytes, xor ${hex(xor(packed))}, expected ${hex(sum)})`;
+      this.onError(err);
+    }
     const data = unpack7(packed);
     const raw = Uint8Array.from(c);
 
@@ -427,16 +431,18 @@ export class StreamDecoder {
       const key = `${cmd}:${sub}`;
       let m = this.multi.get(key);
       if (!m || index === 0) {
-        m = { parts: [], seq, raw: [] };
+        m = { parts: [], seq, raw: [], bad: false };
         this.multi.set(key, m);
       }
       m.parts[index] = data.subarray(3);
       m.raw.push(raw);
+      // a bad chunk anywhere spoils the whole message, not just when it's the last one (issue #30)
+      if (!checksumOk) m.bad = true;
       if (index === total - 1) {
         this.multi.delete(key);
         const missing = m.parts.length !== total || m.parts.some((p) => !p);
         const merged = concat(m.parts.filter(Boolean));
-        this.onMessage({ cmd, sub, seq, data: merged, direction: this.direction, checksumOk: checksumOk && !missing, raw: m.raw });
+        this.onMessage({ cmd, sub, seq, data: merged, direction: this.direction, checksumOk: !m.bad && !missing, raw: m.raw });
       }
       return;
     }
@@ -473,4 +479,20 @@ export function fromHex(str) {
   const out = new Uint8Array(clean.length / 2);
   for (let i = 0; i < out.length; i++) out[i] = parseInt(clean.substr(i * 2, 2), 16);
   return out;
+}
+
+/**
+ * Attaches the bytes around a resync to the error as `context`, for the Console (issue #16):
+ * the header of the chunk that was cut off (F0 01 seq xor cmd sub), how much of it had
+ * arrived, and the next few bytes from the stream. It's a separate property, not part of the
+ * message, so error reports (which send only name, message and stack) never include it.
+ */
+function withContext(err, chunk, buf, i) {
+  const next = buf.slice(i, i + 8);
+  err.context = `open chunk ${hexList(chunk.slice(0, 6))} after ${chunk.length - 6} data bytes; next ${hexList(next)}`;
+  return err;
+}
+
+function hexList(bytes) {
+  return Array.from(bytes, hex).join(' ');
 }

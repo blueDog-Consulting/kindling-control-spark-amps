@@ -307,3 +307,10 @@ test('stamp-version writes the version', () => {
   assert.throws(() => stamp(src, 'v1; rm -rf'), /not a version/);
   assert.throws(() => stamp('nothing here', '1.0.0'), /not found/);
 });
+
+test("a decoder error's byte context stays out of the report (#16)", () => {
+  const err = Object.assign(new Error('chunk start inside chunk, resyncing'), { context: 'open chunk f0 01 03 7a 03 01 after 12 data bytes; next f0 01 04' });
+  const r = buildReport(err, { where: 'client' });
+  assert.equal(r.message, 'chunk start inside chunk, resyncing');
+  assert.ok(!JSON.stringify(r).includes('f0 01'), JSON.stringify(r));
+});

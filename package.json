@@ -20,6 +20,7 @@
     "release:plan":"node tools/release-plan.js",
     "release:notes": "node tools/release-notes.js",
     "release:android": "bash tools/release-android.sh",
+    "release:ios": "bash tools/release-ios.sh",
     "icons": "node tools/build-icons.js",
     "screenshots": "node tools/screenshots.js"
   },

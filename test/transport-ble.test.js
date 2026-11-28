@@ -9,7 +9,7 @@ import { SparkClient } from '../src/spark/client.js';
  * configurable properties, write-with-response optionally failing the way
  * Chrome on macOS reports it, and a flaky first startNotifications().
  */
-function fakeBluetooth(amp, { props = { write: true, writeWithoutResponse: true }, withResponseFails = false, flakyNotify = false, serviceDropsFirst = false } = {}) {
+function fakeBluetooth(amp, { props = { write: true, writeWithoutResponse: true }, withResponseFails = false, flakyNotify = false, serviceDropsFirst = false, connectFails = 0 } = {}) {
   const log = { withResponse: [], withoutResponse: [], notifyAttempts: 0 };
   const notFound = () => Object.assign(new Error('GATT operation failed for unknown reason.'), { name: 'NotSupportedError' });
   const rx = new EventTarget();
@@ -41,6 +41,10 @@ function fakeBluetooth(amp, { props = { write: true, writeWithoutResponse: true 
     gatt: {
       connected: true,
       connect: async () => {
+        log.connectAttempts = (log.connectAttempts ?? 0) + 1;
+        if (log.connectAttempts <= connectFails) {
+          throw Object.assign(new Error('Connection Error: Connection attempt failed.'), { name: 'NetworkError' });
+        }
         await amp.connect();
         return { getPrimaryService: async () => {
           log.serviceAttempts = (log.serviceAttempts ?? 0) + 1;
@@ -125,4 +129,32 @@ test('Windows: GATT drop while finding the service is retried once (#41)', async
   const { info, log } = await run({ serviceDropsFirst: true });
   assert.equal(info.name, 'Spark 2');
   assert.equal(log.serviceAttempts, 2);
+});
+
+test('Linux: a failed GATT connect is retried, waiting longer the second time (#44)', async () => {
+  const { info, log, lines } = await run({ connectFails: 2 });
+  assert.equal(info.name, 'Spark 2');
+  assert.equal(log.connectAttempts, 3);
+  assert.ok(lines.some((l) => l.includes('connect to GATT server failed') && l.includes('retrying in 400 ms')), lines.join('\n'));
+  assert.ok(lines.some((l) => l.includes('retrying in 1200 ms')), lines.join('\n'));
+});
+
+test('Linux: gives up after three failed GATT connects and names the step (#44)', async () => {
+  await assert.rejects(run({ connectFails: 3 }), (err) => err.name === 'NetworkError'
+    && err.message === 'connect to GATT server failed: Connection Error: Connection attempt failed.');
+});
+
+test('a non-network error from GATT connect is not retried', async () => {
+  const amp = new MockSparkTransport({ latencyMs: 1, name: 'Spark 2' });
+  const { bluetooth } = fakeBluetooth(amp);
+  let calls = 0;
+  const device = await bluetooth.requestDevice();
+  device.gatt.connect = async () => {
+    calls++;
+    throw Object.assign(new Error('User cancelled'), { name: 'NotAllowedError' });
+  };
+  const t = new WebBluetoothTransport();
+  t.bluetooth = bluetooth;
+  await assert.rejects(t.connect(), (err) => err.name === 'NotAllowedError');
+  assert.equal(calls, 1);
 });

@@ -1,0 +1,58 @@
+name: iOS build check
+
+# Proves the iOS app still compiles: an unsigned iOS Simulator build, no Apple account or secrets needed.
+# Not a release and not installable on a device; the simulator app is kept as a workflow artifact (14 days).
+# Runs on PRs that touch the iOS app's paths (the same list as APP_PATHS.ios in tools/release-plan.js),
+# and by hand from the Actions tab. See docs/RELEASING.md.
+#
+# Off until iOS builds start: the job only runs when the repo variable IOS_BUILDS_ENABLED is 'true'
+# (Settings > Secrets and variables > Actions > Variables). Unset, it is skipped and uses no macOS minutes.
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'ios/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tools/release-ios.sh'
+      - '.github/workflows/ios-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    if: vars.IOS_BUILDS_ENABLED == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags, for the version name
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build for the iOS Simulator (unsigned)
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        # Version name: the latest tag plus -pr<N> (or -dev), like the Android test build.
+        run: |
+          base=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || echo v0.0.0)
+          base=${base%%-*}
+          suffix=${PR:+pr$PR}
+          bash tools/release-ios.sh "$base-${suffix:-dev}" --skip-install
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-app
+          path: out/*-ios-simulator.zip
+          if-no-files-found: error
+          retention-days: 14

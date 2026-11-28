@@ -17,7 +17,7 @@ The bytes are identical on BLE and SPP. They're a stream of **blocks**, and a bl
 
 Writing to the amp, as Ignitron does on real amps:
 
-* Use **write-without-response**. On Spark 2 + macOS, write-with-response fails with "GATT operation failed for unknown reason". The transports here fall back to the other mode once if a write fails. Web Bluetooth also reconnects and repeats the service lookup once if the GATT link drops during connect (seen on Windows, "GATT Server is disconnected"; **unverified** on hardware).
+* Use **write-without-response**. On Spark 2 + macOS, write-with-response fails with "GATT operation failed for unknown reason". The transports here fall back to the other mode once if a write fails. Web Bluetooth also reconnects and repeats the service lookup, up to twice (after 400 ms, then 1.2 s), when connecting fails with a `NetworkError`: the GATT link dropping during the service lookup (seen on Windows, "GATT Server is disconnected") or the connect itself failing (seen on Linux/BlueZ, "Connection attempt failed"). Each retry is logged. **Unverified** on hardware.
 * Spark 40, GO and NEO accept up to `0xAD` bytes per write. MINI and Spark 2 need writes of `0x64` bytes or less, and a pause of about 80 ms after each block.
 * Until the amp has reported its name (`02 11`), use the conservative limits: `0x64`-byte writes with 80 ms between blocks.
 
@@ -33,7 +33,7 @@ chunk  = F0 01 | seq | xor | cmd | sub | 7-bit data… | F7
 * A block can hold several chunks, and a chunk can **continue into the next block**. Amp → app blocks are at most `0x6A` bytes, and the amp packs several 39-byte chunks into each one. App → amp blocks are at most `0xAD` bytes.
 * `seq` is a message counter (1…0x7F) chosen by the sender. Acks echo it back.
 * `xor` is the XOR of every 7-bit data byte between `sub` and `F7`.
-* All chunk data is 7-bit, so `F0`, `F7` and `01 FE` can't appear inside it. That makes resyncing a stream easy.
+* All chunk data is 7-bit, so `F0`, `F7` and `01 FE` can't appear inside it. That makes resyncing a stream easy. When the decoder resyncs (a chunk that never got its `F7`, or a byte with the top bit set inside one) or a chunk fails its `xor`, the Console line shows the cut-off chunk's header (`F0 01 seq xor cmd sub`), how many data bytes had arrived, and the next bytes in the stream (issue #16). That detail lives in the error's `context` and never goes into error reports.
 
 ### 7-bit packing
 
@@ -42,6 +42,8 @@ The 8-bit payload is split into groups of up to 7 bytes. Each group goes on the 
 ### Multi-chunk messages
 
 Presets (`01 01` and `03 01`) are too large for one chunk. Every chunk of a preset starts its 8-bit payload with a 3-byte sub-header, `total, index, length`, and all chunks share the same `seq`.
+
+If any chunk of a preset fails its `xor`, or a chunk is missing, the decoder marks the whole message `checksumOk: false`, and `SparkClient.getPreset()` asks for it once more. Error reports show this happening on Windows and Android (issue #30); the cause, probably a dropped or damaged BLE notification, is **unverified**.
 
 | direction | max 8-bit payload per chunk |
 |---|---|

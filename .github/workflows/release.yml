@@ -46,6 +46,7 @@ jobs:
     outputs:
       android: ${{ steps.plan.outputs.android }}
       desktop: ${{ steps.plan.outputs.desktop }}
+      ios: ${{ steps.plan.outputs.ios }}
       android_reason: ${{ steps.plan.outputs.android_reason }}
       desktop_reason: ${{ steps.plan.outputs.desktop_reason }}
       version: ${{ steps.plan.outputs.version }}
@@ -231,6 +232,34 @@ jobs:
             dist/*.exe
           if-no-files-found: error
 
+  # iOS: an unsigned iOS Simulator build that proves the app compiles from the tag. Nothing is published, and
+  # the release job doesn't wait for it, so a failed iOS build can't block the Android and desktop release
+  # (that's why macOS desktop left the matrix). Signed TestFlight builds are #34. Same script as locally.
+  # Off until iOS builds start: needs the repo variable IOS_BUILDS_ENABLED = 'true' (docs/RELEASING.md).
+  ios:
+    needs: plan
+    if: vars.IOS_BUILDS_ENABLED == 'true' && needs.plan.outputs.ios == 'true'
+    continue-on-error: true
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build for the iOS Simulator (unsigned)
+        run: bash tools/release-ios.sh "$TAG" --skip-install
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-app # kept on the run, not attached to the release
+          path: out/*-ios-simulator.zip
+          if-no-files-found: error
+          retention-days: 14
+
   release:
     needs: [plan, android, desktop]
     # run when planning succeeded and no build failed (skipped builds are fine)
@@ -278,7 +307,7 @@ jobs:
             row "Desktop (Windows, Linux)" "$DESKTOP_BUILT" "$DESKTOP_REASON"
             echo
             echo "Skipped apps are unchanged since ${PREVIOUS:-the previous release}; use the downloads from that release."
-            echo "There is no macOS build yet; build it from source (docs/APPS.md)."
+            echo "There is no macOS build yet; build it from source (docs/APPS.md). The iPhone and iPad app isn't released yet."
             echo "Desktop builds are not code-signed yet: on Windows choose \"More info → Run anyway\"."
             echo
           } > notes.md

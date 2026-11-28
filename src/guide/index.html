@@ -263,6 +263,7 @@
         <p>
           <strong>Copy</strong> puts the whole Console on the clipboard as plain text, oldest message first, with the raw bytes of each message. Paste it into a bug report when something goes wrong.
           It can include preset names, so look it over before you share it.
+          When a message arrives damaged or cut off, its red line ends with the bytes around the problem in brackets. Those help most in a bug report. The app reads a damaged preset once more by itself.
         </p>
         <p>
           You can also send a message yourself. That's mainly for people working out the amp's protocol. Messages starting with <code>02</code> only ask the amp for
@@ -307,6 +308,7 @@
             Switch the amp off and on, close other apps that might be connected to it, and press Connect again.
             If the amp doesn't answer at first, the app asks again by itself, so the <em>Handshake…</em> step can take a few seconds before it gives up.
             On a Mac, if it keeps failing, disconnect the Spark as an <em>audio</em> device in System Settings → Bluetooth (don't choose "Forget"), then try again.
+            On Linux, "Connection attempt failed" usually means the amp is still connected to another device, or to the computer as an audio device. The app tries again twice by itself. If it still fails, disconnect the Spark in your Bluetooth settings (or run <code>bluetoothctl disconnect</code>), then press Connect again.
           </dd>
 
           <dt>"Couldn't connect: disconnected"</dt>
