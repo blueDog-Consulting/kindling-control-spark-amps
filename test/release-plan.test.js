@@ -55,5 +55,8 @@ test('the iOS build check runs for every path that rebuilds iOS', () => {
   const rel = readFileSync(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8');
   const job = rel.slice(rel.indexOf('\n  ios:'), rel.indexOf('\n  release:'));
   assert.match(job, /continue-on-error: true/, 'a failed iOS build must not block the release');
+  // iOS builds stay off until the maintainer turns them on with the repo variable
+  assert.match(job, /if: vars\.IOS_BUILDS_ENABLED == 'true' && /);
+  assert.match(wf, /\n {4}if: vars\.IOS_BUILDS_ENABLED == 'true'\n/);
   assert.doesNotMatch(rel, /needs: \[[^\]]*\bios\b/, 'the release job must not wait for iOS');
 });

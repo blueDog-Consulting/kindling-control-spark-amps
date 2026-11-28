@@ -67,7 +67,7 @@ They must be committed and pushed before you tag, so `v0.2.0` ships exactly `rel
 
 ## iOS builds
 
-The iPhone and iPad app isn't released yet. What CI does today is prove it **compiles**, with no Apple account or secrets:
+The iPhone and iPad app isn't released yet. CI can prove it **compiles**, with no Apple account or secrets, but **that's switched off until iOS builds start**: both workflows below run their iOS job only when the repo variable `IOS_BUILDS_ENABLED` is `true` (*Settings → Secrets and variables → Actions → Variables*). Unset or anything else, the jobs show as skipped and use no macOS runner minutes. `npm run release:ios` works locally either way.
 
 - `tools/release-ios.sh` (`npm run release:ios -- [vX.Y.Z] [--skip-install]`) is the one iOS build path, like `release-android.sh` for Android. On macOS with Xcode it stamps `src/version.js` (and restores it), runs `npx cap sync ios`, and builds the `App` scheme for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`. `CFBundleShortVersionString` is the tag's `MAJOR.MINOR.PATCH` (Apple allows only numbers) and `CFBundleVersion` is `versionFromTag()`'s code, the same strictly increasing number as Android's `versionCode`; the script checks the built app carries it. Output: `out/kindling-control-<version>-ios-simulator.zip`.
 - `release.yml` runs it in an `ios` job on `macos-latest` when the plan says iOS changed. The job has `continue-on-error: true` and the `release` job doesn't wait for it, so a broken iOS build can never block the Android and desktop release (the reason macOS desktop left the matrix). Look at the run's **ios** job to see whether the tag compiles.

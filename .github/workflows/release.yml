@@ -171,9 +171,10 @@ jobs:
   # iOS: an unsigned iOS Simulator build that proves the app compiles from the tag. Nothing is published, and
   # the release job doesn't wait for it, so a failed iOS build can't block the Android and desktop release
   # (that's why macOS desktop left the matrix). Signed TestFlight builds are #34. Same script as locally.
+  # Off until iOS builds start: needs the repo variable IOS_BUILDS_ENABLED = 'true' (docs/RELEASING.md).
   ios:
     needs: plan
-    if: needs.plan.outputs.ios == 'true'
+    if: vars.IOS_BUILDS_ENABLED == 'true' && needs.plan.outputs.ios == 'true'
     continue-on-error: true
     runs-on: macos-latest
     timeout-minutes: 45

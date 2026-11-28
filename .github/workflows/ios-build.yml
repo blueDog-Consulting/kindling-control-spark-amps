@@ -4,6 +4,9 @@ name: iOS build check
 # Not a release and not installable on a device; the simulator app is kept as a workflow artifact (14 days).
 # Runs on PRs that touch the iOS app's paths (the same list as APP_PATHS.ios in tools/release-plan.js),
 # and by hand from the Actions tab. See docs/RELEASING.md.
+#
+# Off until iOS builds start: the job only runs when the repo variable IOS_BUILDS_ENABLED is 'true'
+# (Settings > Secrets and variables > Actions > Variables). Unset, it is skipped and uses no macOS minutes.
 
 on:
   pull_request:
@@ -26,6 +29,7 @@ concurrency:
 
 jobs:
   simulator:
+    if: vars.IOS_BUILDS_ENABLED == 'true'
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
